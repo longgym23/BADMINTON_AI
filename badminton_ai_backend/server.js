@@ -7,7 +7,7 @@ const cors = require('cors');
 // Kiểm tra API Key
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_API_KEY_PLACEHOLDER') {
-  console.error('Gemini API Key không được tìm thấy hoặc chưa được cấu hình trong biến môi trườn     g!');
+  console.error('Gemini API Key không được tìm thấy hoặc chưa được cấu hình trong biến môi trường!');
   // Không nên thoát ở đây nếu deploy, Render có thể restart
   // process.exit(1);
 }
@@ -17,7 +17,7 @@ let genAI;
 let model;
 try {
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+  model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 } catch(error) {
   console.error('Lỗi khởi tạo Gemini (kiểm tra API Key?):', error);
   // Không nên thoát ở đây
