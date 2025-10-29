@@ -44,21 +44,9 @@ class _ChatbotTabState extends State<ChatbotTab> {
     });
     _controller.clear(); // Xóa ô nhập
 
-    // !!! THAY THẾ URL NÀY BẰNG URL RENDER CỦA BẠN !!!
-    const String backendUrl = 'https://badminton-ai-fgsz.onrender.com';
-    // Ví dụ: 'https://badminton-ai-backend-xyz1.onrender.com/ask'
+    // SỬA LỖI: Đã điền URL Render của bạn từ log
+    const String backendUrl = 'https://badminton-ai-fgsz.onrender.com/ask';
     // Đảm bảo có '/ask' ở cuối
-
-    // Kiểm tra URL placeholder
-     if (backendUrl.contains('https://badminton-ai-fgsz.onrender.com')) {
-        print("LỖI: Chưa thay thế URL Render trong chatbot_tab.dart!");
-         setState(() {
-            _messages.add(ChatMessage(text: "Lỗi cấu hình: URL backend chưa được thiết lập.", isUser: false));
-            _isLoading = false;
-         });
-         return;
-     }
-
 
     try {
       final response = await http.post(
