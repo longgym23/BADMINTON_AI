@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "191703733211",
+    "project_id": "badmintion",
+    "storage_bucket": "badmintion.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:191703733211:android:5b1daacff270e9fb3b8dfe",
+        "android_client_info": {
+          "package_name": "com.example.badminton_ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACLFH88kEKs7I_smWQ7afLx01KcvsSvE0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
