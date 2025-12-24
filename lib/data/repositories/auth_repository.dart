@@ -31,6 +31,39 @@ class AuthRepository {
     }
   }
 
+  Future<UserModel?> updateUserProfile(
+    String userId, {
+    String? displayName,
+    String? phoneNumber,
+  }) async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null || user.uid != userId) return null;
+
+      final updateData = <String, dynamic>{};
+      if (displayName != null) {
+        await user.updateDisplayName(displayName);
+        updateData['displayName'] = displayName;
+      }
+      if (phoneNumber != null) {
+        if (phoneNumber.isEmpty) {
+          updateData['phoneNumber'] = FieldValue.delete();
+        } else {
+          updateData['phoneNumber'] = phoneNumber;
+        }
+      }
+
+      if (updateData.isNotEmpty) {
+        await _firebaseFirestore.collection('users').doc(userId).update(updateData);
+      }
+
+      return await getUserModel(userId);
+    } catch (e) {
+      print("Error updateUserProfile: $e");
+      rethrow;
+    }
+  }
+
   // Đăng nhập
   // SỬA LỖI 2: Tên hàm là 'signInWithEmailAndPassword'
   Future<UserModel?> signInWithEmailAndPassword(

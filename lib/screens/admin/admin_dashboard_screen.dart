@@ -1,6 +1,7 @@
 import 'package:badminton_ai/providers/auth_provider.dart';
-import 'package:badminton_ai/screens/admin/manage_bookings_screen.dart'; // <-- 1. THÊM IMPORT
+import 'package:badminton_ai/screens/admin/manage_bookings_screen.dart';
 import 'package:badminton_ai/screens/admin/manage_courts_screen.dart';
+import 'package:badminton_ai/screens/admin/manage_users_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -19,7 +20,7 @@ class AdminDashboardScreen extends StatelessWidget {
             onPressed: () {
               context.read<AppAuthProvider>().signOut();
             },
-          )
+          ),
         ],
       ),
       body: Center(
@@ -28,15 +29,17 @@ class AdminDashboardScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.admin_panel_settings,
-                  size: 80, color: Theme.of(context).colorScheme.secondary),
+              Icon(
+                Icons.admin_panel_settings,
+                size: 80,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
               SizedBox(height: 20),
               Text(
                 'Chào mừng Admin, ${user?.displayName ?? user?.email}!',
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineSmall
-                    ?.copyWith(color: Colors.white),
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineSmall?.copyWith(color: Colors.white),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 30),
@@ -47,7 +50,8 @@ class AdminDashboardScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => ManageBookingsScreen()),
+                      builder: (context) => ManageBookingsScreen(),
+                    ),
                   );
                 },
                 icon: Icon(Icons.calendar_month_rounded),
@@ -62,7 +66,8 @@ class AdminDashboardScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => ManageCourtsScreen()),
+                      builder: (context) => ManageCourtsScreen(),
+                    ),
                   );
                 },
                 icon: Icon(Icons.sports_tennis_rounded),
@@ -74,9 +79,11 @@ class AdminDashboardScreen extends StatelessWidget {
               SizedBox(height: 15),
               ElevatedButton.icon(
                 onPressed: () {
-                  // TODO: Mở màn hình quản lý người dùng
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Chức năng này sẽ được phát triển sau!"))
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ManageUsersScreen(),
+                    ),
                   );
                 },
                 icon: Icon(Icons.people_alt_rounded),
@@ -92,4 +99,3 @@ class AdminDashboardScreen extends StatelessWidget {
     );
   }
 }
-

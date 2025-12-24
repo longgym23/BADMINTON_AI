@@ -8,6 +8,7 @@ class CourtLocationModel {
   final double longitude;
   final double pricePerHour;
   final int totalCourts;
+  final String? sportType; // Loại sân: 'badminton', 'pickleball', 'football'
 
   CourtLocationModel({
     required this.id,
@@ -17,6 +18,7 @@ class CourtLocationModel {
     required this.longitude,
     required this.pricePerHour,
     required this.totalCourts,
+    this.sportType,
   });
 
   // Chuyển từ Firestore Document sang Model
@@ -30,6 +32,7 @@ class CourtLocationModel {
       longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
       pricePerHour: (data['pricePerHour'] as num?)?.toDouble() ?? 0.0,
       totalCourts: (data['totalCourts'] as num?)?.toInt() ?? 0,
+      sportType: data['sportType'] as String?,
     );
   }
 
@@ -42,9 +45,11 @@ class CourtLocationModel {
       'longitude': longitude,
       'pricePerHour': pricePerHour,
       'totalCourts': totalCourts,
+      if (sportType != null) 'sportType': sportType,
     };
   }
-   @override
+
+  @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is CourtLocationModel && other.id == id;
@@ -55,4 +60,3 @@ class CourtLocationModel {
   @override
   int get hashCode => id.hashCode;
 }
-

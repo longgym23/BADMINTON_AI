@@ -1,5 +1,6 @@
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/screens/user/booking_history_screen.dart'; // <-- THÊM IMPORT
+import 'package:badminton_ai/screens/user/edit_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -49,7 +50,32 @@ class ProfileTab extends StatelessWidget {
                         ?.copyWith(color: Colors.white70),
                   ),
                 ),
-                SizedBox(height: 30),
+                SizedBox(height: 16),
+                if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty)
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.call, color: Colors.white70, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            user.phoneNumber!,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                SizedBox(height: 25),
                 Card(
                   // Sử dụng Card để nhóm các mục
                   margin: EdgeInsets.only(bottom: 10),
@@ -81,9 +107,11 @@ class ProfileTab extends StatelessWidget {
                             color: Theme.of(context).colorScheme.onSurface)),
                     trailing: Icon(Icons.arrow_forward_ios, color: Colors.grey),
                     onTap: () {
-                      // TODO: Mở màn hình chỉnh sửa thông tin
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Chức năng này sẽ được phát triển sau!"))
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfileScreen(),
+                        ),
                       );
                     },
                   ),

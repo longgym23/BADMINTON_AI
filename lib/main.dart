@@ -2,6 +2,7 @@ import 'package:badminton_ai/data/repositories/auth_repository.dart';
 import 'package:badminton_ai/data/repositories/firestore_repository.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/booking_provider.dart';
+import 'package:badminton_ai/providers/notification_provider.dart';
 import 'package:badminton_ai/screens/splash/splash_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -106,9 +107,17 @@ class MyApp extends StatelessWidget {
             authProvider: context.read<AppAuthProvider>(),
           ),
         ),
+        
+        // NotificationProvider
+        ChangeNotifierProvider<NotificationProvider>(
+          create: (context) => NotificationProvider(
+            context.read<FirestoreRepository>(),
+          ),
+        ),
       ],
       child: MaterialApp(
         title: 'Badminton Court Booking',
+        debugShowCheckedModeBanner: false, // Tắt debug banner (viền xanh)
         theme: ThemeData(
           primarySwatch: primaryNavyBlue, // Màu xanh đậm làm màu chính
           colorScheme: ColorScheme.fromSwatch(

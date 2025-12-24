@@ -42,11 +42,19 @@ dependencies:
   intl: ^0.19.0   # Định dạng ngày giờ
   # --- Bản đồ ---
   google_maps_flutter: ^2.6.1 # Tích hợp Google Maps
+  geolocator: ^13.0.1 # Lấy vị trí hiện tại
+  geocoding: ^3.0.0 # Chuyển đổi tọa độ thành địa chỉ
+  permission_handler: ^11.3.1 # Xử lý quyền truy cập
   # --- AI Chatbot (sử dụng Google Gemini) ---
   google_generative_ai: ^0.4.3
   table_calendar: ^3.0.1
   cloud_functions: ^6.0.3
   http: ^1.2.1
+  # --- Media & Voice ---
+  image_picker: ^1.1.2 # Chọn ảnh và chụp ảnh
+  speech_to_text: ^7.0.0 # Chuyển giọng nói thành text
+  # --- URL Launcher ---
+  url_launcher: ^6.3.0 # Mở URL và ứng dụng bên ngoài (Google Maps, etc.)
 dev_dependencies:
   flutter_test:
     sdk: flutter

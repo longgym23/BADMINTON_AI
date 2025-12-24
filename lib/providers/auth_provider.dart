@@ -12,6 +12,8 @@ class AppAuthProvider extends ChangeNotifier {
 
   UserModel? _userModel;
   UserModel? get userModel => _userModel;
+  bool _isUpdatingProfile = false;
+  bool get isUpdatingProfile => _isUpdatingProfile;
 
   AuthState _authState = AuthState.unknown;
   AuthState get authState => _authState;
@@ -96,6 +98,43 @@ class AppAuthProvider extends ChangeNotifier {
   Future<void> signOut() async {
     await _authRepository.signOut();
     // Listener sẽ tự động chuyển _authState = AuthState.unauthenticated
+  }
+
+  Future<bool> updateUserProfile({
+    String? displayName,
+    String? phoneNumber,
+  }) async {
+    if (_firebaseUser == null) return false;
+    final trimmedName = displayName?.trim();
+    final trimmedPhone = phoneNumber?.trim();
+
+    if ((trimmedName == null || trimmedName.isEmpty) &&
+        (trimmedPhone == null)) {
+      return false;
+    }
+
+    _isUpdatingProfile = true;
+    notifyListeners();
+
+    try {
+      final updatedUser = await _authRepository.updateUserProfile(
+        _firebaseUser!.uid,
+        displayName: trimmedName,
+        phoneNumber: trimmedPhone,
+      );
+      if (updatedUser != null) {
+        _userModel = updatedUser;
+        _isUpdatingProfile = false;
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      // ignore error, will toggle flag below
+    }
+
+    _isUpdatingProfile = false;
+    notifyListeners();
+    return false;
   }
 
   @override

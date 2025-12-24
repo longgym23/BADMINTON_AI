@@ -1,7 +1,6 @@
 
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/screens/auth/register_screen.dart';
-import 'package:badminton_ai/widgets/loading_spinner.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -14,6 +13,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   void _login() async {
     if (_formKey.currentState?.validate() ?? false) {
@@ -34,75 +41,267 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  InputDecoration _inputDecoration(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    Widget? suffixIcon,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final fillColor = Colors.white.withOpacity(0.08);
+
+    OutlineInputBorder _border(Color color) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: color, width: 1.2),
+        );
+
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: Colors.white),
+      suffixIcon: suffixIcon,
+      labelStyle: TextStyle(color: Colors.white.withOpacity(0.9)),
+      filled: true,
+      fillColor: fillColor,
+      border: _border(Colors.white.withOpacity(0.08)),
+      enabledBorder: _border(Colors.white.withOpacity(0.12)),
+      focusedBorder: _border(colorScheme.secondary),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AppAuthProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: Text('Đăng nhập')),
-      body: Center(
-        child: SingleChildScrollView( // Sử dụng SingleChildScrollView để tránh overflow khi bàn phím hiện lên
-          padding: const EdgeInsets.all(20.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo của bạn
-                Image.asset(
-                  'assets/images/badminton_logo.jpg', // Thay bằng đường dẫn đến logo của bạn
-                  height: 120,
-                ),
-                SizedBox(height: 30),
-                Text(
-                  'Chào mừng bạn đến với Badminton Pro!',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white), // Màu chữ trắng
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 30),
-                TextFormField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email, color: Theme.of(context).colorScheme.secondary), // Icon màu xanh
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'Đăng nhập',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(color: Colors.white),
+        ),
+        centerTitle: true,
+      ),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF0E918C),
+                      Theme.of(context).colorScheme.primary,
+                      const Color(0xFF0B3D91),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  keyboardType: TextInputType.emailAddress,
-                  style: TextStyle(color: Theme.of(context).primaryColor), // Màu chữ trong input
-                  validator: (val) => (val?.isEmpty ?? true) ? 'Vui lòng nhập email' : null,
                 ),
-                SizedBox(height: 15),
-                TextFormField(
-                  controller: _passwordController,
-                  decoration: InputDecoration(
-                    labelText: 'Mật khẩu',
-                    prefixIcon: Icon(Icons.lock, color: Theme.of(context).colorScheme.secondary), // Icon màu xanh
-                  ),
-                  obscureText: true,
-                  style: TextStyle(color: Theme.of(context).primaryColor), // Màu chữ trong input
-                  validator: (val) => (val?.isEmpty ?? true) ? 'Vui lòng nhập mật khẩu' : null,
-                ),
-                SizedBox(height: 25),
-                if (authProvider.authState == AuthState.loading)
-                  LoadingSpinner(message: "Đang đăng nhập...") // Sử dụng LoadingSpinner
-                else
-                  ElevatedButton(
-                    onPressed: _login,
-                    child: Text('Đăng nhập'),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: Size(double.infinity, 55), // Nút to hơn
+              ),
+            ),
+            Positioned(
+              top: -120,
+              right: -40,
+              child: _BlurCircle(color: Colors.white.withOpacity(0.15), size: 240),
+            ),
+            Positioned(
+              bottom: -100,
+              left: -30,
+              child: _BlurCircle(color: Colors.white.withOpacity(0.12), size: 200),
+            ),
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Form(
+                      key: _formKey,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(color: Colors.white.withOpacity(0.12)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 18,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 36),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Hero(
+                              tag: 'app_logo',
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(24),
+                                child: Image.asset(
+                                  'assets/images/badminton_logo.jpg',
+                                  height: 96,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              'Chào mừng trở lại!',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Đăng nhập để tiếp tục khám phá các tiện ích sân cầu lông thông minh.',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Colors.white.withOpacity(0.85),
+                                  ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 32),
+                            TextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: _inputDecoration(
+                                context,
+                                label: 'Email',
+                                icon: Icons.email_rounded,
+                              ),
+                              validator: (val) => (val?.isEmpty ?? true)
+                                  ? 'Vui lòng nhập email'
+                                  : null,
+                            ),
+                            const SizedBox(height: 18),
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: _inputDecoration(
+                                context,
+                                label: 'Mật khẩu',
+                                icon: Icons.lock_rounded,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_off_rounded
+                                        : Icons.visibility_rounded,
+                                    color: Colors.white.withOpacity(0.8),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
+                                  },
+                                ),
+                              ),
+                              validator: (val) => (val?.isEmpty ?? true)
+                                  ? 'Vui lòng nhập mật khẩu'
+                                  : null,
+                            ),
+                            const SizedBox(height: 28),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: authProvider.authState == AuthState.loading
+                                    ? null
+                                    : _login,
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 0,
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Theme.of(context).colorScheme.primary,
+                                  textStyle: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                child: authProvider.authState == AuthState.loading
+                                    ? const SizedBox(
+                                        height: 22,
+                                        width: 22,
+                                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                                      )
+                                    : const Text('Đăng nhập'),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => RegisterScreen(),
+                                  ),
+                                );
+                              },
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                textStyle: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              child: const Text('Chưa có tài khoản? Đăng ký ngay'),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                SizedBox(height: 10),
-                TextButton(
-                  onPressed: () {
-                     Navigator.push(context, MaterialPageRoute(builder: (context) => RegisterScreen()));
-                  },
-                  child: Text('Chưa có tài khoản? Đăng ký ngay'),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _BlurCircle extends StatelessWidget {
+  final Color color;
+  final double size;
+
+  const _BlurCircle({
+    required this.color,
+    required this.size,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: size,
+      width: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        boxShadow: [
+          BoxShadow(
+            color: color,
+            blurRadius: size / 2.5,
+            spreadRadius: size / 4,
+          ),
+        ],
       ),
     );
   }

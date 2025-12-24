@@ -60,8 +60,8 @@ class BookingProvider with ChangeNotifier {
     super.dispose();
   }
 
-  // Hàm tạo booking mới
-  Future<bool> createBooking({
+  // Hàm tạo booking mới - trả về bookingId nếu thành công, null nếu thất bại
+  Future<String?> createBooking({
     required String courtId,
     required String courtName,
     required int courtNumber,
@@ -72,7 +72,7 @@ class BookingProvider with ChangeNotifier {
     if (_authProvider.userModel == null) {
       _errorMessage = "Bạn phải đăng nhập để đặt sân.";
       notifyListeners();
-      return false;
+      return null;
     }
 
     _isLoading = true;
@@ -94,17 +94,17 @@ class BookingProvider with ChangeNotifier {
         status: 'confirmed', // Thêm status
       );
 
-      await _firestoreRepository.createBooking(newBooking);
+      final bookingId = await _firestoreRepository.createBooking(newBooking);
       
       _isLoading = false;
       notifyListeners();
-      return true;
+      return bookingId;
     } catch (e) {
       print("Lỗi createBooking: $e");
       _errorMessage = "Đặt sân thất bại: $e";
       _isLoading = false;
       notifyListeners();
-      return false;
+      return null;
     }
   }
 }

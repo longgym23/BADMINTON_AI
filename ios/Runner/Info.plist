@@ -45,5 +45,21 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Quyền truy cập vị trí -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần truy cập vị trí của bạn để hiển thị các sân cầu lông gần bạn trên bản đồ.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần truy cập vị trí của bạn để hiển thị các sân cầu lông gần bạn trên bản đồ.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Ứng dụng cần truy cập vị trí của bạn để hiển thị các sân cầu lông gần bạn trên bản đồ.</string>
+	<!-- Quyền camera và microphone -->
+	<key>NSCameraUsageDescription</key>
+	<string>Ứng dụng cần truy cập camera để chụp ảnh và gửi cho chatbot.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Ứng dụng cần truy cập microphone để ghi âm và nhận diện giọng nói.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ứng dụng cần truy cập thư viện ảnh để chọn ảnh và gửi cho chatbot.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Ứng dụng cần quyền lưu ảnh vào thư viện.</string>
 </dict>
 </plist>

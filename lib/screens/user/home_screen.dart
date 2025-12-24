@@ -1,5 +1,6 @@
 import 'package:badminton_ai/screens/user/booking_tab.dart';
 import 'package:badminton_ai/screens/user/chatbot_tab.dart';
+import 'package:badminton_ai/screens/user/home_tab.dart';
 import 'package:badminton_ai/screens/user/map_tab.dart';
 import 'package:badminton_ai/screens/user/profile_tab.dart';
 import 'package:flutter/material.dart';
@@ -13,9 +14,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _tabs = [
-    BookingTab(), // Tab đặt sân
+    HomeTab(),    // Tab trang chủ mới
     MapTab(),     // Tab bản đồ
-    ChatbotTab(), // Tab Chatbot AI
+    ChatbotTab(), // Tab hỗ trợ
     ProfileTab(), // Tab tài khoản
   ];
 
@@ -36,8 +37,8 @@ class _HomeScreenState extends State<HomeScreen> {
         type: BottomNavigationBarType.fixed,
         items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Đặt sân',
+            icon: Icon(Icons.home),
+            label: 'Trang chủ',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.map),

@@ -1,34 +1,52 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserModel {
-  final String id; // <-- LỖI LÀ DO THIẾU DÒNG NÀY
+  final String id;
   final String? email;
   final String? displayName;
-  final String role; 
+  final String? phoneNumber;
+  final String role;
 
   UserModel({
-    required this.id, // <-- VÀ DÒNG NÀY
+    required this.id,
     this.email,
     this.displayName,
-    this.role = 'user', 
+    this.phoneNumber,
+    this.role = 'user',
   });
 
-  // Chuyển từ Firestore document sang UserModel
+  UserModel copyWith({
+    String? id,
+    String? email,
+    String? displayName,
+    String? phoneNumber,
+    String? role,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      displayName: displayName ?? this.displayName,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      role: role ?? this.role,
+    );
+  }
+
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return UserModel(
-      id: doc.id, // <-- VÀ DÒNG NÀY
+      id: doc.id,
       email: data['email'],
       displayName: data['displayName'],
+      phoneNumber: data['phoneNumber'],
       role: data['role'] ?? 'user',
     );
   }
 
-  // Chuyển từ UserModel sang Map để ghi vào Firestore
   Map<String, dynamic> toFirestore() {
     return {
       'email': email,
       'displayName': displayName,
+      'phoneNumber': phoneNumber,
       'role': role,
     };
   }

@@ -2,6 +2,7 @@ import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/repositories/firestore_repository.dart';
 import 'package:badminton_ai/providers/booking_provider.dart';
+import 'package:badminton_ai/screens/user/court_selection_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -22,14 +23,6 @@ class _BookingTabState extends State<BookingTab> {
   // Trạng thái cho Dropdown
   CourtLocationModel? _selectedCourt;
 
-  // Trạng thái cho Biểu đồ Gantt
-  int? _selectedCourtNumber;
-  int? _selectedTimeSlot;
-
-  // Danh sách các khung giờ (5:00 -> 22:00)
-  final List<int> _timeSlots =
-      List.generate(18, (index) => index + 5); // 5, 6, ..., 22
-
   // Hàm quan trọng: Được gọi khi Ngày hoặc Sân Lớn thay đổi
   void _updateBookingStream() {
     if (_selectedCourt != null && mounted) {
@@ -38,56 +31,6 @@ class _BookingTabState extends State<BookingTab> {
             _selectedCourt!.id,
             _selectedDay,
           );
-      // Xóa lựa chọn cũ
-      setState(() {
-        _selectedCourtNumber = null;
-        _selectedTimeSlot = null;
-      });
-    }
-  }
-
-  // Hàm xử lý khi nhấn nút Đặt sân
-  void _onConfirmBooking() async {
-    if (_selectedCourtNumber == null || _selectedTimeSlot == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Vui lòng chọn một ô (sân + giờ) còn trống"),
-            backgroundColor: Colors.red),
-      );
-      return;
-    }
-
-    final provider = context.read<BookingProvider>();
-    final bool success = await provider.createBooking(
-      courtId: _selectedCourt!.id,
-      courtName: _selectedCourt!.name,
-      courtNumber: _selectedCourtNumber!,
-      date: _selectedDay,
-      timeSlot: _selectedTimeSlot!,
-      price: _selectedCourt!.pricePerHour.toInt(),
-    );
-
-    if (mounted) {
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  "Đặt sân $_selectedCourtNumber lúc $_selectedTimeSlot:00 thành công!"),
-              backgroundColor: Colors.green),
-        );
-        // Reset lựa chọn
-        setState(() {
-          _selectedCourtNumber = null;
-          _selectedTimeSlot = null;
-        });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  "Đặt sân thất bại: ${provider.errorMessage ?? 'Lỗi không xác định'}"),
-              backgroundColor: Colors.red),
-        );
-      }
     }
   }
 
@@ -109,19 +52,58 @@ class _BookingTabState extends State<BookingTab> {
     final provider = context.watch<BookingProvider>();
 
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       body: CustomScrollView(
         // Dùng CustomScrollView để tối ưu layout
         slivers: [
+          // Header với gradient
+          SliverToBoxAdapter(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    colors.primary,
+                    colors.primary.withOpacity(0.8),
+                  ],
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Đặt sân",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Chọn ngày và sân để đặt lịch",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           // 1. Lịch chọn ngày
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), // Giảm padding dưới
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Card(
-                elevation: 4,
+                elevation: 2,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                color: Colors.white, // Nền trắng cho lịch
-                child: _buildCalendar(colors), // Sửa lỗi tràn viền
+                    borderRadius: BorderRadius.circular(16)),
+                color: Colors.white,
+                child: _buildCalendar(colors),
               ),
             ),
           ),
@@ -129,11 +111,11 @@ class _BookingTabState extends State<BookingTab> {
           // 2. Chọn sân
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: _SectionHeader(
                 icon: Icons.sports_tennis_rounded,
                 title: "1. Chọn sân",
-                color: colors.onSurface,
+                color: colors.primary,
               ),
             ),
           ),
@@ -182,37 +164,46 @@ class _BookingTabState extends State<BookingTab> {
                     elevation: 2,
                     margin: const EdgeInsets.all(0),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(12)),
                     color: Colors.white,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<CourtLocationModel>(
-                          value: _selectedCourt,
-                          isExpanded: true,
-                          icon: Icon(Icons.arrow_drop_down_circle_rounded,
-                              color: colors.primary),
-                          style: TextStyle(
-                              color: colors.primary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500),
-                          onChanged: (CourtLocationModel? newValue) {
-                            setState(() {
-                              _selectedCourt = newValue;
-                            });
-                            _updateBookingStream(); // Tải lại stream khi đổi sân
-                          },
-                          items: courts
-                              .map<DropdownMenuItem<CourtLocationModel>>((court) {
-                            return DropdownMenuItem<CourtLocationModel>(
-                              value: court,
-                              child: Text(
-                                "${court.name} - (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(court.pricePerHour)})",
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            );
-                          }).toList(),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: colors.primary.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 4),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<CourtLocationModel>(
+                            value: _selectedCourt,
+                            isExpanded: true,
+                            icon: Icon(Icons.arrow_drop_down_circle_rounded,
+                                color: colors.primary),
+                            style: TextStyle(
+                                color: colors.primary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500),
+                            onChanged: (CourtLocationModel? newValue) {
+                              setState(() {
+                                _selectedCourt = newValue;
+                              });
+                              _updateBookingStream(); // Tải lại stream khi đổi sân
+                            },
+                            items: courts
+                                .map<DropdownMenuItem<CourtLocationModel>>((court) {
+                              return DropdownMenuItem<CourtLocationModel>(
+                                value: court,
+                                child: Text(
+                                  "${court.name} - (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(court.pricePerHour)})",
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                          ),
                         ),
                       ),
                     ),
@@ -222,103 +213,48 @@ class _BookingTabState extends State<BookingTab> {
             ),
           ),
 
-          // 3. Biểu đồ Gantt (Giao diện mong muốn)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: _SectionHeader(
-                icon: Icons.calendar_view_week_rounded,
-                title: "2. Chọn khung giờ trống",
-                color: colors.onSurface,
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: _buildLegend(colors), // Chú thích
-            ),
-          ),
-
-          // Biểu đồ Gantt StreamBuilder
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Card(
-                elevation: 2,
-                clipBehavior: Clip.antiAlias, // Giúp bo góc
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                child: StreamBuilder<List<BookingModel>>(
-                  stream: provider.bookingsStream,
-                  builder: (context, snapshot) {
-                    // LỖI 3 - SỬA LỖI SPINNER: 
-                    // Kiểm tra _selectedCourt trước
-                    if (_selectedCourt == null) {
-                      return Container(
-                          height: 150,
-                          alignment: Alignment.center,
-                          child: Text("Vui lòng chọn sân ở trên",
-                              style: TextStyle(color: colors.primary, fontSize: 16)));
-                    }
-                    
-                    // Kiểm tra lỗi từ Stream (ví dụ: PERMISSION_DENIED)
-                    if (snapshot.hasError) {
-                       return Container(
-                         height: 150,
-                         alignment: Alignment.center,
-                         padding: const EdgeInsets.all(16),
-                         child: Text("Lỗi tải lịch đặt: ${snapshot.error}", 
-                           style: TextStyle(color: Colors.red[700]),
-                           textAlign: TextAlign.center,
-                         ),
-                       );
-                    }
-
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Container(
-                          height: 150,
-                          alignment: Alignment.center,
-                          child: const CircularProgressIndicator());
-                    }
-
-                    final bookings = snapshot.data ?? [];
-
-                    return _BookingTimeline(
-                      availableCourts: _selectedCourt!.totalCourts,
-                      timeSlots: _timeSlots,
-                      bookings: bookings,
-                      selectedCourtNumber: _selectedCourtNumber,
-                      selectedTimeSlot: _selectedTimeSlot,
-                      onSlotSelected: (courtNum, timeSlot) {
-                        bool isBooked = bookings.any((b) =>
-                            b.courtNumber == courtNum && b.timeSlot == timeSlot);
-                        if (!isBooked) {
-                          setState(() {
-                            _selectedCourtNumber = courtNum;
-                            _selectedTimeSlot = timeSlot;
-                          });
-                        }
-                      },
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-
-          // 4. Nút Xác nhận
+          // 3. Nút mở màn hình chọn slot
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: provider.isLoading
-                  ? const Center(child: CircularProgressIndicator())
+              child: _selectedCourt == null
+                  ? Container(
+                      padding: const EdgeInsets.all(16.0),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          "Vui lòng chọn sân ở trên",
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    )
                   : ElevatedButton.icon(
-                      icon: const Icon(Icons.check_circle_rounded),
-                      label: const Text("Xác nhận Đặt sân",
-                          style: TextStyle(fontSize: 18)),
-                      onPressed: _onConfirmBooking,
-                      // SỬA LỖI GIAO DIỆN NÚT BẤM (Màu Vàng Logo)
+                      icon: const Icon(Icons.calendar_view_week_rounded),
+                      label: const Text(
+                        "Chọn khung giờ",
+                        style: TextStyle(fontSize: 18),
+                      ),
+                      onPressed: () {
+                        // Navigate đến màn hình chọn slot
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CourtSelectionScreen(
+                              selectedCourt: _selectedCourt!,
+                              selectedDate: _selectedDay,
+                            ),
+                          ),
+                        ).then((_) {
+                          // Refresh lại danh sách booking khi quay lại
+                          _updateBookingStream();
+                        });
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colors.secondary, // Màu vàng
                         foregroundColor: colors.primary, // Chữ màu xanh đậm
@@ -493,10 +429,10 @@ class _BookingTimeline extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeaderTime(context, colWidth, rowHeaderWidth),
+          _buildHeaderTime(context, colWidth, rowHeaderWidth, colors),
           ...List.generate(availableCourts, (index) {
             final courtNum = index + 1;
-            return _buildCourtRow(context, courtNum, colWidth, rowHeaderWidth);
+            return _buildCourtRow(context, courtNum, colWidth, rowHeaderWidth, colors);
           }),
         ],
       ),
@@ -504,8 +440,7 @@ class _BookingTimeline extends StatelessWidget {
   }
 
   Widget _buildHeaderTime(
-      BuildContext context, double colWidth, double rowHeaderWidth) {
-    final colors = Theme.of(context).colorScheme;
+      BuildContext context, double colWidth, double rowHeaderWidth, ColorScheme colors) {
     return Row(
       children: [
         Container(
@@ -548,8 +483,7 @@ class _BookingTimeline extends StatelessWidget {
   }
 
   Widget _buildCourtRow(
-      BuildContext context, int courtNum, double colWidth, double rowHeaderWidth) {
-    final colors = Theme.of(context).colorScheme;
+      BuildContext context, int courtNum, double colWidth, double rowHeaderWidth, ColorScheme colors) {
     return Row(
       children: [
         Container(
