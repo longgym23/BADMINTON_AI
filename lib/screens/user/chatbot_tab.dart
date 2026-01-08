@@ -1,28 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'dart:io';
-import 'package:provider/provider.dart';
+import 'package:badminton_ai/blocs/chat/chat_bloc.dart';
+import 'package:badminton_ai/data/models/chat_message_model.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-
-// Model để lưu trữ tin nhắn với hỗ trợ ảnh và audio
-class ChatMessage {
-  final String text;
-  final bool isUser;
-  final String? imagePath; // Đường dẫn ảnh (nếu có)
-  final String? audioPath; // Đường dẫn audio (nếu có)
-  final bool isRecording; // Đang ghi âm
-
-  ChatMessage({
-    required this.text,
-    required this.isUser,
-    this.imagePath,
-    this.audioPath,
-    this.isRecording = false,
-  });
-}
+import 'package:badminton_ai/utils/app_colors.dart';
 
 class ChatbotTab extends StatefulWidget {
   const ChatbotTab({super.key});
@@ -32,11 +17,11 @@ class ChatbotTab extends StatefulWidget {
 }
 
 class _ChatbotTabState extends State<ChatbotTab> {
-  final TextEditingController _controller = TextEditingController();
-  final List<ChatMessage> _messages = [];
-  bool _isLoading = false;
-  final ImagePicker _imagePicker = ImagePicker();
-  final stt.SpeechToText _speechToText = stt.SpeechToText();
+  final _textController = TextEditingController();
+  final _scrollController = ScrollController();
+  final _imagePicker = ImagePicker();
+  final _speechToText = stt.SpeechToText();
+
   bool _isListening = false;
   String _recognizedText = '';
 
@@ -44,592 +29,591 @@ class _ChatbotTabState extends State<ChatbotTab> {
   void initState() {
     super.initState();
     _initializeSpeech();
+    _connectChat();
+  }
+
+  void _connectChat() {
+    final userId = context.read<AppAuthProvider>().userId;
+    if (userId != null) {
+      context.read<ChatBloc>().add(ChatStarted(userId));
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   Future<void> _initializeSpeech() async {
-    bool available = await _speechToText.initialize(
-      onError: (error) => print('Speech recognition error: $error'),
-      onStatus: (status) => print('Speech recognition status: $status'),
+    await _speechToText.initialize(
+      onError: (e) => debugPrint('STT Error: $e'),
+      onStatus: (s) => debugPrint('STT Status: $s'),
     );
-    if (!available) {
-      print('Speech recognition not available');
-    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _textController.dispose();
+    _scrollController.dispose();
     _speechToText.stop();
     super.dispose();
   }
 
-  // Hiển thị menu chọn ảnh
-  Future<void> _showImagePickerMenu() async {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+  void _sendMessage([String? text, String? imagePath]) {
+    final auth = context.read<AppAuthProvider>();
+    if (auth.authState != AuthState.authenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng đăng nhập để chat')),
+      );
+      return;
+    }
+
+    final messageText = text ?? _textController.text.trim();
+    if (messageText.isEmpty && imagePath == null) return;
+
+    if (text == null) _textController.clear();
+    FocusScope.of(context).unfocus();
+
+    context.read<ChatBloc>().add(
+      ChatMessageSent(text: messageText, imagePath: imagePath),
+    );
+
+    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Chọn ảnh từ thư viện'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImageFromGallery();
-              },
+            const Text(
+              'Trợ lý AI',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: AppColors.textBlack,
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Chụp ảnh'),
-              onTap: () {
-                Navigator.pop(context);
-                _takePhotoFromCamera();
-              },
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.success,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'TRỰC TUYẾN',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
+        centerTitle: true,
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textBlack),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: Icon(Icons.more_vert, color: AppColors.textBlack),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(child: _buildMessageList()),
+          if (_isListening) _buildVoiceIndicator(),
+          _buildSuggestionChips(),
+          _buildInputArea(),
+        ],
       ),
     );
   }
 
-  // Chọn ảnh từ thư viện
-  Future<void> _pickImageFromGallery() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
+  Widget _buildMessageList() {
+    return BlocBuilder<ChatBloc, ChatState>(
+      builder: (context, state) {
+        if (state is ChatLoading && state is! ChatLoaded) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-      if (image != null) {
-        _showImageDescriptionDialog(image.path);
+        List<ChatMessageModel> messages = [];
+        if (state is ChatLoaded) {
+          messages = state.messages;
+        }
+
+        if (messages.isEmpty && state is! ChatLoading) {
+          // Sample Initial Message for Demo if empty
+          return Center(
+            child: Text(
+              'Bắt đầu trò chuyện!',
+              style: TextStyle(color: Colors.grey[400]),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          reverse: true,
+          itemCount: messages.length,
+          itemBuilder: (context, index) {
+            final message = messages[index];
+            final isLast = index == 0;
+            final showDate =
+                index == messages.length - 1 ||
+                !isSameDay(
+                  messages[index].timestamp,
+                  messages[index + 1].timestamp,
+                );
+
+            return Column(
+              children: [
+                if (showDate) _buildDateDivider(message.timestamp),
+                _MessageBubble(message: message),
+                if (isLast && !message.isUser) const SizedBox(height: 8),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  bool isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
+  }
+
+  Widget _buildDateDivider(DateTime date) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.borderColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        "Hôm nay, ${DateFormat('HH:mm').format(date)}",
+        style: const TextStyle(color: AppColors.textGrey, fontSize: 12),
+      ),
+    );
+  }
+
+  Widget _buildVoiceIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: AppColors.errorBg,
+      child: Row(
+        children: [
+          const Icon(Icons.mic, color: AppColors.error, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _recognizedText,
+              style: const TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestionChips() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          _Chip('Giá dịch vụ đi kèm?'),
+          _Chip('Huỷ đặt sân'),
+          _Chip('Xem hướng dẫn'),
+        ],
+      ),
+    );
+  }
+
+  Widget _Chip(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        label: Text(label),
+        backgroundColor: AppColors.surface,
+        side: const BorderSide(color: AppColors.borderColor),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        onPressed: () => _sendMessage(label),
+      ),
+    );
+  }
+
+  Widget _buildInputArea() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.borderColor)),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(
+              Icons.add_circle_outline,
+              color: AppColors.textGrey,
+            ),
+            onPressed: () => _showAttachmentSheet(),
+          ),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: TextField(
+                controller: _textController,
+                decoration: const InputDecoration(
+                  hintText: 'Nhập tin nhắn...',
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+                ),
+                onSubmitted: (_) => _sendMessage(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: _toggleEntryVoice,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _isListening ? AppColors.errorBg : Colors.transparent,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _isListening ? Icons.stop : Icons.mic,
+                color: _isListening ? AppColors.error : AppColors.textGrey,
+                size: 24,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          InkWell(
+            onTap: () => _sendMessage(),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.send, color: AppColors.surface, size: 20),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Logic Helpers ---
+
+  Future<void> _toggleEntryVoice() async {
+    if (_isListening) {
+      await _speechToText.stop();
+      setState(() => _isListening = false);
+      if (_recognizedText.isNotEmpty) {
+        _sendMessage(_recognizedText);
+        _recognizedText = '';
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi chọn ảnh: $e'),
-          backgroundColor: Colors.red,
-        ),
+    } else {
+      if (!_speechToText.isAvailable) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Không hỗ trợ giọng nói')));
+        return;
+      }
+      setState(() {
+        _isListening = true;
+        _recognizedText = '';
+      });
+      _speechToText.listen(
+        onResult: (res) {
+          setState(() {
+            _recognizedText = res.recognizedWords;
+            _textController.text = res.recognizedWords;
+          });
+        },
+        listenFor: const Duration(seconds: 30),
       );
     }
   }
 
-  // Chụp ảnh từ camera
-  Future<void> _takePhotoFromCamera() async {
+  void _showAttachmentSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      builder: (_) => Wrap(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.image),
+            title: const Text('Thư viện'),
+            onTap: () {
+              Navigator.pop(context);
+              _pickImage(ImageSource.gallery);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.camera_alt),
+            title: const Text('Camera'),
+            onTap: () {
+              Navigator.pop(context);
+              _pickImage(ImageSource.camera);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
     try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1024,
-        maxHeight: 1024,
+      final file = await _imagePicker.pickImage(
+        source: source,
         imageQuality: 85,
       );
-
-      if (image != null) {
-        _showImageDescriptionDialog(image.path);
-      }
+      if (file != null) _showImageDescDialog(file.path);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi chụp ảnh: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Lỗi ảnh: $e')));
     }
   }
 
-  // Hiển thị dialog để thêm mô tả cho ảnh (giống ChatGPT)
-  Future<void> _showImageDescriptionDialog(String imagePath) async {
-    final TextEditingController descriptionController = TextEditingController();
-    final colors = Theme.of(context).colorScheme;
-
+  Future<void> _showImageDescDialog(String path) async {
+    final ctl = TextEditingController();
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Thêm mô tả cho ảnh'),
+      builder: (ctx) => AlertDialog(
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Hiển thị preview ảnh
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.file(
-                File(imagePath),
-                width: 200,
-                height: 200,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(height: 16),
+            Image.file(File(path), height: 150, fit: BoxFit.cover),
             TextField(
-              controller: descriptionController,
+              controller: ctl,
               decoration: const InputDecoration(
-                hintText: 'Nhập mô tả cho ảnh (tùy chọn)...',
-                border: OutlineInputBorder(),
+                hintText: 'Mô tả (tùy chọn)...',
               ),
-              maxLines: 3,
-              autofocus: true,
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Hủy'),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              _sendMessage(
-                descriptionController.text.trim(),
-                imagePath: imagePath,
-              );
+              Navigator.pop(ctx);
+              _sendMessage(ctl.text.trim(), path);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colors.secondary,
-              foregroundColor: colors.primary,
-            ),
             child: const Text('Gửi'),
           ),
         ],
       ),
     );
   }
+}
 
-  // Bắt đầu/dừng nhận diện giọng nói (nút micro)
-  Future<void> _toggleVoiceInput() async {
-    if (_isListening) {
-      // Dừng nhận diện và gửi
-      await _speechToText.stop();
-      setState(() {
-        _isListening = false;
-      });
-
-      if (_recognizedText.isNotEmpty) {
-        _sendMessage(_recognizedText);
-        _recognizedText = '';
-      }
-    } else {
-      // Bắt đầu nhận diện
-      if (!_speechToText.isAvailable) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nhận diện giọng nói không khả dụng'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
-
-      setState(() {
-        _isListening = true;
-        _recognizedText = '';
-      });
-
-      await _speechToText.listen(
-        onResult: (result) {
-          setState(() {
-            _recognizedText = result.recognizedWords;
-            // Cập nhật text vào ô nhập
-            _controller.text = result.recognizedWords;
-          });
-        },
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 3),
-      );
-    }
-  }
-
-  // Gửi tin nhắn (text, ảnh hoặc audio)
-  Future<void> _sendMessage(
-    String text, {
-    String? imagePath,
-    String? audioPath,
-  }) async {
-    // Nếu không có text, ảnh hoặc audio thì không gửi
-    if (text.trim().isEmpty && imagePath == null && audioPath == null) return;
-
-    // Kiểm tra đăng nhập
-    final isLoggedIn =
-        context.read<AppAuthProvider>().authState == AuthState.authenticated;
-    if (!isLoggedIn) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bạn cần đăng nhập để sử dụng chatbot.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    // Hiển thị tin nhắn người dùng ngay lập tức
-    setState(() {
-      _messages.add(
-        ChatMessage(
-          text: text.isEmpty ? (imagePath != null ? '[Ảnh]' : '[Audio]') : text,
-          isUser: true,
-          imagePath: imagePath,
-          audioPath: audioPath,
-        ),
-      );
-      _isLoading = true;
-    });
-    _controller.clear();
-
-    const String backendUrl = 'https://badminton-ai-fgsz.onrender.com/ask';
-
-    try {
-      http.Response response;
-
-      if (imagePath != null) {
-        // Gửi ảnh
-        var request = http.MultipartRequest('POST', Uri.parse(backendUrl));
-        request.files.add(
-          await http.MultipartFile.fromPath('image', imagePath),
-        );
-        if (text.isNotEmpty) {
-          request.fields['prompt'] = text;
-        } else {
-          request.fields['prompt'] = 'Phân tích ảnh này';
-        }
-
-        var streamedResponse = await request.send();
-        response = await http.Response.fromStream(streamedResponse);
-      } else if (audioPath != null) {
-        // Gửi audio
-        var request = http.MultipartRequest(
-          'POST',
-          Uri.parse('$backendUrl/audio'),
-        );
-        request.files.add(
-          await http.MultipartFile.fromPath('audio', audioPath),
-        );
-        if (text.isNotEmpty) {
-          request.fields['prompt'] = text;
-        }
-
-        var streamedResponse = await request.send();
-        response = await http.Response.fromStream(streamedResponse);
-      } else {
-        // Gửi text thông thường
-        response = await http
-            .post(
-              Uri.parse(backendUrl),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({'prompt': text}),
-            )
-            .timeout(const Duration(seconds: 45));
-      }
-
-      if (mounted) {
-        if (response.statusCode == 200) {
-          final responseBody = jsonDecode(response.body);
-          final String answer =
-              responseBody['answer'] ?? "Xin lỗi, tôi chưa hiểu ý bạn.";
-          setState(() {
-            _messages.add(ChatMessage(text: answer, isUser: false));
-          });
-        } else {
-          String errorMessage = 'Lỗi không xác định từ server.';
-          try {
-            final responseBody = jsonDecode(response.body);
-            errorMessage =
-                responseBody['error'] ?? 'Lỗi server (${response.statusCode})';
-          } catch (e) {
-            errorMessage =
-                'Lỗi server (${response.statusCode}) - Không thể đọc phản hồi.';
-          }
-          setState(() {
-            _messages.add(
-              ChatMessage(text: "Lỗi: $errorMessage", isUser: false),
-            );
-          });
-        }
-      }
-    } catch (e) {
-      print("Lỗi gọi API Backend: $e");
-      if (mounted) {
-        setState(() {
-          _messages.add(
-            ChatMessage(
-              text: "Lỗi kết nối tới server. Vui lòng kiểm tra mạng.",
-              isUser: false,
-            ),
-          );
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
+class _MessageBubble extends StatelessWidget {
+  final ChatMessageModel message;
+  const _MessageBubble({required this.message});
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    bool isUser = message.isUser;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Trợ lý AI'),
-        backgroundColor: colors.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: Column(
-        children: [
-          // Danh sách tin nhắn
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              reverse: false,
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                return _buildMessageBubble(message, colors);
-              },
-            ),
-          ),
-          // Hiển thị text đang nhận diện
-          if (_isListening && _recognizedText.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8.0,
-              ),
-              color: colors.primary.withOpacity(0.3),
-              child: Row(
-                children: [
-                  Icon(Icons.mic, color: colors.secondary, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _recognizedText,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          // Hiển thị "AI đang soạn..."
-          if (_isLoading)
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: 8.0,
-                horizontal: 16.0,
-              ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: colors.secondary,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    "AI đang soạn...",
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          // Ô nhập liệu và các nút chức năng
-          _buildInputArea(colors),
-        ],
-      ),
-    );
-  }
+    // Check for "Success Card" trigger
+    // In real app, check message.type == 'booking_success'
+    // For now, parsing text for "thành công" from AI
+    bool isSuccessCard =
+        !isUser &&
+        (message.text.contains("thành công") ||
+            message.type == 'booking_success');
 
-  // Widget cho một bong bóng tin nhắn
-  Widget _buildMessageBubble(ChatMessage message, ColorScheme colors) {
-    final alignment = message.isUser
-        ? CrossAxisAlignment.end
-        : CrossAxisAlignment.start;
-    final bubbleColor = message.isUser
-        ? colors.secondary
-        : colors.primary.withOpacity(0.8);
-    final textColor = message.isUser ? colors.primary : Colors.white;
+    if (isSuccessCard) {
+      return _buildSuccessCard(context);
+    }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Column(
-        crossAxisAlignment: alignment,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14.0,
-              vertical: 10.0,
-            ),
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.75,
-            ),
-            decoration: BoxDecoration(
-              color: bubbleColor,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(18.0),
-                topRight: const Radius.circular(18.0),
-                bottomLeft: message.isUser
-                    ? const Radius.circular(18.0)
-                    : const Radius.circular(4.0),
-                bottomRight: message.isUser
-                    ? const Radius.circular(4.0)
-                    : const Radius.circular(18.0),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 3,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Hiển thị ảnh nếu có
-                if (message.imagePath != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(
-                      File(message.imagePath!),
-                      width: 200,
-                      height: 200,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                // Hiển thị audio indicator nếu có
-                if (message.audioPath != null)
-                  Row(
-                    children: [
-                      Icon(Icons.audiotrack, color: textColor, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        '[Audio]',
-                        style: TextStyle(color: textColor, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                // Hiển thị text
-                if (message.text.isNotEmpty)
-                  Padding(
-                    padding: EdgeInsets.only(
-                      top:
-                          (message.imagePath != null ||
-                              message.audioPath != null)
-                          ? 8.0
-                          : 0,
-                    ),
-                    child: Text(
-                      message.text,
-                      style: TextStyle(color: textColor, fontSize: 15),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Widget cho khu vực nhập liệu (giống hình ảnh)
-  Widget _buildInputArea(ColorScheme colors) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      decoration: BoxDecoration(
-        color: colors.primary.withOpacity(0.9),
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0, -2),
-            blurRadius: 4,
-            color: Colors.black.withOpacity(0.1),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Nút đính kèm (paperclip) - màu cam
-          IconButton(
-            icon: Icon(
-              Icons.attach_file,
-              color: colors.secondary, // Màu cam (secondary)
+          if (!isUser) ...[
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: AppColors.primary, // Blue avatar bg
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.smart_toy,
+                color: AppColors.surface,
+                size: 16,
+              ),
             ),
-            onPressed: _isLoading ? null : _showImagePickerMenu,
-            tooltip: 'Đính kèm',
-          ),
-          // Ô nhập text
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Nhập tin nhắn...',
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                filled: true,
-                fillColor: Colors.grey[800]?.withOpacity(0.6),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25.0),
-                  borderSide: BorderSide.none,
+          ],
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isUser
+                    ? AppColors.primary
+                    : AppColors.surface, // Blue or White
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: isUser ? const Radius.circular(16) : Radius.zero,
+                  bottomRight: isUser ? Radius.zero : const Radius.circular(16),
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 12.0,
+                border: !isUser
+                    ? Border.all(color: AppColors.borderColor)
+                    : null,
+                boxShadow: !isUser
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (message.imagePath != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(message.imagePath!),
+                          height: 150,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  Text(
+                    message.text,
+                    style: TextStyle(
+                      color: isUser ? AppColors.surface : AppColors.textBlack,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (isUser) const SizedBox(width: 40), // Spacer
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuccessCard(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(left: 40, top: 4, bottom: 4),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.successBg, // Light Green
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.success.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: AppColors.success,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check,
+                  color: AppColors.surface,
+                  size: 16,
                 ),
               ),
-              onChanged: (text) {
-                setState(() {}); // Cập nhật UI khi text thay đổi
-              },
-              onSubmitted: (text) {
-                if (text.trim().isNotEmpty) {
-                  _sendMessage(text);
-                }
-              },
-              enabled: !_isLoading,
-            ),
+              const SizedBox(width: 8),
+              const Text(
+                "Đặt sân thành công!",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.success,
+                  fontSize: 16,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8.0),
-          // Nút micro (màu cam) - nhận diện giọng nói
-          IconButton(
-            icon: Icon(
-              _isListening ? Icons.mic : Icons.mic_none,
-              color: _isListening
-                  ? Colors.red
-                  : colors
-                        .secondary, // Màu cam khi không active, đỏ khi đang nghe
-            ),
-            onPressed: _isLoading ? null : _toggleVoiceInput,
-            tooltip: _isListening ? 'Dừng nói' : 'Nói',
-          ),
-          const SizedBox(width: 4.0),
-          // Nút gửi (send) - màu xám
-          IconButton(
-            icon: Icon(
-              Icons.send_rounded,
-              color: _isLoading || _controller.text.trim().isEmpty
-                  ? Colors.grey[600]
-                  : Colors.grey[300],
-            ),
-            onPressed: (_isLoading || _controller.text.trim().isEmpty)
-                ? null
-                : () => _sendMessage(_controller.text),
-            tooltip: 'Gửi',
+          const SizedBox(height: 12),
+          // Mock details based on image
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.sports_tennis,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    "CLB Cầu lông Phú Lâm",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    "Sân 5",
+                    style: TextStyle(color: Colors.black54, fontSize: 13),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),

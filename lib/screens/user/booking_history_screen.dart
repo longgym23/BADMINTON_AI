@@ -1,746 +1,526 @@
 import 'package:badminton_ai/data/models/booking_model.dart';
-import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/repositories/firestore_repository.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/services/court_info_service.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:badminton_ai/utils/app_colors.dart';
 
 class BookingHistoryScreen extends StatelessWidget {
   const BookingHistoryScreen({super.key});
 
-  // Hàm hiển thị Dialog xác nhận xóa
-  void _confirmDelete(
-    BuildContext context,
-    String bookingId,
-    FirestoreRepository repo,
-  ) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+  @override
+  Widget build(BuildContext context) {
+    // colors variable removed
+    final repo = context.watch<FirestoreRepository>();
+    final userId = context.watch<AppAuthProvider>().userModel?.id;
+
+    return Scaffold(
+      backgroundColor: AppColors.background, // Light grey background
+      appBar: AppBar(
+        title: const Text(
+          'Lịch sử đặt sân',
+          style: TextStyle(
+            color: AppColors.textBlack,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
           ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.warning_amber_rounded,
-                color: Colors.orange[700],
-                size: 28,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  "Xác nhận hủy sân",
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
+        ),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textBlack),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list, color: AppColors.textBlack),
+            onPressed: () {
+              // Filter action
+            },
           ),
-          content: Text(
-            "Bạn có chắc chắn muốn hủy lịch đặt sân này không?",
-            style: TextStyle(color: Colors.black87, fontSize: 16),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text(
-                "Không",
-                style: TextStyle(color: Colors.grey[600], fontSize: 16),
-              ),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[600],
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text("Hủy sân", style: TextStyle(fontSize: 16)),
-              onPressed: () async {
-                try {
-                  await repo.deleteBooking(bookingId);
-                  Navigator.of(dialogContext).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(Icons.check_circle, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text("Hủy sân thành công"),
-                        ],
-                      ),
-                      backgroundColor: Colors.green,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  );
-                } catch (e) {
-                  Navigator.of(dialogContext).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(Icons.error_outline, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text("Hủy sân thất bại: $e"),
-                        ],
-                      ),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  );
+        ],
+      ),
+      body: userId == null
+          ? const Center(child: Text("Vui lòng đăng nhập"))
+          : StreamBuilder<List<BookingModel>>(
+              stream: repo.getUserBookingHistoryStream(userId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 }
+                if (snapshot.hasError) {
+                  return Center(child: Text("Lỗi: ${snapshot.error}"));
+                }
+
+                final bookings = snapshot.data ?? [];
+                // Sort by date descending
+                bookings.sort((a, b) {
+                  final dateA = DateTime(
+                    a.date.year,
+                    a.date.month,
+                    a.date.day,
+                    a.timeSlot,
+                  );
+                  final dateB = DateTime(
+                    b.date.year,
+                    b.date.month,
+                    b.date.day,
+                    b.timeSlot,
+                  );
+                  return dateB.compareTo(dateA);
+                });
+
+                // Calculate summary
+                int totalBookings = bookings.length;
+                int totalSpend = bookings.fold(
+                  0,
+                  (sum, item) => sum + item.price,
+                );
+
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Summary Section
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _SummaryCard(
+                                title: 'Tổng chi tiêu',
+                                value: NumberFormat.simpleCurrency(
+                                  locale: 'vi_VN',
+                                  decimalDigits: 0,
+                                ).format(totalSpend),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _SummaryCard(
+                                title: 'Sân đã đặt',
+                                value: '$totalBookings Lượt',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Section Title
+                        const Text(
+                          'GẦN ĐÂY',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // List of Bookings
+                        if (bookings.isEmpty)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.only(top: 32.0),
+                              child: Text("Chưa có lịch sử đặt sân"),
+                            ),
+                          )
+                        else
+                          ...bookings.map(
+                            (booking) =>
+                                _BookingCard(booking: booking, repo: repo),
+                          ),
+
+                        // Bottom spacing
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                );
               },
             ),
-          ],
-        );
-      },
     );
   }
+}
 
-  // Xác định trạng thái booking
-  String _getBookingStatus(BookingModel booking) {
+class _SummaryCard extends StatelessWidget {
+  final String title;
+  final String value;
+
+  const _SummaryCard({required this.title, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textBlack,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BookingCard extends StatelessWidget {
+  final BookingModel booking;
+  final FirestoreRepository repo;
+
+  const _BookingCard({required this.booking, required this.repo});
+
+  Future<void> _launchMaps(BuildContext context) async {
+    // Show Loading
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Đang lấy vị trí..."),
+        duration: Duration(seconds: 1),
+      ),
+    );
+
+    try {
+      final court = await repo.getCourtLocationById(booking.courtId);
+      if (court == null || (court.latitude == 0 && court.longitude == 0)) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Không tìm thấy vị trí sân")),
+          );
+        }
+        return;
+      }
+
+      final url = CourtInfoService.getDirectionsUrl(
+        LatLng(court.latitude, court.longitude),
+        destinationName: court.name,
+      );
+
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Could not launch $url';
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Lỗi: $e")));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Determine status style
+    // Logic:
+    // - Cancelled -> Grey, 'Đã hủy'
+    // - Date passed -> Green, 'Đã hoàn thành'
+    // - Future -> Blue, 'Sắp tới'
+
     final now = DateTime.now();
-    final bookingDateTime = DateTime(
+    final bookingTime = DateTime(
       booking.date.year,
       booking.date.month,
       booking.date.day,
       booking.timeSlot,
     );
 
-    if (booking.status == 'cancelled') {
-      return 'cancelled';
-    } else if (bookingDateTime.isBefore(now)) {
-      return 'completed';
+    // Check status logic
+    bool isCancelled = booking.status == 'cancelled';
+    bool isCompleted = !isCancelled && bookingTime.isBefore(now);
+    bool isUpcoming = !isCancelled && !isCompleted;
+
+    String statusText;
+    Color statusColor;
+    Color statusBgColor;
+    IconData statusIcon;
+
+    if (isCancelled) {
+      statusText = 'Đã hủy';
+      statusColor = AppColors.textGrey;
+      statusBgColor = AppColors.borderColor;
+      statusIcon = Icons.cancel;
+    } else if (isCompleted) {
+      statusText = 'Đã hoàn thành';
+      statusColor = AppColors.success; // Green
+      statusBgColor = AppColors.successBg; // Light Green
+      statusIcon = Icons.check_circle;
     } else {
-      return 'upcoming';
+      statusText = 'Sắp tới';
+      statusColor = AppColors.primary; // Blue
+      statusBgColor = AppColors.primaryBg; // Light Blue
+      statusIcon = Icons.calendar_today;
     }
-  }
 
-  // Lấy màu và icon theo trạng thái
-  Map<String, dynamic> _getStatusStyle(String status, ColorScheme colors) {
-    switch (status) {
-      case 'completed':
-        return {
-          'color': Colors.green,
-          'icon': Icons.check_circle_rounded,
-          'label': 'Đã hoàn thành',
-          'bgColor': Colors.green.withOpacity(0.1),
-        };
-      case 'upcoming':
-        return {
-          'color': colors.secondary,
-          'icon': Icons.schedule_rounded,
-          'label': 'Sắp tới',
-          'bgColor': colors.secondary.withOpacity(0.1),
-        };
-      case 'cancelled':
-        return {
-          'color': Colors.grey,
-          'icon': Icons.cancel_rounded,
-          'label': 'Đã hủy',
-          'bgColor': Colors.grey.withOpacity(0.1),
-        };
-      default:
-        return {
-          'color': colors.primary,
-          'icon': Icons.info_rounded,
-          'label': 'Đã xác nhận',
-          'bgColor': colors.primary.withOpacity(0.1),
-        };
-    }
-  }
+    final currencyFormatter = NumberFormat.simpleCurrency(
+      locale: 'vi_VN',
+      decimalDigits: 0,
+    );
 
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final repo = context.watch<FirestoreRepository>();
-    final userId = context.watch<AppAuthProvider>().userModel?.id;
-
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: Text(
-          'Lịch sử đặt sân',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-        backgroundColor: colors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: false,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      body: userId == null
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
-                  SizedBox(height: 16),
-                  Text(
-                    "Không tìm thấy thông tin người dùng",
-                    style: TextStyle(color: colors.onSurface, fontSize: 16),
-                  ),
-                ],
-              ),
-            )
-          : StreamBuilder<List<BookingModel>>(
-              stream: repo.getUserBookingHistoryStream(userId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: CircularProgressIndicator(color: colors.secondary),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: Colors.red[300],
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          "Lỗi tải lịch sử: ${snapshot.error}",
-                          style: TextStyle(color: Colors.red, fontSize: 16),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            // Force rebuild by navigating away and back
-                            Navigator.of(context).pop();
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => BookingHistoryScreen(),
-                              ),
-                            );
-                          },
-                          icon: Icon(Icons.refresh),
-                          label: Text("Thử lại"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colors.secondary,
-                            foregroundColor: colors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: colors.primary.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.calendar_today_rounded,
-                            size: 64,
-                            color: colors.primary,
-                          ),
-                        ),
-                        SizedBox(height: 24),
-                        Text(
-                          "Bạn chưa đặt sân nào",
-                          style: TextStyle(
-                            color: colors.onSurface,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          "Hãy đặt sân để bắt đầu chơi!",
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final bookings = snapshot.data!;
-                // Sắp xếp: upcoming trước, sau đó completed, cuối cùng cancelled
-                bookings.sort((a, b) {
-                  final statusA = _getBookingStatus(a);
-                  final statusB = _getBookingStatus(b);
-                  final order = {'upcoming': 0, 'completed': 1, 'cancelled': 2};
-                  final orderA = order[statusA] ?? 3;
-                  final orderB = order[statusB] ?? 3;
-                  if (orderA != orderB) return orderA.compareTo(orderB);
-                  // Nếu cùng status, sắp xếp theo ngày giờ
-                  final dateTimeA = DateTime(
-                    a.date.year,
-                    a.date.month,
-                    a.date.day,
-                    a.timeSlot,
-                  );
-                  final dateTimeB = DateTime(
-                    b.date.year,
-                    b.date.month,
-                    b.date.day,
-                    b.timeSlot,
-                  );
-                  return dateTimeB.compareTo(dateTimeA); // Mới nhất trước
-                });
-
-                final currencyFormatter = NumberFormat.simpleCurrency(
-                  locale: 'vi_VN',
-                  decimalDigits: 0,
-                );
-                final dateFormatter = DateFormat('dd/MM/yyyy', 'vi_VN');
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: bookings.length,
-                  itemBuilder: (context, index) {
-                    final booking = bookings[index];
-                    final status = _getBookingStatus(booking);
-                    final statusStyle = _getStatusStyle(status, colors);
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: Card(
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            gradient: status == 'cancelled'
-                                ? null
-                                : LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: status == 'completed'
-                                        ? [
-                                            Colors.green.withOpacity(0.05),
-                                            Colors.white,
-                                          ]
-                                        : [
-                                            colors.secondary.withOpacity(0.05),
-                                            Colors.white,
-                                          ],
-                                  ),
-                            border: Border.all(
-                              color: status == 'cancelled'
-                                  ? Colors.grey[300]!
-                                  : statusStyle['color']!.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Header: Status và nút hủy
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    // Status badge
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: statusStyle['bgColor'],
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            statusStyle['icon'],
-                                            size: 16,
-                                            color: statusStyle['color'],
-                                          ),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            statusStyle['label'],
-                                            style: TextStyle(
-                                              color: statusStyle['color'],
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    // Nút hủy (chỉ hiển thị nếu upcoming)
-                                    if (status == 'upcoming')
-                                      IconButton(
-                                        icon: Icon(
-                                          Icons.close_rounded,
-                                          color: Colors.red[600],
-                                        ),
-                                        onPressed: () {
-                                          _confirmDelete(
-                                            context,
-                                            booking.id!,
-                                            repo,
-                                          );
-                                        },
-                                        tooltip: "Hủy sân",
-                                        padding: EdgeInsets.zero,
-                                        constraints: BoxConstraints(),
-                                      ),
-                                  ],
-                                ),
-                                SizedBox(height: 16),
-                                // Thông tin chính
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Icon sân
-                                    Container(
-                                      width: 60,
-                                      height: 60,
-                                      decoration: BoxDecoration(
-                                        gradient: status == 'cancelled'
-                                            ? null
-                                            : LinearGradient(
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                                colors: [
-                                                  colors.primary,
-                                                  colors.secondary,
-                                                ],
-                                              ),
-                                        color: status == 'cancelled'
-                                            ? Colors.grey[400]
-                                            : null,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.sports_tennis_rounded,
-                                            color: Colors.white,
-                                            size: 24,
-                                          ),
-                                          SizedBox(height: 4),
-                                          Text(
-                                            "${booking.courtNumber}",
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(width: 16),
-                                    // Thông tin chi tiết
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          // Tên sân
-                                          Text(
-                                            booking.courtName,
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              color: status == 'cancelled'
-                                                  ? Colors.grey[500]
-                                                  : colors.primary,
-                                              decoration: status == 'cancelled'
-                                                  ? TextDecoration.lineThrough
-                                                  : null,
-                                            ),
-                                          ),
-                                          SizedBox(height: 8),
-                                          // Ngày giờ
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.calendar_today_rounded,
-                                                size: 16,
-                                                color: Colors.grey[600],
-                                              ),
-                                              SizedBox(width: 6),
-                                              Text(
-                                                dateFormatter.format(
-                                                  booking.date,
-                                                ),
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.grey[700],
-                                                ),
-                                              ),
-                                              SizedBox(width: 16),
-                                              Icon(
-                                                Icons.access_time_rounded,
-                                                size: 16,
-                                                color: Colors.grey[600],
-                                              ),
-                                              SizedBox(width: 6),
-                                              Text(
-                                                "${booking.timeSlot}:00",
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.grey[700],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          SizedBox(height: 8),
-                                          // Giá
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.attach_money_rounded,
-                                                size: 18,
-                                                color: colors.secondary,
-                                              ),
-                                              SizedBox(width: 4),
-                                              Text(
-                                                currencyFormatter.format(
-                                                  booking.price,
-                                                ),
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: status == 'cancelled'
-                                                      ? Colors.grey[500]
-                                                      : colors.secondary,
-                                                  decoration:
-                                                      status == 'cancelled'
-                                                      ? TextDecoration
-                                                            .lineThrough
-                                                      : null,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 16),
-                                // Nút chỉ đường (chỉ hiển thị nếu upcoming hoặc completed)
-                                if (status != 'cancelled')
-                                  FutureBuilder<CourtLocationModel?>(
-                                    future: repo.getCourtLocationById(
-                                      booking.courtId,
-                                    ),
-                                    builder: (context, snapshot) {
-                                      if (snapshot.connectionState ==
-                                          ConnectionState.waiting) {
-                                        return const SizedBox.shrink();
-                                      }
-                                      final court = snapshot.data;
-                                      if (court == null ||
-                                          (court.latitude == 0.0 &&
-                                              court.longitude == 0.0)) {
-                                        return const SizedBox.shrink();
-                                      }
-
-                                      return SizedBox(
-                                        width: double.infinity,
-                                        child: OutlinedButton.icon(
-                                          onPressed: () async {
-                                            // Hiển thị loading
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Row(
-                                                    children: [
-                                                      SizedBox(
-                                                        width: 20,
-                                                        height: 20,
-                                                        child: CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                          valueColor:
-                                                              AlwaysStoppedAnimation<
-                                                                Color
-                                                              >(Colors.white),
-                                                        ),
-                                                      ),
-                                                      SizedBox(width: 12),
-                                                      Text(
-                                                        'Đang lấy vị trí hiện tại...',
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  duration: Duration(
-                                                    seconds: 2,
-                                                  ),
-                                                ),
-                                              );
-                                            }
-
-                                            // Lấy vị trí hiện tại của user
-                                            LatLng? currentLocation;
-                                            try {
-                                              bool serviceEnabled =
-                                                  await Geolocator.isLocationServiceEnabled();
-                                              if (!serviceEnabled) {
-                                                throw Exception(
-                                                  'Dịch vụ vị trí chưa được bật',
-                                                );
-                                              }
-
-                                              LocationPermission permission =
-                                                  await Geolocator.checkPermission();
-                                              if (permission ==
-                                                  LocationPermission.denied) {
-                                                permission =
-                                                    await Geolocator.requestPermission();
-                                                if (permission ==
-                                                    LocationPermission.denied) {
-                                                  throw Exception(
-                                                    'Quyền truy cập vị trí bị từ chối',
-                                                  );
-                                                }
-                                              }
-
-                                              if (permission ==
-                                                  LocationPermission
-                                                      .deniedForever) {
-                                                throw Exception(
-                                                  'Quyền truy cập vị trí bị từ chối vĩnh viễn',
-                                                );
-                                              }
-
-                                              Position position =
-                                                  await Geolocator.getCurrentPosition(
-                                                    desiredAccuracy:
-                                                        LocationAccuracy.high,
-                                                    timeLimit: const Duration(
-                                                      seconds: 10,
-                                                    ),
-                                                  );
-                                              currentLocation = LatLng(
-                                                position.latitude,
-                                                position.longitude,
-                                              );
-                                            } catch (e) {
-                                              print('Lỗi lấy vị trí: $e');
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'Không thể lấy vị trí: $e. Sử dụng chỉ đường không có điểm xuất phát.',
-                                                    ),
-                                                    backgroundColor:
-                                                        Colors.orange,
-                                                    duration: const Duration(
-                                                      seconds: 3,
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                            }
-
-                                            // Tạo URL chỉ đường với vị trí hiện tại (nếu có)
-                                            final url =
-                                                CourtInfoService.getDirectionsUrl(
-                                                  LatLng(
-                                                    court.latitude,
-                                                    court.longitude,
-                                                  ),
-                                                  destinationName: court.name,
-                                                  origin:
-                                                      currentLocation, // Truyền vị trí hiện tại nếu có
-                                                );
-                                            final uri = Uri.parse(url);
-                                            if (await canLaunchUrl(uri)) {
-                                              await launchUrl(
-                                                uri,
-                                                mode: LaunchMode
-                                                    .externalApplication,
-                                              );
-                                            } else {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      'Không thể mở Google Maps',
-                                                    ),
-                                                    backgroundColor: Colors.red,
-                                                  ),
-                                                );
-                                              }
-                                            }
-                                          },
-                                          icon: const Icon(
-                                            Icons.directions,
-                                            size: 18,
-                                          ),
-                                          label: const Text(
-                                            "Chỉ đường đến sân",
-                                            style: TextStyle(fontSize: 14),
-                                          ),
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor: colors.primary,
-                                            side: BorderSide(
-                                              color: colors.primary,
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 12,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: Status Badge & Price
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
                       ),
-                    );
-                  },
-                );
-              },
+                      decoration: BoxDecoration(
+                        color: statusBgColor,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(statusIcon, size: 14, color: statusColor),
+                          const SizedBox(width: 6),
+                          Text(
+                            statusText,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      currencyFormatter.format(booking.price),
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        decoration: isCancelled
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Main Info: Icon + Text
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Court Icon
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBg, // Light blue bg
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.sports_tennis,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "Sân ${booking.courtNumber}",
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            booking.courtName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: AppColors.textBlack,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today_outlined,
+                                size: 14,
+                                color: Colors.grey[500],
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                DateFormat('dd/MM/yyyy').format(booking.date),
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: 14,
+                                color: Colors.grey[500],
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${booking.timeSlot}:00 - ${booking.timeSlot + 1}:00 (1h)',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+          ),
+
+          // Divider
+          Divider(height: 1, color: Colors.grey[100]),
+
+          // Action Section
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 12.0,
+            ),
+            child: Row(
+              children: [
+                TextButton(
+                  onPressed: () {
+                    // Show details logic or navigaton
+                  },
+                  child: Text(
+                    "Chi tiết",
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  ),
+                ),
+                const Spacer(),
+                if (isUpcoming || isCompleted)
+                  OutlinedButton.icon(
+                    onPressed: () => _launchMaps(context),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.grey[300]!),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                    ),
+                    icon: const Icon(
+                      Icons.directions,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                    label: const Text(
+                      "Chỉ đường đến sân",
+                      style: TextStyle(
+                        color: AppColors.textBlack,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                    ),
+                  )
+                else
+                  TextButton.icon(
+                    onPressed: () {
+                      // Rebooking simple logic (just navigate back to home or show toast)
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            "Tính năng đặt lại đang được phát triển",
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.refresh,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                    label: const Text(
+                      "Đặt lại sân này",
+                      style: TextStyle(color: AppColors.primary),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

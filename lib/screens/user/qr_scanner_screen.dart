@@ -1,0 +1,163 @@
+import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+
+class QRScannerScreen extends StatefulWidget {
+  const QRScannerScreen({super.key});
+
+  @override
+  State<QRScannerScreen> createState() => _QRScannerScreenState();
+}
+
+class _QRScannerScreenState extends State<QRScannerScreen> {
+  MobileScannerController cameraController = MobileScannerController();
+  bool _isScanned = false; // Prevent multiple scans
+
+  @override
+  void dispose() {
+    cameraController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('Quét mã QR'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+        actions: [
+          IconButton(
+            color: Colors.white,
+            icon: const Icon(Icons.flash_on),
+            iconSize: 32.0,
+            onPressed: () => cameraController.toggleTorch(),
+          ),
+          IconButton(
+            color: Colors.white,
+            icon: const Icon(Icons.cameraswitch),
+            iconSize: 32.0,
+            onPressed: () => cameraController.switchCamera(),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          MobileScanner(
+            controller: cameraController,
+            onDetect: (capture) {
+              if (_isScanned) return;
+              final List<Barcode> barcodes = capture.barcodes;
+              for (final barcode in barcodes) {
+                if (barcode.rawValue != null) {
+                  setState(() {
+                    _isScanned = true;
+                  });
+                  debugPrint('Barcode found! ${barcode.rawValue}');
+                  Navigator.of(context).pop(barcode.rawValue);
+                  break;
+                }
+              }
+            },
+          ),
+          // Overlay
+          Center(
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.greenAccent, width: 2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Stack(
+                children: [
+                  // Corners
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: Colors.greenAccent, width: 4),
+                          left: BorderSide(color: Colors.greenAccent, width: 4),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: Colors.greenAccent, width: 4),
+                          right: BorderSide(
+                            color: Colors.greenAccent,
+                            width: 4,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Colors.greenAccent,
+                            width: 4,
+                          ),
+                          left: BorderSide(color: Colors.greenAccent, width: 4),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Colors.greenAccent,
+                            width: 4,
+                          ),
+                          right: BorderSide(
+                            color: Colors.greenAccent,
+                            width: 4,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Positioned(
+            bottom: 50,
+            left: 0,
+            right: 0,
+            child: Text(
+              'Di chuyển camera đến mã QR',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

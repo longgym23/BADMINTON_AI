@@ -64,6 +64,12 @@ service cloud.firestore {
         userId == request.auth.uid ||
         isAdmin()
       );
+
+      // Chat History
+      match /chat_history/{messageId} {
+        allow read, write: if isAuthenticated() && userId == request.auth.uid;
+      }
+
       // User có thể cập nhật thông tin của chính họ
       // Admin có thể cập nhật bất kỳ user nào
       allow update: if isAuthenticated() && (

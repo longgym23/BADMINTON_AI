@@ -37,7 +37,7 @@ class ProfileTab extends StatelessWidget {
                     style: Theme.of(context)
                         .textTheme
                         .headlineMedium
-                        ?.copyWith(color: Colors.white),
+                        ?.copyWith(color: Colors.black),
                   ),
                 ),
                 SizedBox(height: 5),
@@ -47,7 +47,7 @@ class ProfileTab extends StatelessWidget {
                     style: Theme.of(context)
                         .textTheme
                         .bodyLarge
-                        ?.copyWith(color: Colors.white70),
+                        ?.copyWith(color: Colors.black),
                   ),
                 ),
                 SizedBox(height: 16),

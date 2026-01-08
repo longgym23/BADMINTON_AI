@@ -3,13 +3,17 @@ import 'package:badminton_ai/data/repositories/firestore_repository.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/booking_provider.dart';
 import 'package:badminton_ai/providers/notification_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart'; // Import flutter_bloc
+import 'package:badminton_ai/blocs/chat/chat_bloc.dart'; // Import ChatBloc
+import 'package:badminton_ai/data/repositories/chat_repository.dart'; // Import ChatRepository
 import 'package:badminton_ai/screens/splash/splash_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart'; // Đã có sẵn
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/date_symbol_data_local.dart'; // <-- TÔI ĐÃ THÊM DÒNG NÀY
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:badminton_ai/utils/app_colors.dart';
 
 // Import file firebase_options.dart của bạn (tạo ra khi dùng FlutterFire CLI)
 // import 'firebase_options.dart';
@@ -40,46 +44,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Định nghĩa bảng màu theo logo
-    final MaterialColor primaryNavyBlue = MaterialColor(0xFF1E2B4B, <int, Color>{
-      50: Color(0xFFE3E5E8),
-      100: Color(0xFFB8BFCA),
-      200: Color(0xFF8B96A8),
-      300: Color(0xFF5E6D86),
-      400: Color(0xFF3F4D6F),
-      500: Color(0xFF1E2B4B), // Màu chính từ logo
-      600: Color(0xFF1A2643),
-      700: Color(0xFF16213B),
-      800: Color(0xFF121C33),
-      900: Color(0xFF0B1225),
-    });
-
-    final MaterialColor accentGold = MaterialColor(0xFFFBC02D, <int, Color>{
-      50: Color(0xFFFFFDE7),
-      100: Color(0xFFFFF9C4),
-      200: Color(0xFFFFF59D),
-      300: Color(0xFFFFF176),
-      400: Color(0xFFFFEE58),
-      500: Color(0xFFFBC02D), // Màu vàng từ logo
-      600: Color(0xFFF9B300),
-      700: Color(0xFFF7A700),
-      800: Color(0xFFF59B00),
-      900: Color(0xFFF28F00),
-    });
-
-    final MaterialColor accentBlue = MaterialColor(0xFF42A5F5, <int, Color>{
-      50: Color(0xFFE3F2FD),
-      100: Color(0xFFBBDEFB),
-      200: Color(0xFF90CAF9),
-      300: Color(0xFF64B5F6),
-      400: Color(0xFF42A5F5), // Màu xanh dương từ logo
-      500: Color(0xFF2196F3),
-      600: Color(0xFF1E88E5),
-      700: Color(0xFF1976D2),
-      800: Color(0xFF1565C0),
-      900: Color(0xFF0D47A1),
-    });
-
     return MultiProvider(
       providers: [
         // Repository
@@ -90,7 +54,8 @@ class MyApp extends StatelessWidget {
           ),
         ),
         Provider<FirestoreRepository>(
-          create: (_) => FirestoreRepository(firebaseFirestore: _firebaseFirestore),
+          create: (_) =>
+              FirestoreRepository(firebaseFirestore: _firebaseFirestore),
         ),
 
         // AuthProvider
@@ -107,94 +72,102 @@ class MyApp extends StatelessWidget {
             authProvider: context.read<AppAuthProvider>(),
           ),
         ),
-        
+
         // NotificationProvider
         ChangeNotifierProvider<NotificationProvider>(
-          create: (context) => NotificationProvider(
-            context.read<FirestoreRepository>(),
-          ),
+          create: (context) =>
+              NotificationProvider(context.read<FirestoreRepository>()),
+        ),
+
+        // ChatRepository
+        Provider<ChatRepository>(
+          create: (_) => ChatRepository(firestore: _firebaseFirestore),
+        ),
+
+        // ChatBloc (Thay thế ChatProvider)
+        BlocProvider<ChatBloc>(
+          create: (context) =>
+              ChatBloc(chatRepository: context.read<ChatRepository>()),
         ),
       ],
       child: MaterialApp(
         title: 'Badminton Court Booking',
-        debugShowCheckedModeBanner: false, // Tắt debug banner (viền xanh)
+        debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          primarySwatch: primaryNavyBlue, // Màu xanh đậm làm màu chính
-          colorScheme: ColorScheme.fromSwatch(
-            primarySwatch: primaryNavyBlue,
-            accentColor: accentGold, // Màu vàng làm màu nhấn
-          ).copyWith(
-            secondary: accentBlue, // Màu xanh dương làm màu phụ
-            surface: Colors.white, // Màu nền của các card, dialog
-            onSurface: Colors.black87, // Màu chữ trên surface
-            background: primaryNavyBlue, // Màu nền tổng thể của app (nếu không có Scaffold)
+          useMaterial3: true,
+          scaffoldBackgroundColor: AppColors.background,
+          primaryColor: AppColors.primary,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: AppColors.primary,
+            primary: AppColors.primary,
+            secondary: AppColors.primaryLight,
+            background: AppColors.background,
+            surface: AppColors.surface,
+            error: AppColors.error,
           ),
-          appBarTheme: AppBarTheme(
-            backgroundColor: primaryNavyBlue[700], // Màu AppBar đậm hơn một chút
-            foregroundColor: Colors.white, // Màu chữ và icon trên AppBar
+
+          appBarTheme: const AppBarTheme(
+            backgroundColor: AppColors.surface,
+            foregroundColor: AppColors.textBlack,
+            elevation: 0,
+            centerTitle: true,
+            iconTheme: IconThemeData(color: AppColors.textBlack),
             titleTextStyle: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
+              color: AppColors.textBlack,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
-            iconTheme: IconThemeData(color: Colors.white),
           ),
-          scaffoldBackgroundColor: primaryNavyBlue[900], // Màu nền cho Scaffold
+
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
-              backgroundColor: accentGold, // Màu vàng cho nút
-              foregroundColor: primaryNavyBlue, // Màu chữ trên nút vàng
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              textStyle: TextStyle(
+              textStyle: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-              )
+              ),
             ),
           ),
+
           textButtonTheme: TextButtonThemeData(
             style: TextButton.styleFrom(
-              foregroundColor: accentBlue, // Màu xanh dương cho text button
+              foregroundColor: AppColors.primary,
+              textStyle: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
+
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
-            fillColor: Colors.white.withOpacity(0.9), // Nền trắng cho input
-            labelStyle: TextStyle(color: primaryNavyBlue[500]), // Màu label
-            hintStyle: TextStyle(color: Colors.grey[600]),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none, // Bỏ viền mặc định
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: accentBlue, width: 2), // Viền xanh khi focus
+            hintStyle: const TextStyle(color: AppColors.textLight),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.borderColor),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
-            )
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.borderColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.primary),
+            ),
           ),
-          bottomNavigationBarTheme: BottomNavigationBarThemeData(
-            backgroundColor: primaryNavyBlue[700], // Màu nền BottomNavBar
-            selectedItemColor: accentGold, // Màu item được chọn
-            unselectedItemColor: Colors.white70, // Màu item không được chọn
-            selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
-            unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal),
-          ),
-          // cardTheme: CardTheme( // Tôi cũng đã bỏ comment dòng này (ban nãy bị comment)
-          //   color: Colors.white,
-          //   elevation: 4,
-          //   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          // ),
-          // Thêm các theme khác nếu cần
+
           visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
-        home: SplashScreen(), // Bắt đầu với SplashScreen để kiểm tra auth
+        home: SplashScreen(),
       ),
     );
   }
 }
-

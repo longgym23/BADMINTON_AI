@@ -45,6 +45,9 @@ dependencies:
   geolocator: ^13.0.1 # Lấy vị trí hiện tại
   geocoding: ^3.0.0 # Chuyển đổi tọa độ thành địa chỉ
   permission_handler: ^11.3.1 # Xử lý quyền truy cập
+  # --- State Management ---
+  flutter_bloc: ^8.1.3
+  equatable: ^2.0.5
   # --- AI Chatbot (sử dụng Google Gemini) ---
   google_generative_ai: ^0.4.3
   table_calendar: ^3.0.1
@@ -55,6 +58,8 @@ dependencies:
   speech_to_text: ^7.0.0 # Chuyển giọng nói thành text
   # --- URL Launcher ---
   url_launcher: ^6.3.0 # Mở URL và ứng dụng bên ngoài (Google Maps, etc.)
+  mobile_scanner: ^7.1.4
+  firebase_storage: ^13.0.5
 dev_dependencies:
   flutter_test:
     sdk: flutter

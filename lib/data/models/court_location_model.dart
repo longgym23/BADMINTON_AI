@@ -9,6 +9,9 @@ class CourtLocationModel {
   final double pricePerHour;
   final int totalCourts;
   final String? sportType; // Loại sân: 'badminton', 'pickleball', 'football'
+  final String? imageUrl;
+  final double rating;
+  final int totalReviews;
 
   CourtLocationModel({
     required this.id,
@@ -19,6 +22,9 @@ class CourtLocationModel {
     required this.pricePerHour,
     required this.totalCourts,
     this.sportType,
+    this.imageUrl,
+    this.rating = 0.0,
+    this.totalReviews = 0,
   });
 
   // Chuyển từ Firestore Document sang Model
@@ -33,6 +39,9 @@ class CourtLocationModel {
       pricePerHour: (data['pricePerHour'] as num?)?.toDouble() ?? 0.0,
       totalCourts: (data['totalCourts'] as num?)?.toInt() ?? 0,
       sportType: data['sportType'] as String?,
+      imageUrl: data['imageUrl'] as String?,
+      rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
+      totalReviews: (data['totalReviews'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -46,6 +55,9 @@ class CourtLocationModel {
       'pricePerHour': pricePerHour,
       'totalCourts': totalCourts,
       if (sportType != null) 'sportType': sportType,
+      if (imageUrl != null) 'imageUrl': imageUrl,
+      'rating': rating,
+      'totalReviews': totalReviews,
     };
   }
 

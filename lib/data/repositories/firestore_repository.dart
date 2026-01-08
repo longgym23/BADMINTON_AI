@@ -2,7 +2,9 @@ import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/notification_model.dart';
 import 'package:badminton_ai/data/models/user_model.dart';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class FirestoreRepository {
   final FirebaseFirestore _firebaseFirestore;
@@ -259,5 +261,47 @@ class FirestoreRepository {
     await _firebaseFirestore.collection(_usersCollection).doc(userId).update({
       'role': role,
     });
+  }
+
+  // --- Storage Functions ---
+
+  // Upload ảnh lên Firebase Storage
+  Future<String> uploadImage(String filePath, String folder) async {
+    try {
+      File file = File(filePath);
+      if (!file.existsSync()) {
+        throw Exception('File không tồn tại tại đường dẫn: $filePath');
+      }
+
+      String fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${file.uri.pathSegments.last}';
+      Reference ref = FirebaseStorage.instance.ref().child('$folder/$fileName');
+
+      // Thêm metadata để server biết loại file (giảm thiểu lỗi upload session)
+      SettableMetadata metadata = SettableMetadata(
+        contentType: 'image/jpeg', // Giả định là jpeg/png từ ImagePicker
+        customMetadata: {'picked-file-path': filePath},
+      );
+
+      UploadTask uploadTask = ref.putFile(file, metadata);
+
+      // Lắng nghe tiến trình (nếu cần debug)
+      // uploadTask.snapshotEvents.listen((event) {
+      //   print('Upload progress: ${(event.bytesTransferred / event.totalBytes) * 100}%');
+      // });
+
+      TaskSnapshot snapshot = await uploadTask;
+
+      if (snapshot.state == TaskState.success) {
+        return await snapshot.ref.getDownloadURL();
+      } else {
+        throw Exception(
+          'Upload không thành công. Trạng thái: ${snapshot.state}',
+        );
+      }
+    } catch (e) {
+      print("Lỗi uploadImage chi tiết: $e");
+      throw e; // Ném lỗi ra để UI bắt được
+    }
   }
 }

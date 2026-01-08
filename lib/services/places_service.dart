@@ -426,7 +426,7 @@ class PlaceResult {
   }
 
   // Chuyển đổi sang CourtLocationModel để tương thích với code hiện tại
-  CourtLocationModel toCourtLocationModel() {
+  CourtLocationModel toCourtLocationModel({String? overrideSportType}) {
     return CourtLocationModel(
       id: placeId,
       name: name,
@@ -435,7 +435,7 @@ class PlaceResult {
       longitude: location.longitude,
       pricePerHour: 0.0, // Places API không có giá
       totalCourts: 1, // Mặc định 1 sân
-      sportType: _getSportTypeFromName(name),
+      sportType: overrideSportType ?? _getSportTypeFromName(name),
     );
   }
 

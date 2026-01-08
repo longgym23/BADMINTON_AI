@@ -4,6 +4,7 @@ import 'package:badminton_ai/screens/admin/manage_courts_screen.dart';
 import 'package:badminton_ai/screens/admin/manage_users_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:badminton_ai/utils/app_colors.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   @override
@@ -34,12 +35,11 @@ class AdminDashboardScreen extends StatelessWidget {
                 size: 80,
                 color: Theme.of(context).colorScheme.secondary,
               ),
-              SizedBox(height: 20),
               Text(
                 'Chào mừng Admin, ${user?.displayName ?? user?.email}!',
                 style: Theme.of(
                   context,
-                ).textTheme.headlineSmall?.copyWith(color: Colors.white),
+                ).textTheme.headlineSmall?.copyWith(color: AppColors.textBlack),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 30),

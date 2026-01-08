@@ -6,6 +6,7 @@ class UserModel {
   final String? displayName;
   final String? phoneNumber;
   final String role;
+  final String? photoUrl;
 
   UserModel({
     required this.id,
@@ -13,6 +14,7 @@ class UserModel {
     this.displayName,
     this.phoneNumber,
     this.role = 'user',
+    this.photoUrl,
   });
 
   UserModel copyWith({
@@ -21,6 +23,7 @@ class UserModel {
     String? displayName,
     String? phoneNumber,
     String? role,
+    String? photoUrl,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -28,6 +31,7 @@ class UserModel {
       displayName: displayName ?? this.displayName,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       role: role ?? this.role,
+      photoUrl: photoUrl ?? this.photoUrl,
     );
   }
 
@@ -39,6 +43,7 @@ class UserModel {
       displayName: data['displayName'],
       phoneNumber: data['phoneNumber'],
       role: data['role'] ?? 'user',
+      photoUrl: data['photoUrl'],
     );
   }
 
@@ -48,7 +53,7 @@ class UserModel {
       'displayName': displayName,
       'phoneNumber': phoneNumber,
       'role': role,
+      'photoUrl': photoUrl,
     };
   }
 }
-
