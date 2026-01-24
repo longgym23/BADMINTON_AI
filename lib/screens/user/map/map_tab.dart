@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/repositories/firestore_repository.dart';
-import 'package:badminton_ai/screens/user/court_selection_screen.dart';
+import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 import 'package:badminton_ai/services/places_service.dart';
 import 'package:badminton_ai/services/court_info_service.dart';
 import 'package:flutter/material.dart';

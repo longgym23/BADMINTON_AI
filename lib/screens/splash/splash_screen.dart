@@ -1,7 +1,7 @@
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/screens/admin/admin_dashboard_screen.dart';
 import 'package:badminton_ai/screens/auth/login_screen.dart';
-import 'package:badminton_ai/screens/user/home_screen.dart';
+import 'package:badminton_ai/screens/user/home/home_screen.dart';
 import 'package:badminton_ai/widgets/loading_spinner.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

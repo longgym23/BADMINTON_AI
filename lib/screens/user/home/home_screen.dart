@@ -1,9 +1,7 @@
-import 'package:badminton_ai/screens/user/booking_tab.dart';
-import 'package:badminton_ai/screens/user/chatbot_tab.dart';
-import 'package:badminton_ai/screens/user/highlights_tab.dart';
-import 'package:badminton_ai/screens/user/home_tab.dart';
-import 'package:badminton_ai/screens/user/map_tab.dart';
-import 'package:badminton_ai/screens/user/profile_tab.dart';
+import 'package:badminton_ai/screens/user/highlights/highlights_tab.dart';
+import 'package:badminton_ai/screens/user/home/home_tab.dart';
+import 'package:badminton_ai/screens/user/map/map_tab.dart';
+import 'package:badminton_ai/screens/user/profile/profile_tab.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
