@@ -1,9 +1,9 @@
 import 'package:badminton_ai/data/models/notification_model.dart';
-import 'package:badminton_ai/data/repositories/firestore_repository.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:flutter/material.dart';
 
 class NotificationProvider extends ChangeNotifier {
-  final FirestoreRepository _repository;
+  final SupabaseRepository _repository;
   Stream<List<NotificationModel>>? _notificationsStream;
 
   NotificationProvider(this._repository);
@@ -32,7 +32,8 @@ class NotificationProvider extends ChangeNotifier {
       userId: userId,
       type: 'booking_success',
       title: 'Đặt sân thành công!',
-      message: 'Bạn đã đặt sân $courtName - Sân $courtNumber vào $dateStr lúc $timeStr',
+      message:
+          'Bạn đã đặt sân $courtName - Sân $courtNumber vào $dateStr lúc $timeStr',
       createdAt: DateTime.now(),
       isRead: false,
       bookingId: bookingId,
@@ -73,4 +74,3 @@ class NotificationProvider extends ChangeNotifier {
     return '$day/$month/$year';
   }
 }
-

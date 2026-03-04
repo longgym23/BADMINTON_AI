@@ -38,7 +38,7 @@ try {
 
 // Định nghĩa System Prompt
 const systemPrompt =
-`Bạn là trợ lý ảo cho ứng dụng đặt sân cầu lông 'Badminton Pro'.
+  `Bạn là trợ lý ảo cho ứng dụng đặt sân cầu lông 'Badminton Pro'.
 Nhiệm vụ của bạn là trả lời các câu hỏi của người dùng một cách thân thiện,
 ngắn gọn và hữu ích. Các chủ đề chính bao gồm:
 1. Cách đặt sân: Người dùng chọn ngày, chọn sân, sau đó chọn giờ
@@ -69,7 +69,7 @@ const cleanupFile = (filePath) => {
 // Hàm helper để loại bỏ markdown formatting (dấu *)
 const removeMarkdown = (text) => {
   if (!text || typeof text !== 'string') return text;
-  
+
   // Loại bỏ các dấu markdown phổ biến
   return text
     .replace(/\*\*/g, '') // Loại bỏ ** (bold)
@@ -88,61 +88,61 @@ app.post('/ask', upload.single('image'), async (req, res) => {
 
   // Nếu có ảnh, xử lý với Vision API
   if (imageFile) {
-  const userPrompt = req.body.prompt || 'Phân tích ảnh này và trả lời câu hỏi liên quan đến ứng dụng đặt sân cầu lông.';
-  const imageFile = req.file;
+    const userPrompt = req.body.prompt || 'Phân tích ảnh này và trả lời câu hỏi liên quan đến ứng dụng đặt sân cầu lông.';
+    const imageFile = req.file;
 
-  if (!imageFile) {
-    return res.status(400).json({ error: 'Không có ảnh được gửi lên.' });
-  }
+    if (!imageFile) {
+      return res.status(400).json({ error: 'Không có ảnh được gửi lên.' });
+    }
 
-  if (!visionModel) {
-    cleanupFile(imageFile.path);
-    return res.status(500).json({ error: 'Lỗi khởi tạo AI vision model.' });
-  }
-
-  try {
-    // Đọc file ảnh
-    const imageData = await fs.readFile(imageFile.path);
-    const base64Image = imageData.toString('base64');
-    const mimeType = imageFile.mimetype || 'image/jpeg';
-
-    // Gửi ảnh và prompt lên Gemini Vision
-    const result = await visionModel.generateContent([
-      {
-        text: `${systemPrompt}\n\n${userPrompt}`,
-      },
-      {
-        inlineData: {
-          data: base64Image,
-          mimeType: mimeType,
-        },
-      },
-    ]);
-
-    const response = result.response;
-    if (!response) {
+    if (!visionModel) {
       cleanupFile(imageFile.path);
-      return res.status(500).json({ error: 'AI không thể phân tích ảnh.' });
+      return res.status(500).json({ error: 'Lỗi khởi tạo AI vision model.' });
     }
 
-    let text = response.text();
-    cleanupFile(imageFile.path);
+    try {
+      // Đọc file ảnh
+      const imageData = await fs.readFile(imageFile.path);
+      const base64Image = imageData.toString('base64');
+      const mimeType = imageFile.mimetype || 'image/jpeg';
 
-    if (!text || text.trim().length === 0) {
-      return res.status(500).json({ error: 'AI không thể tạo câu trả lời từ ảnh.' });
+      // Gửi ảnh và prompt lên Gemini Vision
+      const result = await visionModel.generateContent([
+        {
+          text: `${systemPrompt}\n\n${userPrompt}`,
+        },
+        {
+          inlineData: {
+            data: base64Image,
+            mimeType: mimeType,
+          },
+        },
+      ]);
+
+      const response = result.response;
+      if (!response) {
+        cleanupFile(imageFile.path);
+        return res.status(500).json({ error: 'AI không thể phân tích ảnh.' });
+      }
+
+      let text = response.text();
+      cleanupFile(imageFile.path);
+
+      if (!text || text.trim().length === 0) {
+        return res.status(500).json({ error: 'AI không thể tạo câu trả lời từ ảnh.' });
+      }
+
+      // Loại bỏ markdown formatting
+      text = removeMarkdown(text);
+
+      res.json({ answer: text });
+      return;
+    } catch (error) {
+      cleanupFile(imageFile.path);
+      console.error('Lỗi khi xử lý ảnh với Gemini:', error);
+      res.status(500).json({ error: 'Đã xảy ra lỗi khi xử lý ảnh.' });
+      return;
     }
-
-    // Loại bỏ markdown formatting
-    text = removeMarkdown(text);
-
-    res.json({ answer: text });
-    return;
-  } catch (error) {
-    cleanupFile(imageFile.path);
-    console.error('Lỗi khi xử lý ảnh với Gemini:', error);
-    res.status(500).json({ error: 'Đã xảy ra lỗi khi xử lý ảnh.' });
-    return;
-  }
   }
 
   // Nếu không có ảnh, xử lý text thông thường
@@ -165,7 +165,7 @@ app.post('/ask', upload.single('image'), async (req, res) => {
 
     const result = await chat.sendMessage(userPrompt);
     const response = result.response;
-    
+
     if (!response) {
       console.error('Gemini API không trả về response hợp lệ.', { userPrompt });
       return res.status(500).json({ error: 'AI không thể tạo câu trả lời (response null).' });
@@ -199,12 +199,12 @@ app.post('/ask/audio', upload.single('audio'), async (req, res) => {
   // Lưu ý: Gemini có thể xử lý audio, nhưng cần model phù hợp
   // Ở đây tôi sẽ trả về thông báo yêu cầu chuyển audio thành text trước
   // Hoặc bạn có thể tích hợp speech-to-text service như Google Speech-to-Text API
-  
+
   cleanupFile(audioFile.path);
-  
+
   // Tạm thời trả về thông báo
-  res.json({ 
-    answer: 'Tính năng xử lý audio đang được phát triển. Vui lòng sử dụng tính năng nhận diện giọng nói để chuyển giọng nói thành text trước.' 
+  res.json({
+    answer: 'Tính năng xử lý audio đang được phát triển. Vui lòng sử dụng tính năng nhận diện giọng nói để chuyển giọng nói thành text trước.'
   });
 });
 

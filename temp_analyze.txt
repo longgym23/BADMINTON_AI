@@ -1,0 +1,7 @@
+﻿Analyzing push_notification_service.dart...                     
+
+  error - The named parameter 'settings' is required, but there's no corresponding argument - lib\services\push_notification_service.dart:40:37 - missing_required_argument
+  error - The named parameter 'initializationSettings' isn't defined - lib\services\push_notification_service.dart:41:7 - undefined_named_parameter
+  error - The named parameter 'id' is required, but there's no corresponding argument - lib\services\push_notification_service.dart:83:37 - missing_required_argument
+  error - Too many positional arguments: 0 expected, but 3 found - lib\services\push_notification_service.dart:84:7 - extra_positional_arguments_could_be_named
+

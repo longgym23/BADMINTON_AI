@@ -1,5 +1,5 @@
 import 'package:badminton_ai/data/models/user_model.dart';
-import 'package:badminton_ai/data/repositories/firestore_repository.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -80,8 +80,14 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                       fillColor: Colors.white,
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'user', child: Text('Người dùng')),
-                      DropdownMenuItem(value: 'admin', child: Text('Quản trị viên')),
+                      DropdownMenuItem(
+                        value: 'user',
+                        child: Text('Người dùng'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'admin',
+                        child: Text('Quản trị viên'),
+                      ),
                     ],
                     onChanged: (value) {
                       if (value != null) {
@@ -104,7 +110,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               onPressed: () async {
                 if (_formKey.currentState!.validate()) {
                   try {
-                    final repo = context.read<FirestoreRepository>();
+                    final repo = context.read<SupabaseRepository>();
                     final updatedUser = user.copyWith(
                       displayName: _nameController.text.trim(),
                       phoneNumber: _phoneController.text.trim().isEmpty
@@ -166,7 +172,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               ),
               onPressed: () async {
                 try {
-                  final repo = context.read<FirestoreRepository>();
+                  final repo = context.read<SupabaseRepository>();
                   await repo.deleteUser(user.id);
                   Navigator.of(ctx).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -196,7 +202,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final firestoreRepo = context.watch<FirestoreRepository>();
+    final firestoreRepo = context.watch<SupabaseRepository>();
 
     return Scaffold(
       appBar: AppBar(
@@ -258,7 +264,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                 }
 
                 final allUsers = snapshot.data ?? [];
-                
+
                 // Filter users theo search query
                 final filteredUsers = _searchQuery.isEmpty
                     ? allUsers
@@ -337,8 +343,11 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                             if (user.email != null)
                               Row(
                                 children: [
-                                  Icon(Icons.email,
-                                      size: 14, color: Colors.grey[600]),
+                                  Icon(
+                                    Icons.email,
+                                    size: 14,
+                                    color: Colors.grey[600],
+                                  ),
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
@@ -355,8 +364,11 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  Icon(Icons.phone,
-                                      size: 14, color: Colors.grey[600]),
+                                  Icon(
+                                    Icons.phone,
+                                    size: 14,
+                                    color: Colors.grey[600],
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     user.phoneNumber!,
@@ -381,7 +393,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                user.role == 'admin' ? 'Quản trị viên' : 'Người dùng',
+                                user.role == 'admin'
+                                    ? 'Quản trị viên'
+                                    : 'Người dùng',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -398,7 +412,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                           children: [
                             IconButton(
                               icon: Icon(Icons.edit, color: colors.secondary),
-                              onPressed: () => _showUserEditDialog(context, user),
+                              onPressed: () =>
+                                  _showUserEditDialog(context, user),
                               tooltip: 'Chỉnh sửa',
                             ),
                             IconButton(
@@ -421,4 +436,3 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     );
   }
 }
-

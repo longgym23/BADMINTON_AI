@@ -1,4 +1,3 @@
-
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/screens/auth/register_screen.dart';
 import 'package:flutter/material.dart';
@@ -25,19 +24,27 @@ class _LoginScreenState extends State<LoginScreen> {
   void _login() async {
     if (_formKey.currentState?.validate() ?? false) {
       final authProvider = context.read<AppAuthProvider>();
-      bool success = await authProvider.signIn(
+      String? error = await authProvider.signIn(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
-      if (!success && mounted) {
+      if (error != null && mounted) {
+        String displayError = error;
+        if (error.contains('Email not confirmed')) {
+          displayError =
+              'Email chưa được xác thực. Vui lòng kiểm tra hộp thư hoặc liên hệ Admin.';
+        } else if (error.contains('Invalid login credentials')) {
+          displayError = 'Email hoặc mật khẩu không đúng.';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.'),
+            content: Text(displayError),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
-      // Nếu thành công, SplashScreen sẽ tự động điều hướng
+      // Nếu thành công (error == null), SplashScreen sẽ tự động điều hướng
     }
   }
 
@@ -51,9 +58,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final fillColor = Colors.white.withOpacity(0.08);
 
     OutlineInputBorder _border(Color color) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: color, width: 1.2),
-        );
+      borderRadius: BorderRadius.circular(18),
+      borderSide: BorderSide(color: color, width: 1.2),
+    );
 
     return InputDecoration(
       labelText: label,
@@ -80,10 +87,9 @@ class _LoginScreenState extends State<LoginScreen> {
         elevation: 0,
         title: Text(
           'Đăng nhập',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(color: Colors.white),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(color: Colors.white),
         ),
         centerTitle: true,
       ),
@@ -109,17 +115,26 @@ class _LoginScreenState extends State<LoginScreen> {
             Positioned(
               top: -120,
               right: -40,
-              child: _BlurCircle(color: Colors.white.withOpacity(0.15), size: 240),
+              child: _BlurCircle(
+                color: Colors.white.withOpacity(0.15),
+                size: 240,
+              ),
             ),
             Positioned(
               bottom: -100,
               left: -30,
-              child: _BlurCircle(color: Colors.white.withOpacity(0.12), size: 200),
+              child: _BlurCircle(
+                color: Colors.white.withOpacity(0.12),
+                size: 200,
+              ),
             ),
             SafeArea(
               child: Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 32,
+                  ),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 420),
                     child: Form(
@@ -128,7 +143,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(28),
-                          border: Border.all(color: Colors.white.withOpacity(0.12)),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.12),
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.2),
@@ -137,7 +154,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 36),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 28,
+                          vertical: 36,
+                        ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -154,9 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 24),
                             Text(
                               'Chào mừng trở lại!',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall
+                              style: Theme.of(context).textTheme.headlineSmall
                                   ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w600,
@@ -166,9 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 8),
                             Text(
                               'Đăng nhập để tiếp tục khám phá các tiện ích sân cầu lông thông minh.',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
+                              style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     color: Colors.white.withOpacity(0.85),
                                   ),
@@ -184,9 +200,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                 label: 'Email',
                                 icon: Icons.email_rounded,
                               ),
-                              validator: (val) => (val?.isEmpty ?? true)
-                                  ? 'Vui lòng nhập email'
-                                  : null,
+                              validator: (val) {
+                                if (val == null || val.isEmpty) {
+                                  return 'Vui lòng nhập email';
+                                }
+                                final emailRegex = RegExp(
+                                  r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                                );
+                                if (!emailRegex.hasMatch(val)) {
+                                  return 'Email không đúng định dạng';
+                                }
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 18),
                             TextFormField(
@@ -219,27 +244,35 @@ class _LoginScreenState extends State<LoginScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: authProvider.authState == AuthState.loading
+                                onPressed:
+                                    authProvider.authState == AuthState.loading
                                     ? null
                                     : _login,
                                 style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   elevation: 0,
                                   backgroundColor: Colors.white,
-                                  foregroundColor: Theme.of(context).colorScheme.primary,
+                                  foregroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary,
                                   textStyle: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                child: authProvider.authState == AuthState.loading
+                                child:
+                                    authProvider.authState == AuthState.loading
                                     ? const SizedBox(
                                         height: 22,
                                         width: 22,
-                                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                        ),
                                       )
                                     : const Text('Đăng nhập'),
                               ),
@@ -261,7 +294,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              child: const Text('Chưa có tài khoản? Đăng ký ngay'),
+                              child: const Text(
+                                'Chưa có tài khoản? Đăng ký ngay',
+                              ),
                             ),
                           ],
                         ),
@@ -282,10 +317,7 @@ class _BlurCircle extends StatelessWidget {
   final Color color;
   final double size;
 
-  const _BlurCircle({
-    required this.color,
-    required this.size,
-  });
+  const _BlurCircle({required this.color, required this.size});
 
   @override
   Widget build(BuildContext context) {
@@ -306,4 +338,3 @@ class _BlurCircle extends StatelessWidget {
     );
   }
 }
-

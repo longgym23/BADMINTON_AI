@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class NotificationModel {
   final String? id;
   final String userId;
@@ -8,7 +6,7 @@ class NotificationModel {
   final String message;
   final DateTime createdAt;
   final bool isRead;
-  
+
   // Thông tin booking (nếu là thông báo về booking)
   final String? bookingId;
   final String? courtName;
@@ -35,41 +33,37 @@ class NotificationModel {
     this.price,
   });
 
-  factory NotificationModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+  factory NotificationModel.fromSupabase(Map<String, dynamic> data) {
     return NotificationModel(
-      id: doc.id,
-      userId: data['userId'] ?? '',
+      id: data['id'] ?? '',
+      userId: data['user_id'] ?? '',
       type: data['type'] ?? '',
       title: data['title'] ?? '',
       message: data['message'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      isRead: data['isRead'] ?? false,
-      bookingId: data['bookingId'],
-      courtName: data['courtName'],
-      courtAddress: data['courtAddress'],
-      courtNumber: (data['courtNumber'] as num?)?.toInt(),
-      bookingDate: (data['bookingDate'] as Timestamp?)?.toDate(),
-      timeSlot: (data['timeSlot'] as num?)?.toInt(),
-      price: (data['price'] as num?)?.toInt(),
+      createdAt: data['created_at'] != null
+          ? DateTime.parse(data['created_at'])
+          : DateTime.now(),
+      isRead: data['is_read'] ?? false,
+      // Các trường extra json chưa có trong bảng notifications cơ bản
+      // Nếu muốn lưu thêm, cần cột `metadata` jsonb/json
+      bookingId: null,
+      courtName: null,
+      courtAddress: null,
+      courtNumber: null,
+      bookingDate: null,
+      timeSlot: null,
+      price: null,
     );
   }
 
-  Map<String, dynamic> toFirestore() {
+  Map<String, dynamic> toSupabase() {
     return {
-      'userId': userId,
+      'user_id': userId,
       'type': type,
       'title': title,
       'message': message,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'isRead': isRead,
-      if (bookingId != null) 'bookingId': bookingId,
-      if (courtName != null) 'courtName': courtName,
-      if (courtAddress != null) 'courtAddress': courtAddress,
-      if (courtNumber != null) 'courtNumber': courtNumber,
-      if (bookingDate != null) 'bookingDate': Timestamp.fromDate(bookingDate!),
-      if (timeSlot != null) 'timeSlot': timeSlot,
-      if (price != null) 'price': price,
+      'is_read': isRead,
+      'created_at': createdAt.toIso8601String(),
     };
   }
 
@@ -107,4 +101,3 @@ class NotificationModel {
     );
   }
 }
-

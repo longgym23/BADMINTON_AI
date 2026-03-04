@@ -1,7 +1,8 @@
 import 'dart:io';
+import 'package:http/http.dart' as http;
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:badminton_ai/data/repositories/firestore_repository.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/screens/admin/location_picker_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -27,6 +28,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
     final _totalCourtsController = TextEditingController(
       text: court?.totalCourts.toString(),
     );
+    final _linkController = TextEditingController(); // Controller cho link map
 
     // State cho location
     LatLng? _selectedLocation = court != null
@@ -40,6 +42,77 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
     String? _currentImageUrl = court?.imageUrl;
     final _imagePicker = ImagePicker();
     bool _isUploading = false;
+    bool _isScanningLink = false; // Trạng thái scanning
+
+    // Hàm tách tọa độ từ Link
+    Future<void> _scanLocationFromLink(
+      String link,
+      StateSetter setDialogState,
+    ) async {
+      if (link.isEmpty) return;
+      setDialogState(() => _isScanningLink = true);
+
+      try {
+        String finalUrl = link;
+        // 1. Nếu là link rút gọn (maps.app.goo.gl hoặc goo.gl), cần resolve redirect
+        if (link.contains('goo.gl') || link.contains('g.co')) {
+          final client = http.Client();
+          final request = http.Request('GET', Uri.parse(link))
+            ..followRedirects = false;
+          final response = await client.send(request);
+          if (response.headers.containsKey('location')) {
+            finalUrl = response.headers['location']!;
+          }
+        }
+
+        // 2. Regex tìm tọa độ: @10.123,106.456 hoặc query q=10.123,106.456
+        // Pattern phổ biến: @latitude,longitude
+        final regexAt = RegExp(r'@(-?\d+\.\d+),(-?\d+\.\d+)');
+        final matchAt = regexAt.firstMatch(finalUrl);
+
+        double? lat, lng;
+
+        if (matchAt != null) {
+          lat = double.parse(matchAt.group(1)!);
+          lng = double.parse(matchAt.group(2)!);
+        } else {
+          // Fallback pattern: search/...,...
+          // Hoặc query param ?q=lat,lng
+          // Regex rộng hơn chút cho số thực
+          final regexQ = RegExp(r'q=(-?\d+\.\d+),(-?\d+\.\d+)');
+          final matchQ = regexQ.firstMatch(finalUrl);
+          if (matchQ != null) {
+            lat = double.parse(matchQ.group(1)!);
+            lng = double.parse(matchQ.group(2)!);
+          }
+        }
+
+        if (lat != null && lng != null) {
+          _selectedLocation = LatLng(lat, lng);
+          _selectedAddress = "Đã lấy tọa độ từ link (Vui lòng kiểm tra lại)";
+          _addressController.text = _selectedAddress;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đã tìm thấy tọa độ thành công!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          throw Exception("Không tìm thấy tọa độ trong link");
+        }
+      } catch (e) {
+        print('Lỗi parse link: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: Không thể lấy tọa độ từ link này. $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } finally {
+        setDialogState(() => _isScanningLink = false);
+      }
+    }
 
     showDialog(
       context: context,
@@ -59,6 +132,55 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // --- Phần Nhập Link Google Map ---
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _linkController,
+                              decoration: const InputDecoration(
+                                labelText: 'Dán Link Google Maps vào đây',
+                                hintText: 'https://maps.app.goo.gl/...',
+                                prefixIcon: Icon(Icons.link),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: _isScanningLink
+                                ? null
+                                : () => _scanLocationFromLink(
+                                    _linkController.text.trim(),
+                                    setDialogState,
+                                  ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            child: _isScanningLink
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.search, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
                       // Image Picker Section
                       GestureDetector(
                         onTap: () async {
@@ -248,12 +370,16 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                           filled: true,
                           fillColor: Colors.white,
                         ),
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: 'badminton',
                             child: Row(
                               children: [
-                                Icon(Icons.sports_tennis, color: Colors.green),
+                                Image.asset(
+                                  'assets/images/caulong.png',
+                                  width: 24,
+                                  height: 24,
+                                ),
                                 SizedBox(width: 8),
                                 Text('Cầu lông'),
                               ],
@@ -263,7 +389,11 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                             value: 'pickleball',
                             child: Row(
                               children: [
-                                Icon(Icons.sports_tennis, color: Colors.blue),
+                                Image.asset(
+                                  'assets/images/pickleball.png',
+                                  width: 24,
+                                  height: 24,
+                                ),
                                 SizedBox(width: 8),
                                 Text('Pickleball'),
                               ],
@@ -324,7 +454,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                       }
 
                       setDialogState(() => _isUploading = true);
-                      final repo = context.read<FirestoreRepository>();
+                      final repo = context.read<SupabaseRepository>();
                       String? imageUrlToSave = _currentImageUrl;
 
                       try {
@@ -407,7 +537,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
   @override
   Widget build(BuildContext context) {
     // Dùng context.watch để lắng nghe thay đổi
-    final firestoreRepo = context.watch<FirestoreRepository>();
+    final firestoreRepo = context.watch<SupabaseRepository>();
 
     return Scaffold(
       appBar: AppBar(title: Text('Quản Lý Các Sân')),

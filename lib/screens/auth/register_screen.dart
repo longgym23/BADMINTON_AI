@@ -1,4 +1,3 @@
-
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -53,7 +52,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đăng ký thất bại. Email có thể đã tồn tại hoặc có lỗi khác.'),
+            content: Text(
+              'Đăng ký thất bại. Email có thể đã tồn tại hoặc có lỗi khác.',
+            ),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -71,9 +72,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final fillColor = Colors.white.withOpacity(0.08);
 
     OutlineInputBorder _border(Color color) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: color, width: 1.2),
-        );
+      borderRadius: BorderRadius.circular(18),
+      borderSide: BorderSide(color: color, width: 1.2),
+    );
 
     return InputDecoration(
       labelText: label,
@@ -100,10 +101,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         elevation: 0,
         title: Text(
           'Đăng ký tài khoản',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(color: Colors.white),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(color: Colors.white),
         ),
         centerTitle: true,
       ),
@@ -129,17 +129,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
             Positioned(
               top: -120,
               left: -60,
-              child: _BlurCircle(color: Colors.white.withOpacity(0.15), size: 240),
+              child: _BlurCircle(
+                color: Colors.white.withOpacity(0.15),
+                size: 240,
+              ),
             ),
             Positioned(
               bottom: -90,
               right: -20,
-              child: _BlurCircle(color: Colors.white.withOpacity(0.12), size: 200),
+              child: _BlurCircle(
+                color: Colors.white.withOpacity(0.12),
+                size: 200,
+              ),
             ),
             SafeArea(
               child: Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 32,
+                  ),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 460),
                     child: Form(
@@ -148,7 +157,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(28),
-                          border: Border.all(color: Colors.white.withOpacity(0.12)),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.12),
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.2),
@@ -157,7 +168,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ],
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 36),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 28,
+                          vertical: 36,
+                        ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -174,9 +188,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             const SizedBox(height: 20),
                             Text(
                               'Tạo tài khoản mới',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall
+                              style: Theme.of(context).textTheme.headlineSmall
                                   ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w600,
@@ -186,10 +198,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             const SizedBox(height: 8),
                             Text(
                               'Chỉ mất vài giây để bắt đầu quản lý sân và lịch thi đấu thông minh.',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(color: Colors.white.withOpacity(0.85)),
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: Colors.white.withOpacity(0.85),
+                                  ),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 28),
@@ -201,8 +213,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 label: 'Tên hiển thị',
                                 icon: Icons.person_rounded,
                               ),
-                              validator: (val) =>
-                                  (val?.isEmpty ?? true) ? 'Vui lòng nhập tên hiển thị' : null,
+                              validator: (val) => (val?.isEmpty ?? true)
+                                  ? 'Vui lòng nhập tên hiển thị'
+                                  : null,
                             ),
                             const SizedBox(height: 18),
                             TextFormField(
@@ -214,8 +227,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 label: 'Email',
                                 icon: Icons.email_rounded,
                               ),
-                              validator: (val) =>
-                                  (val?.isEmpty ?? true) ? 'Vui lòng nhập email' : null,
+                              validator: (val) {
+                                if (val == null || val.isEmpty) {
+                                  return 'Vui lòng nhập email';
+                                }
+                                final emailRegex = RegExp(
+                                  r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                                );
+                                if (!emailRegex.hasMatch(val)) {
+                                  return 'Email không đúng định dạng';
+                                }
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 18),
                             TextFormField(
@@ -241,9 +264,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                               validator: (val) =>
-                                  (val?.isEmpty ?? true) || ((val?.length ?? 0) < 6)
-                                      ? 'Mật khẩu phải có ít nhất 6 ký tự'
-                                      : null,
+                                  (val?.isEmpty ?? true) ||
+                                      ((val?.length ?? 0) < 6)
+                                  ? 'Mật khẩu phải có ít nhất 6 ký tự'
+                                  : null,
                             ),
                             const SizedBox(height: 18),
                             TextFormField(
@@ -263,39 +287,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   onPressed: () {
                                     setState(() {
-                                      _obscureConfirmPassword = !_obscureConfirmPassword;
+                                      _obscureConfirmPassword =
+                                          !_obscureConfirmPassword;
                                     });
                                   },
                                 ),
                               ),
-                              validator: (val) =>
-                                  (val?.isEmpty ?? true) ? 'Vui lòng xác nhận mật khẩu' : null,
+                              validator: (val) => (val?.isEmpty ?? true)
+                                  ? 'Vui lòng xác nhận mật khẩu'
+                                  : null,
                             ),
                             const SizedBox(height: 30),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: authProvider.authState == AuthState.loading
+                                onPressed:
+                                    authProvider.authState == AuthState.loading
                                     ? null
                                     : _register,
                                 style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   elevation: 0,
                                   backgroundColor: Colors.white,
-                                  foregroundColor: Theme.of(context).colorScheme.primary,
+                                  foregroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary,
                                   textStyle: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                child: authProvider.authState == AuthState.loading
+                                child:
+                                    authProvider.authState == AuthState.loading
                                     ? const SizedBox(
                                         height: 22,
                                         width: 22,
-                                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                        ),
                                       )
                                     : const Text('Đăng ký'),
                               ),
@@ -333,10 +367,7 @@ class _BlurCircle extends StatelessWidget {
   final Color color;
   final double size;
 
-  const _BlurCircle({
-    required this.color,
-    required this.size,
-  });
+  const _BlurCircle({required this.color, required this.size});
 
   @override
   Widget build(BuildContext context) {

@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CourtLocationModel {
   final String id;
@@ -27,22 +26,39 @@ class CourtLocationModel {
     this.totalReviews = 0,
   });
 
-  // Chuyển từ Firestore Document sang Model
-  factory CourtLocationModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+  // Chuyển từ Supabase (Map snake_case) sang Model
+  factory CourtLocationModel.fromSupabase(Map<String, dynamic> data) {
     return CourtLocationModel(
-      id: doc.id,
+      id: data['id'] ?? '',
       name: data['name'] ?? '',
       address: data['address'] ?? '',
       latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
-      pricePerHour: (data['pricePerHour'] as num?)?.toDouble() ?? 0.0,
-      totalCourts: (data['totalCourts'] as num?)?.toInt() ?? 0,
-      sportType: data['sportType'] as String?,
-      imageUrl: data['imageUrl'] as String?,
+      pricePerHour: (data['price_per_hour'] as num?)?.toDouble() ?? 0.0,
+      totalCourts: (data['total_courts'] as num?)?.toInt() ?? 0,
+      sportType: data['sport_type'] as String?,
+      imageUrl: data['image_url'] as String?,
       rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
-      totalReviews: (data['totalReviews'] as num?)?.toInt() ?? 0,
+      totalReviews: (data['total_reviews'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  // Chuyển sang Map để insert vào Supabase
+  Map<String, dynamic> toSupabase() {
+    return {
+      // 'id': id, // Thường để Supabase tự sinh ID gen_random_uuid()
+      'name': name,
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+      'price_per_hour': pricePerHour,
+      'total_courts': totalCourts,
+      if (sportType != null) 'sport_type': sportType,
+      if (imageUrl != null) 'image_url': imageUrl,
+      'rating': rating,
+      'total_reviews': totalReviews,
+    };
   }
 
   // Chuyển từ Model sang Object để ghi lên Firestore

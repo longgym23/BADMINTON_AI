@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BookingModel {
   final String? id; // id có thể null khi tạo, Firestore sẽ gán
@@ -25,37 +24,42 @@ class BookingModel {
     required this.status, // <-- THÊM DÒNG NÀY
   });
 
-  // Chuyển từ Firestore Document sang Model
-  factory BookingModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+  // Chuyển từ Supabase (Map snake_case) sang Model
+  factory BookingModel.fromSupabase(Map<String, dynamic> data) {
     return BookingModel(
-      id: doc.id, // Lấy id từ document
-      userId: data['userId'] ?? '',
-      userName: data['userName'] ?? '',
-      courtId: data['courtId'] ?? '',
-      courtName: data['courtName'] ?? '',
-      courtNumber: (data['courtNumber'] as num?)?.toInt() ?? 0,
-      date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      timeSlot: (data['timeSlot'] as num?)?.toInt() ?? 0,
+      id: data['id'] ?? '',
+      userId: data['user_id'] ?? '',
+      userName:
+          '', // Supabase thường join bảng profiles để lấy name, hoặc lưu cache. Tạm để trống hoặc xử lý sau.
+      courtId: data['court_id'] ?? '',
+      courtName: data['court_name'] ?? '',
+      courtNumber: (data['court_number'] as num?)?.toInt() ?? 0,
+      // Date trong Supabase trả về String (yyyy-MM-dd)
+      date: data['booking_date'] != null
+          ? DateTime.parse(data['booking_date'])
+          : DateTime.now(),
+      timeSlot: (data['time_slot'] as num?)?.toInt() ?? 0,
       price: (data['price'] as num?)?.toInt() ?? 0,
-      status: data['status'] ?? 'confirmed', // <-- THÊM DÒNG NÀY (với giá trị mặc định)
+      status: data['status'] ?? 'confirmed',
     );
   }
 
-  // Chuyển từ Model sang Object để ghi lên Firestore
-  Map<String, dynamic> toFirestore() {
+  // Chuyển sang Map để insert vào Supabase
+  Map<String, dynamic> toSupabase() {
     return {
-      'userId': userId,
-      'userName': userName,
-      'courtId': courtId,
-      'courtName': courtName,
-      'courtNumber': courtNumber,
-      'date': Timestamp.fromDate(date), // Chuyển DateTime thành Timestamp
-      'timeSlot': timeSlot,
+      'user_id': userId,
+      'court_id': courtId,
+      'court_name': courtName,
+      'court_number': courtNumber,
+      'booking_date': date.toIso8601String().split('T')[0], // YYYY-MM-DD
+      'time_slot': timeSlot,
       'price': price,
-      'status': status, // <-- THÊM DÒNG NÀY
+      'status': status,
     };
   }
+
+
 
   // (Thêm) Hàm copyWith để dễ dàng cập nhật
   BookingModel copyWith({
@@ -84,4 +88,3 @@ class BookingModel {
     );
   }
 }
-

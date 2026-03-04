@@ -34,9 +34,10 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  firebase_core: ^4.2.0
-  firebase_auth: ^6.1.1
-  cloud_firestore: ^6.0.3 # Database để lưu thông tin
+  # firebase_core: ^4.2.0 # Removed
+  # firebase_auth: ^6.1.1 # Removed
+  # cloud_firestore: ^6.0.3 # Removed
+  supabase_flutter: ^2.3.0 # Thêm Supabase
   # --- Giao diện & Tiện ích ---
   provider: ^6.1.2 # Quản lý trạng thái (state management)
   intl: ^0.19.0   # Định dạng ngày giờ
@@ -51,7 +52,7 @@ dependencies:
   # --- AI Chatbot (sử dụng Google Gemini) ---
   google_generative_ai: ^0.4.3
   table_calendar: ^3.0.1
-  cloud_functions: ^6.0.3
+  # cloud_functions: ^6.0.3 # Removed
   http: ^1.2.1
   # --- Media & Voice ---
   image_picker: ^1.1.2 # Chọn ảnh và chụp ảnh
@@ -59,7 +60,11 @@ dependencies:
   # --- URL Launcher ---
   url_launcher: ^6.3.0 # Mở URL và ứng dụng bên ngoài (Google Maps, etc.)
   mobile_scanner: ^7.1.4
-  firebase_storage: ^13.0.5
+  firebase_core: ^4.5.0
+  firebase_messaging: ^16.1.2
+  cached_network_image: ^3.4.1
+  timeago: ^3.7.1
+  # firebase_storage: ^13.0.5 # Removed
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -82,7 +87,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
-    - assets/images/badminton_logo.jpg
+    - assets/images/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

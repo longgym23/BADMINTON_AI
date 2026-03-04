@@ -1,30 +1,29 @@
-import 'package:badminton_ai/data/models/user_model.dart'; // Sử dụng path của bạn
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:badminton_ai/data/models/user_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthRepository {
-  final FirebaseAuth _firebaseAuth;
-  final FirebaseFirestore _firebaseFirestore;
+  final SupabaseClient _client;
 
   AuthRepository({
-    required FirebaseAuth firebaseAuth,
-    required FirebaseFirestore firebaseFirestore,
-  })  : _firebaseAuth = firebaseAuth,
-        _firebaseFirestore = firebaseFirestore;
+    SupabaseClient? client,
+    // Giữ lại tham số cũ để tránh lỗi trong main.dart nếu chưa sửa xong
+    dynamic firebaseAuth,
+    dynamic firebaseFirestore,
+  }) : _client = client ?? Supabase.instance.client;
 
   // Lấy stream trạng thái đăng nhập
-  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+  Stream<User?> get authStateChanges =>
+      _client.auth.onAuthStateChange.map((event) => event.session?.user);
 
-  // Lấy UserModel từ Firestore
-  // SỬA LỖI 1: Xóa dấu gạch dưới `_` để biến nó thành hàm công khai
+  // Lấy UserModel từ Table profiles
   Future<UserModel?> getUserModel(String userId) async {
     try {
-      final doc =
-          await _firebaseFirestore.collection('users').doc(userId).get();
-      if (doc.exists) {
-        return UserModel.fromFirestore(doc);
-      }
-      return null;
+      final data = await _client
+          .from('profiles')
+          .select()
+          .eq('id', userId)
+          .single();
+      return UserModel.fromSupabase(data);
     } catch (e) {
       print("Error getUserModel: $e");
       return null;
@@ -37,24 +36,23 @@ class AuthRepository {
     String? phoneNumber,
   }) async {
     try {
-      final user = _firebaseAuth.currentUser;
-      if (user == null || user.uid != userId) return null;
+      final user = _client.auth.currentUser;
+      if (user == null || user.id != userId) return null;
 
       final updateData = <String, dynamic>{};
       if (displayName != null) {
-        await user.updateDisplayName(displayName);
-        updateData['displayName'] = displayName;
+        // Cập nhật metadata trong Auth
+        await _client.auth.updateUser(
+          UserAttributes(data: {'display_name': displayName}),
+        );
+        updateData['display_name'] = displayName;
       }
       if (phoneNumber != null) {
-        if (phoneNumber.isEmpty) {
-          updateData['phoneNumber'] = FieldValue.delete();
-        } else {
-          updateData['phoneNumber'] = phoneNumber;
-        }
+        updateData['phone_number'] = phoneNumber;
       }
 
       if (updateData.isNotEmpty) {
-        await _firebaseFirestore.collection('users').doc(userId).update(updateData);
+        await _client.from('profiles').update(updateData).eq('id', userId);
       }
 
       return await getUserModel(userId);
@@ -65,18 +63,17 @@ class AuthRepository {
   }
 
   // Đăng nhập
-  // SỬA LỖI 2: Tên hàm là 'signInWithEmailAndPassword'
   Future<UserModel?> signInWithEmailAndPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     try {
-      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+      final response = await _client.auth.signInWithPassword(
         email: email,
         password: password,
       );
-      if (userCredential.user != null) {
-        // Lấy UserModel (đã bao gồm 'role')
-        // SỬA LỖI 2: Xóa dấu gạch dưới `_` để gọi hàm công khai
-        return await getUserModel(userCredential.user!.uid);
+      if (response.user != null) {
+        return await getUserModel(response.user!.id);
       }
       return null;
     } catch (e) {
@@ -86,29 +83,25 @@ class AuthRepository {
   }
 
   // Đăng ký
-  // SỬA LỖI 3: Tên hàm là 'registerWithEmailAndPassword'
   Future<UserModel?> registerWithEmailAndPassword(
-      String email, String password, String displayName) async {
+    String email,
+    String password,
+    String displayName,
+  ) async {
     try {
-      final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+      final response = await _client.auth.signUp(
         email: email,
         password: password,
+        data: {'display_name': displayName},
       );
-      if (userCredential.user != null) {
-        // Cập nhật display name trong Firebase Auth
-        await userCredential.user!.updateDisplayName(displayName);
 
-        // Tạo UserModel
-        UserModel newUser = UserModel(
-          id: userCredential.user!.uid,
+      if (response.user != null) {
+        return UserModel(
+          id: response.user!.id,
           email: email,
           displayName: displayName,
-          role: 'user', // Gán vai trò 'user' mặc định
+          role: 'user',
         );
-
-        // Tạo document trong 'users'
-        await _createUserDocument(newUser);
-        return newUser;
       }
       return null;
     } catch (e) {
@@ -117,22 +110,8 @@ class AuthRepository {
     }
   }
 
-  // Hàm private để tạo document user
-  Future<void> _createUserDocument(UserModel user) async {
-    try {
-      await _firebaseFirestore
-          .collection('users')
-          .doc(user.id)
-          .set(user.toFirestore());
-    } catch (e) {
-      print("Error _createUserDocument: $e");
-    }
-  }
-
   // Đăng xuất
   Future<void> signOut() async {
-    await _firebaseAuth.signOut();
+    await _client.auth.signOut();
   }
 }
-
-

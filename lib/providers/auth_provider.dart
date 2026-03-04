@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:badminton_ai/data/models/user_model.dart';
 import 'package:badminton_ai/data/repositories/auth_repository.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 
 enum AuthState { unknown, loading, authenticated, unauthenticated }
@@ -18,69 +18,75 @@ class AppAuthProvider extends ChangeNotifier {
   AuthState _authState = AuthState.unknown;
   AuthState get authState => _authState;
 
-  String? get userId => _firebaseUser?.uid;
+  String? get userId => _currentUser?.id;
   String get userName => _userModel?.displayName ?? "User";
-  String get userRole => _userModel?.role ?? 'user'; // Sửa 'member' thành 'user'
+  String get userRole => _userModel?.role ?? 'user';
 
-  User? _firebaseUser;
+  User? _currentUser;
 
   AppAuthProvider({required AuthRepository authRepository})
-      : _authRepository = authRepository;
+    : _authRepository = authRepository;
 
   // Kiểm tra trạng thái đăng nhập
   void checkAuthState() {
     _authState = AuthState.loading;
     notifyListeners();
 
-    _authStateSubscription =
-        _authRepository.authStateChanges.listen((User? user) async {
+    _authStateSubscription = _authRepository.authStateChanges.listen((
+      User? user,
+    ) async {
       if (user == null) {
-        _firebaseUser = null;
+        _currentUser = null;
         _userModel = null;
         _authState = AuthState.unauthenticated;
       } else {
-        _firebaseUser = user;
-        // Lấy thông tin user (vai trò) từ Firestore
-        // SỬA LỖI 1:
-        _userModel = await _authRepository.getUserModel(user.uid);
+        _currentUser = user;
+        // Lấy thông tin user (vai trò) từ Table profiles
+        _userModel = await _authRepository.getUserModel(user.id);
         _authState = AuthState.authenticated;
       }
       notifyListeners();
     });
   }
 
-  Future<bool> signIn(String email, String password) async {
+  Future<String?> signIn(String email, String password) async {
     _authState = AuthState.loading;
     notifyListeners();
     try {
-      // SỬA LỖI 2:
-      final userModel = await _authRepository.signInWithEmailAndPassword(email, password);
-      
-      // Nếu đăng nhập thành công, listener trong checkAuthState
-      // sẽ tự động chạy và cập nhật _userModel.
-      // Tuy nhiên, chúng ta có thể cập nhật ngay lập tức ở đây.
+      final userModel = await _authRepository.signInWithEmailAndPassword(
+        email,
+        password,
+      );
+
       if (userModel != null) {
-         _userModel = userModel;
-         _authState = AuthState.authenticated;
-         notifyListeners();
-         return true;
+        _userModel = userModel;
+        _authState = AuthState.authenticated;
+        notifyListeners();
+        return null; // Success
       }
-      return false; // Trường hợp hiếm
+      return 'Đăng nhập thất bại';
+    } on AuthException catch (e) {
+      _authState = AuthState.unauthenticated;
+      notifyListeners();
+      // Trả về message từ Supabase (đã được localize hoặc raw message)
+      return e.message;
     } catch (e) {
       _authState = AuthState.unauthenticated;
       notifyListeners();
-      return false;
+      return 'Đã xảy ra lỗi không xác định: $e';
     }
   }
 
   Future<bool> signUp(String email, String password, String displayName) async {
-     _authState = AuthState.loading;
+    _authState = AuthState.loading;
     notifyListeners();
     try {
-      // SỬA LỖI 3:
-      final userModel = await _authRepository.registerWithEmailAndPassword(email, password, displayName);
-      
-      // Tương tự như signIn, listener sẽ tự động cập nhật
+      final userModel = await _authRepository.registerWithEmailAndPassword(
+        email,
+        password,
+        displayName,
+      );
+
       if (userModel != null) {
         _userModel = userModel;
         _authState = AuthState.authenticated;
@@ -97,14 +103,13 @@ class AppAuthProvider extends ChangeNotifier {
 
   Future<void> signOut() async {
     await _authRepository.signOut();
-    // Listener sẽ tự động chuyển _authState = AuthState.unauthenticated
   }
 
   Future<bool> updateUserProfile({
     String? displayName,
     String? phoneNumber,
   }) async {
-    if (_firebaseUser == null) return false;
+    if (_currentUser == null) return false;
     final trimmedName = displayName?.trim();
     final trimmedPhone = phoneNumber?.trim();
 
@@ -118,7 +123,7 @@ class AppAuthProvider extends ChangeNotifier {
 
     try {
       final updatedUser = await _authRepository.updateUserProfile(
-        _firebaseUser!.uid,
+        _currentUser!.id,
         displayName: trimmedName,
         phoneNumber: trimmedPhone,
       );
@@ -143,4 +148,3 @@ class AppAuthProvider extends ChangeNotifier {
     super.dispose();
   }
 }
-

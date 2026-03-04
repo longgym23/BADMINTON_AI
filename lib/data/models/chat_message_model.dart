@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class ChatMessageModel {
   final String id;
@@ -21,31 +21,32 @@ class ChatMessageModel {
     this.metadata,
   });
 
-  // Convert to Map for Firestore
-  Map<String, dynamic> toMap() {
-    return {
-      'text': text,
-      'isUser': isUser,
-      'timestamp': Timestamp.fromDate(timestamp),
-      'imagePath': imagePath,
-      'audioPath': audioPath,
-      'type': type,
-      'metadata': metadata,
-    };
+
+  // Create from Supabase Map
+  factory ChatMessageModel.fromSupabase(Map<String, dynamic> data) {
+    return ChatMessageModel(
+      id: data['id'] ?? '',
+      text: data['text'] ?? '',
+      isUser: data['is_user'] ?? false,
+      timestamp: data['created_at'] != null
+          ? DateTime.parse(data['created_at']) // Supabase trả về ISO8601 string
+          : DateTime.now(),
+      imagePath: data['image_path'],
+      audioPath: data['audio_path'],
+      type: 'text', // Bảng chat_messages chưa có cột type, mặc định text
+      metadata: null, // Bảng chưa có metadata
+    );
   }
 
-  // Create from Firestore Document
-  factory ChatMessageModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    return ChatMessageModel(
-      id: doc.id,
-      text: data['text'] ?? '',
-      isUser: data['isUser'] ?? false,
-      timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      imagePath: data['imagePath'],
-      audioPath: data['audioPath'],
-      type: data['type'] ?? 'text',
-      metadata: data['metadata'] as Map<String, dynamic>?,
-    );
+  // Convert to Map for Supabase
+  Map<String, dynamic> toSupabase() {
+    return {
+      'user_id': '', // Sẽ được điền ở repository
+      'text': text,
+      'is_user': isUser,
+      'image_path': imagePath,
+      'audio_path': audioPath,
+      // 'created_at': Supabase tự sinh
+    };
   }
 }

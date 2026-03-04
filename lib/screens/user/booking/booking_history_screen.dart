@@ -1,5 +1,5 @@
 import 'package:badminton_ai/data/models/booking_model.dart';
-import 'package:badminton_ai/data/repositories/firestore_repository.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/services/court_info_service.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +15,7 @@ class BookingHistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // colors variable removed
-    final repo = context.watch<FirestoreRepository>();
+    final repo = context.watch<SupabaseRepository>();
     final userId = context.watch<AppAuthProvider>().userModel?.id;
 
     return Scaffold(
@@ -198,7 +198,7 @@ class _SummaryCard extends StatelessWidget {
 
 class _BookingCard extends StatelessWidget {
   final BookingModel booking;
-  final FirestoreRepository repo;
+  final SupabaseRepository repo;
 
   const _BookingCard({required this.booking, required this.repo});
 

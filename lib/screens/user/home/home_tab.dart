@@ -1,6 +1,6 @@
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/notification_model.dart';
-import 'package:badminton_ai/data/repositories/firestore_repository.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/notification_provider.dart';
 import 'package:badminton_ai/screens/user/booking/booking_method_modal.dart';
@@ -15,6 +15,13 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
+
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:badminton_ai/blocs/home_filter/home_filter_bloc.dart';
+import 'package:badminton_ai/blocs/home_filter/home_filter_state.dart';
+import 'package:badminton_ai/screens/user/home/components/home_search_bar.dart';
+import 'package:badminton_ai/screens/user/home/components/home_filter_bar.dart';
+import 'package:badminton_ai/screens/user/home/components/home_filter_modal.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -153,7 +160,7 @@ class _HomeTabState extends State<HomeTab> {
       ),
     );
 
-    final firestoreRepo = context.read<FirestoreRepository>();
+    final firestoreRepo = context.read<SupabaseRepository>();
     final court = await firestoreRepo.getCourtLocationById(scannedCode);
 
     if (!mounted) return;
@@ -202,11 +209,29 @@ class _HomeTabState extends State<HomeTab> {
     }
   }
 
+  void _showFilterModal() {
+    final currentCriteria = context.read<HomeFilterBloc>().state.filterCriteria;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => BlocProvider.value(
+        value: context.read<HomeFilterBloc>(),
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: HomeFilterModal(initialCriteria: currentCriteria),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AppAuthProvider>();
     final user = authProvider.userModel;
-    final firestoreRepo = context.watch<FirestoreRepository>();
 
     // Using a dark blue color for header background like the reference
     // final headerColor = const Color(0xFF1F2937); // Moved to AppColors.darkHeader
@@ -283,68 +308,26 @@ class _HomeTabState extends State<HomeTab> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                // Search Bar
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: const InputDecoration(
-                            hintText: 'Tìm kiếm sân, vị trí...',
-                            border: InputBorder.none,
-                            hintStyle: TextStyle(
-                              color: AppColors.textLight,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
+                // Search Bar Component
+                HomeSearchBar(
+                  controller: _searchController,
+                  onQrScan: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const QRScannerScreen(),
                       ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.qr_code_scanner,
-                          color: Colors.grey,
-                        ),
-                        onPressed: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const QRScannerScreen(),
-                            ),
-                          );
-                          if (result != null && result is String) {
-                            _handleQRCodeResult(result);
-                          }
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.mic, color: Colors.grey),
-                    ],
-                  ),
+                    );
+                    if (result != null && result is String) {
+                      _handleQRCodeResult(result);
+                    }
+                  },
+                  onFilterTap: _showFilterModal,
                 ),
                 const SizedBox(height: 16),
-                // Filter Tags
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildHeaderFilterChip('Cầu lông gần tôi', true),
-                      const SizedBox(width: 8),
-                      _buildHeaderFilterChip('Pickleball', false),
-                      const SizedBox(width: 8),
-                      _buildHeaderFilterChip('Sân mới', false),
-                    ],
-                  ),
-                ),
+
+                // Quick Filter Tag Component
+                const HomeFilterBar(),
               ],
             ),
           ),
@@ -355,79 +338,6 @@ class _HomeTabState extends State<HomeTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Categories
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: 90,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      children: [
-                        _buildCategoryItem(
-                          'Pickleball',
-                          Icons.sports_tennis,
-                          AppColors.primary,
-                        ),
-                        _buildCategoryItem(
-                          'Cầu lông',
-                          Icons.sports_tennis,
-                          AppColors.success,
-                        ),
-                        _buildCategoryItem(
-                          'Bóng đá',
-                          Icons.sports_soccer,
-                          Colors.orange,
-                        ),
-                        _buildCategoryItem(
-                          'Bóng chuyền',
-                          Icons.sports_volleyball,
-                          Colors.purple,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // "Bộ lọc tìm kiếm"
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Bộ lọc tìm kiếm',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {},
-                          child: const Text(
-                            'Xóa bộ lọc',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        _buildFilterTag('Có điều hòa', true),
-                        const SizedBox(width: 8),
-                        _buildFilterTag('< 100k', true),
-                        const SizedBox(width: 8),
-                        _buildFilterTag('Tất cả', false, isDark: true),
-                        const SizedBox(width: 8),
-                        _buildFilterTag('Giá cả', false, hasArrow: true),
-                        const SizedBox(width: 8),
-                        _buildFilterTag('Tiện nghi', false, hasArrow: true),
-                      ],
-                    ),
-                  ),
-
                   // "Ưu đãi đặc biệt"
                   const SizedBox(height: 20),
                   Padding(
@@ -498,17 +408,35 @@ class _HomeTabState extends State<HomeTab> {
                   ),
                   const SizedBox(height: 10),
 
-                  // Courts List
-                  StreamBuilder<List<CourtLocationModel>>(
-                    stream: firestoreRepo.getCourtLocationsStream(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData)
+                  // Courts List (Integrated with BLoC)
+                  BlocBuilder<HomeFilterBloc, HomeFilterState>(
+                    builder: (context, state) {
+                      if (state.status == HomeFilterStatus.loading ||
+                          state.status == HomeFilterStatus.initial) {
                         return const Center(child: CircularProgressIndicator());
-                      final courts = snapshot.data!;
-                      if (courts.isEmpty)
-                        return const Center(child: Text("Chưa có sân nào"));
+                      }
 
-                      // Simple sort by distance
+                      if (state.status == HomeFilterStatus.failure) {
+                        return Center(
+                          child: Text(state.errorMessage ?? "Có lỗi xảy ra"),
+                        );
+                      }
+
+                      final courts = state.filteredCourts;
+
+                      if (courts.isEmpty) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20.0),
+                            child: Text(
+                              "Không có sân nào phù hợp với bộ lọc",
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        );
+                      }
+
+                      // Sort by distance if location available
                       final sortedCourts = List<CourtLocationModel>.from(
                         courts,
                       );
@@ -544,26 +472,6 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const ChatbotTab(),
-            ), // Navigate to Chatbot
-          );
-        },
-        backgroundColor: AppColors.darkHeader,
-        icon: Container(
-          padding: const EdgeInsets.all(4),
-          decoration: const BoxDecoration(
-            color: AppColors.success,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.android, color: Colors.white, size: 16),
-        ),
-        label: const Text('Chat với AI', style: TextStyle(color: Colors.white)),
       ),
     );
   }
@@ -615,24 +523,6 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _buildHeaderFilterChip(String label, bool isSelected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? Colors.grey[700]
-            : Colors
-                  .grey[800], // Keep dark theme specific greys or move to AppColors if needed, but safe for now to keep as is for header
-        borderRadius: BorderRadius.circular(20),
-        border: isSelected ? Border.all(color: Colors.grey[500]!) : null,
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(color: Colors.white, fontSize: 12),
-      ),
-    );
-  }
-
   Widget _buildCategoryItem(String label, IconData icon, Color color) {
     return Padding(
       padding: const EdgeInsets.only(right: 20),
@@ -656,47 +546,47 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _buildFilterTag(
-    String label,
-    bool isSelected, {
-    bool isDark = false,
-    bool hasArrow = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isDark
-            ? AppColors.darkHeader
-            : (isSelected ? AppColors.primaryBg : AppColors.surface),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppColors.borderColor),
-      ),
-      child: Row(
-        children: [
-          if (isDark) const Icon(Icons.tune, color: Colors.white, size: 14),
-          if (isDark) const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isDark
-                  ? AppColors.surface
-                  : (isSelected ? AppColors.primary : AppColors.textBlack),
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          if (isSelected && !isDark) ...[
-            const SizedBox(width: 4),
-            const Icon(Icons.close, size: 14, color: AppColors.primary),
-          ],
-          if (hasArrow) ...[
-            const SizedBox(width: 4),
-            const Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
-          ],
-        ],
-      ),
-    );
-  }
+  // Widget _buildFilterTag(
+  //   String label,
+  //   bool isSelected, {
+  //   bool isDark = false,
+  //   bool hasArrow = false,
+  // }) {
+  //   return Container(
+  //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+  //     decoration: BoxDecoration(
+  //       color: isDark
+  //           ? AppColors.darkHeader
+  //           : (isSelected ? AppColors.primaryBg : AppColors.surface),
+  //       borderRadius: BorderRadius.circular(4),
+  //       border: Border.all(color: AppColors.borderColor),
+  //     ),
+  //     child: Row(
+  //       children: [
+  //         if (isDark) const Icon(Icons.tune, color: Colors.white, size: 14),
+  //         if (isDark) const SizedBox(width: 4),
+  //         Text(
+  //           label,
+  //           style: TextStyle(
+  //             color: isDark
+  //                 ? AppColors.surface
+  //                 : (isSelected ? AppColors.primary : AppColors.textBlack),
+  //             fontSize: 12,
+  //             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+  //           ),
+  //         ),
+  //         if (isSelected && !isDark) ...[
+  //           const SizedBox(width: 4),
+  //           const Icon(Icons.close, size: 14, color: AppColors.primary),
+  //         ],
+  //         if (hasArrow) ...[
+  //           const SizedBox(width: 4),
+  //           const Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
+  //         ],
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildSpecialOfferCard() {
     return Container(
@@ -960,7 +850,7 @@ class _CourtListItem extends StatelessWidget {
                       children: [
                         TextSpan(
                           text:
-                              '${NumberFormat.compact().format(court.pricePerHour)}k',
+                              '${NumberFormat.compact().format(court.pricePerHour)}',
                           style: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.bold,

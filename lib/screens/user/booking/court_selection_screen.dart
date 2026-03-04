@@ -121,16 +121,20 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
         success++;
         if (userId != null) {
           // Notif
-          await notificationProvider.createBookingSuccessNotification(
-            userId: userId,
-            bookingId: bookingId,
-            courtName: widget.selectedCourt.name,
-            courtAddress: widget.selectedCourt.address,
-            courtNumber: slot.courtNumber,
-            bookingDate: _currentDate,
-            timeSlot: timeSlotHour,
-            price: (widget.selectedCourt.pricePerHour / 2).round(),
-          );
+          try {
+            await notificationProvider.createBookingSuccessNotification(
+              userId: userId,
+              bookingId: bookingId,
+              courtName: widget.selectedCourt.name,
+              courtAddress: widget.selectedCourt.address,
+              courtNumber: slot.courtNumber,
+              bookingDate: _currentDate,
+              timeSlot: timeSlotHour,
+              price: (widget.selectedCourt.pricePerHour / 2).round(),
+            );
+          } catch (e) {
+            print("Lỗi tạo thông báo: $e");
+          }
         }
       }
     }

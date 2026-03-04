@@ -5,6 +5,7 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:badminton_ai/screens/user/friends/friends_main_screen.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -180,18 +181,9 @@ class ProfileTab extends StatelessWidget {
               icon: Icons.account_balance_wallet,
               color: AppColors.success,
               title: 'Ví của tôi',
-              trailingText: '500k đ',
+              // trailingText: '500k đ',
               onTap: () {
                 // Wallet action
-              },
-            ),
-            _buildMenuItem(
-              context,
-              icon: Icons.smart_toy,
-              color: Colors.orange,
-              title: 'Cài đặt Chatbot AI',
-              onTap: () {
-                // Chatbot settings action
               },
             ),
             _buildMenuItem(
@@ -208,6 +200,21 @@ class ProfileTab extends StatelessWidget {
               color: AppColors.textGrey,
               title: 'Hỗ trợ & Chính sách',
               onTap: () {},
+            ),
+            _buildMenuItem(
+              context,
+              icon: Icons.group,
+              color: AppColors.primary,
+              title: 'Cộng đồng & Bạn bè',
+              subtitle: 'Tìm bạn, quản lý kết bạn',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const FriendsMainScreen(),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 24),

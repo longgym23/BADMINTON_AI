@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:badminton_ai/data/models/booking_model.dart';
-import 'package:badminton_ai/data/repositories/firestore_repository.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 
 class BookingProvider with ChangeNotifier {
-  final FirestoreRepository _firestoreRepository;
+  final SupabaseRepository _firestoreRepository;
   final AppAuthProvider _authProvider;
 
   // Stream để lắng nghe các sân con đã bị đặt
@@ -13,8 +13,9 @@ class BookingProvider with ChangeNotifier {
   StreamSubscription? _bookingSubscription;
   final StreamController<List<BookingModel>> _bookingsStreamController =
       StreamController<List<BookingModel>>.broadcast();
-      
-  Stream<List<BookingModel>> get bookingsStream => _bookingsStreamController.stream;
+
+  Stream<List<BookingModel>> get bookingsStream =>
+      _bookingsStreamController.stream;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -23,27 +24,30 @@ class BookingProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   BookingProvider({
-    required FirestoreRepository firestoreRepository,
+    required SupabaseRepository firestoreRepository,
     required AppAuthProvider authProvider,
-  })  : _firestoreRepository = firestoreRepository,
-        _authProvider = authProvider;
+  }) : _firestoreRepository = firestoreRepository,
+       _authProvider = authProvider;
 
   // SỬA: Hàm này giờ sẽ lắng nghe và đẩy dữ liệu vào StreamController
   void fetchBookingsForDay(String courtId, DateTime date) {
     // Hủy stream cũ (nếu có) trước khi lắng nghe stream mới
     _bookingSubscription?.cancel();
-    
+
     _bookingSubscription = _firestoreRepository
         .getBookingsStreamForDay(courtId, date)
-        .listen((bookings) {
-          if (!_bookingsStreamController.isClosed) {
-            _bookingsStreamController.add(bookings);
-          }
-        }, onError: (error) {
-           if (!_bookingsStreamController.isClosed) {
-             _bookingsStreamController.addError(error);
-           }
-        });
+        .listen(
+          (bookings) {
+            if (!_bookingsStreamController.isClosed) {
+              _bookingsStreamController.add(bookings);
+            }
+          },
+          onError: (error) {
+            if (!_bookingsStreamController.isClosed) {
+              _bookingsStreamController.addError(error);
+            }
+          },
+        );
   }
 
   // THÊM: Hàm để đóng stream khi không cần thiết (tránh rò rỉ bộ nhớ)
@@ -81,7 +85,7 @@ class BookingProvider with ChangeNotifier {
 
     try {
       final user = _authProvider.userModel!;
-      
+
       BookingModel newBooking = BookingModel(
         userId: user.id,
         userName: user.displayName ?? user.email ?? 'Không tên',
@@ -95,7 +99,7 @@ class BookingProvider with ChangeNotifier {
       );
 
       final bookingId = await _firestoreRepository.createBooking(newBooking);
-      
+
       _isLoading = false;
       notifyListeners();
       return bookingId;
@@ -108,4 +112,3 @@ class BookingProvider with ChangeNotifier {
     }
   }
 }
-

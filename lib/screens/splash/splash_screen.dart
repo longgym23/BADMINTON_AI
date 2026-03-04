@@ -26,7 +26,8 @@ class SplashScreen extends StatelessWidget {
           default:
             return LoadingSpinner(message: 'Đang tải...');
         }
-      },
+      },                                           
     );
   }
 }
+                                                                                                                                                                              
