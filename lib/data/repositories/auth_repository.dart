@@ -34,6 +34,7 @@ class AuthRepository {
     String userId, {
     String? displayName,
     String? phoneNumber,
+    String? avatarUrl,
   }) async {
     try {
       final user = _client.auth.currentUser;
@@ -49,6 +50,9 @@ class AuthRepository {
       }
       if (phoneNumber != null) {
         updateData['phone_number'] = phoneNumber;
+      }
+      if (avatarUrl != null) {
+        updateData['avatar_url'] = avatarUrl.isEmpty ? null : avatarUrl;
       }
 
       if (updateData.isNotEmpty) {
@@ -79,6 +83,22 @@ class AuthRepository {
     } catch (e) {
       print("Error signIn: $e");
       rethrow;
+    }
+  }
+
+  // Đăng nhập Bằng Google
+  Future<bool> signInWithGoogle() async {
+    try {
+      // Gọi OAuth mặc định của Supabase
+      // Trên Web/Android nó sẽ mở Popup/Browser để chọn tài khoản Google
+      final success = await _client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.kloo://login-callback/',
+      );
+      return success;
+    } catch (e) {
+      print("Error signInWithGoogle: $e");
+      return false;
     }
   }
 

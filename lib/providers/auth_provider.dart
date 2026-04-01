@@ -3,6 +3,8 @@ import 'package:badminton_ai/data/models/user_model.dart';
 import 'package:badminton_ai/data/repositories/auth_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 
 enum AuthState { unknown, loading, authenticated, unauthenticated }
 
@@ -77,6 +79,24 @@ class AppAuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> signInWithGoogle() async {
+    _authState = AuthState.loading;
+    notifyListeners();
+    try {
+      // Gọi repository
+      final success = await _authRepository.signInWithGoogle();
+      if (!success) {
+        _authState = AuthState.unauthenticated;
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      _authState = AuthState.unauthenticated;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> signUp(String email, String password, String displayName) async {
     _authState = AuthState.loading;
     notifyListeners();
@@ -135,6 +155,66 @@ class AppAuthProvider extends ChangeNotifier {
       }
     } catch (e) {
       // ignore error, will toggle flag below
+    }
+
+    _isUpdatingProfile = false;
+    notifyListeners();
+    return false;
+  }
+
+  Future<bool> updateUserAvatar(File image) async {
+    if (_currentUser == null) return false;
+
+    _isUpdatingProfile = true;
+    notifyListeners();
+
+    try {
+      final supabaseRepo = SupabaseRepository();
+      final String publicUrl = await supabaseRepo.uploadImage(
+        image.path,
+        'avatars',
+      );
+
+      final updatedUser = await _authRepository.updateUserProfile(
+        _currentUser!.id,
+        avatarUrl: publicUrl,
+      );
+
+      if (updatedUser != null) {
+        _userModel = updatedUser;
+        _isUpdatingProfile = false;
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      print("Error updateUserAvatar: $e");
+    }
+
+    _isUpdatingProfile = false;
+    notifyListeners();
+    return false;
+  }
+
+  Future<bool> deleteUserAvatar() async {
+    if (_currentUser == null) return false;
+
+    _isUpdatingProfile = true;
+    notifyListeners();
+
+    try {
+      final updatedUser = await _authRepository.updateUserProfile(
+        _currentUser!.id,
+        avatarUrl: '', // Send empty string to signify deletion in repository
+      );
+
+      if (updatedUser != null) {
+        _userModel = updatedUser;
+        _isUpdatingProfile = false;
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+       print("Error deleteUserAvatar: $e");
     }
 
     _isUpdatingProfile = false;

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:badminton_ai/data/models/chat_message_model.dart';
 import 'package:badminton_ai/data/models/booking_model.dart';
-import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -16,7 +15,17 @@ class ChatRepository {
     dynamic firestore,
   }) : _client = client ?? Supabase.instance.client;
 
-  // Stream danh sách tin nhắn
+  // Fetch lịch sử chat 1 lần (Cho Chatbot AI)
+  Future<List<ChatMessageModel>> fetchChatHistory(String userId) async {
+    final data = await _client
+        .from('chat_messages')
+        .select()
+        .eq('user_id', userId)
+        .order('created_at', ascending: false);
+    return data.map((e) => ChatMessageModel.fromSupabase(e)).toList();
+  }
+
+  // Stream danh sách tin nhắn (Cho nhóm/1-1 nếu cần Realtime)
   Stream<List<ChatMessageModel>> getMessages(String userId) {
     return _client
         .from('chat_messages')
@@ -47,59 +56,43 @@ class ChatRepository {
     await _client.from('chat_messages').delete().eq('user_id', userId);
   }
 
-  // RAG: Lấy ngữ cảnh hệ thống (Đã tối ưu Token)
+  // RAG: Lấy ngữ cảnh hệ thống (Đã tối ưu Token triệt để - Hybrid Approach)
   Future<String> getSystemContext(String userId) async {
     try {
-      // 1. Lấy danh sách sân (Giới hạn tối đa 5 sân để tiết kiệm Token)
-      final courtsData = await _client.from('courts').select().limit(5);
-      final courts = courtsData
-          .map((e) => CourtLocationModel.fromSupabase(e))
-          .toList();
-
-      // Dùng định dạng ngắn gọn (CSV/Pipe) thay vì câu văn dài
-      String courtsContext = "SÂN:\n";
-      if (courts.isEmpty) {
-        courtsContext += "Trống\n";
-      } else {
-        for (var court in courts) {
-          // Chỉ gửi Tên | Giá | Số sân
-          courtsContext +=
-              "${court.name}|${court.pricePerHour}đ|${court.totalCourts}sân\n";
-        }
-      }
-
-      // 2. Lấy lịch đặt của user (Chỉ lấy 3 lịch mới nhất từ hôm nay)
-      final nowStr = DateTime.now()
-          .subtract(const Duration(days: 1))
-          .toIso8601String();
+      // 1. Chỉ lấy tối đa 2 lịch trình SẮP TỚI của user để trả lời nhắc hẹn (Giảm tải Token).
+      final nowStr = DateTime.now().toIso8601String();
       final bookingsData = await _client
           .from('bookings')
           .select()
           .eq('user_id', userId)
           .gte('booking_date', nowStr)
           .order('booking_date', ascending: true)
-          .limit(3);
+          .limit(2);
 
-      final bookings = bookingsData
-          .map((e) => BookingModel.fromSupabase(e))
-          .toList();
-
-      String bookingContext = "\nLỊCH:\n";
-
-      if (bookings.isEmpty) {
-        bookingContext += "Trống\n";
+      String context = "CTX_USER:\n";
+      if (bookingsData.isEmpty) {
+        context += "Lịch tới: Trống\n";
       } else {
-        for (var b in bookings) {
-          // Format ngắn: Ngày/Tháng | Giờ | Tên Sân | Trạng thái
-          bookingContext +=
-              "${b.date.day}/${b.date.month}|${b.timeSlot}h|${b.courtName}|${b.status}\n";
+        context += "Lịch tới: ";
+        for (var bData in bookingsData) {
+          final b = BookingModel.fromSupabase(bData);
+          context += "${b.date.day}/${b.date.month} lúc ${b.timeSlot}h tại ${b.courtName}. ";
         }
+        context += "\n";
       }
 
-      return "$courtsContext$bookingContext";
+      // 2. Định nghĩa Quy tắc (System Prompts) thay vì nhồi mảng Dữ liệu vào
+      context += """RULES:
+- Bạn là trợ lý ảo App đặt sân thể thao (Bóng đá, Cầu lông, Tennis, Pickleball). Giải đáp siêu ngắn gọn, thân thiện bằng tiếng Việt.
+- NẾU người dùng hỏi tìm sân, đặt sân hoặc gợi ý sân, HÃY TRẢ LỜI NGẮN và BẮT BUỘC chèn đoạn mã [ACTION_SEARCH:mon_the_thao] vào ngay cuối câu.
+- Từ khoá môn thể thao: 'football', 'badminton', 'tennis', 'pickleball'.
+- Ví dụ User: "Tôi muốn đá bóng" -> Bạn đáp: "Vâng, mời bạn tham khảo các sân Bóng Đá tốt nhất hệ thống: [ACTION_SEARCH:football]"
+""";
+
+      return context;
     } catch (e) {
       print("Lỗi getSystemContext: $e");
-      return "";
+      return "RULES:\nTrả lời ngắn.\nBắt buộc thêm mã [ACTION_SEARCH:mon_the_thao] cuối câu nếu user muốn tìm/đặt sân.";
     }
   }
 
@@ -126,7 +119,7 @@ class ChatRepository {
     String promptToSend = text;
     if (text.isNotEmpty) {
       // Rút gọn Prompt Template để tiết kiệm token
-      promptToSend = "CTX:\n$context\nQ:\n$text\n(TL ngắn gọn nhất có thể)";
+      promptToSend = "$context\nUSER_ASK: $text";
     }
 
     // 3. Gọi API AI
@@ -181,7 +174,8 @@ class ChatRepository {
         }
       }
     } catch (e) {
-      answer = "Lỗi kết nối tới server. Vui lòng thử lại sau.";
+      answer = "Lỗi hệ thống/mạng: $e";
+      print("Lỗi sendMessageWithRAG: $e");
     }
 
     // 4. Lưu tin nhắn AI

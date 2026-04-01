@@ -1,4 +1,4 @@
-part of 'chat_rooms_bloc.dart';
+ part of 'chat_rooms_bloc.dart';
 
 abstract class ChatRoomsState extends Equatable {
   const ChatRoomsState();

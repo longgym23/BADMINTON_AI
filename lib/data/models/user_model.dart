@@ -44,11 +44,7 @@ class UserModel {
       displayName: data['display_name'],
       phoneNumber: data['phone_number'],
       role: data['role'] ?? 'user',
-      // Supabase Auth có thể lưu metadata, nhưng ta dùng bảng profiles
-      // Bảng profiles không có photoUrl trong schema mình tạo ở trên,
-      // nhưng nếu muốn có thể thêm. Tạm thời để null hoặc dùng avatar_url nếu có.
-      // SQL schema: id, email, display_name, phone_number, role
-      // photoUrl: null,
+      photoUrl: data['avatar_url'],
       fcmToken: data['fcm_token'],
     );
   }
@@ -60,7 +56,7 @@ class UserModel {
       'phone_number': phoneNumber,
       'role': role,
       'fcm_token': fcmToken,
-      // 'photo_url': photoUrl, // Cần thêm cột này vào bảng profiles nếu muốn lưu
+      'avatar_url': photoUrl,
     };
   }
 

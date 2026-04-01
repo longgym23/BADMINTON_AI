@@ -72,6 +72,8 @@ class BookingProvider with ChangeNotifier {
     required DateTime date,
     required int timeSlot,
     required int price,
+    String status = 'confirmed',
+    String? transactionId,
   }) async {
     if (_authProvider.userModel == null) {
       _errorMessage = "Bạn phải đăng nhập để đặt sân.";
@@ -95,7 +97,8 @@ class BookingProvider with ChangeNotifier {
         date: date,
         timeSlot: timeSlot,
         price: price,
-        status: 'confirmed', // Thêm status
+        status: status,
+        transactionId: transactionId,
       );
 
       final bookingId = await _firestoreRepository.createBooking(newBooking);

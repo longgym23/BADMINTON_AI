@@ -9,7 +9,8 @@ class BookingModel {
   final DateTime date;
   final int timeSlot;
   final int price;
-  final String status; // <-- THÊM DÒNG NÀY
+  final String status;
+  final String? transactionId; // <-- THÊM DÒNG NÀY ĐỂ GỘP HOÁ ĐƠN
 
   BookingModel({
     this.id,
@@ -22,6 +23,7 @@ class BookingModel {
     required this.timeSlot,
     required this.price,
     required this.status, // <-- THÊM DÒNG NÀY
+    this.transactionId,
   });
 
 
@@ -42,6 +44,7 @@ class BookingModel {
       timeSlot: (data['time_slot'] as num?)?.toInt() ?? 0,
       price: (data['price'] as num?)?.toInt() ?? 0,
       status: data['status'] ?? 'confirmed',
+      transactionId: data['transaction_id'],
     );
   }
 
@@ -56,6 +59,7 @@ class BookingModel {
       'time_slot': timeSlot,
       'price': price,
       'status': status,
+      if (transactionId != null) 'transaction_id': transactionId,
     };
   }
 
@@ -73,6 +77,7 @@ class BookingModel {
     int? timeSlot,
     int? price,
     String? status,
+    String? transactionId,
   }) {
     return BookingModel(
       id: id ?? this.id,
@@ -85,6 +90,7 @@ class BookingModel {
       timeSlot: timeSlot ?? this.timeSlot,
       price: price ?? this.price,
       status: status ?? this.status,
+      transactionId: transactionId ?? this.transactionId,
     );
   }
 }

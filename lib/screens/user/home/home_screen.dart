@@ -1,14 +1,14 @@
 import 'package:badminton_ai/screens/user/chat/chatbot_tab.dart';
-import 'package:badminton_ai/screens/user/highlights/highlights_tab.dart';
+import 'package:badminton_ai/screens/user/friends/friends_main_screen.dart';
 import 'package:badminton_ai/screens/user/home/home_tab.dart';
 import 'package:badminton_ai/screens/user/map/map_tab.dart';
 import 'package:badminton_ai/screens/user/profile/profile_tab.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_event.dart';
-import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:badminton_ai/screens/user/home/components/glass_bottom_nav_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -38,59 +38,24 @@ class _HomeScreenState extends State<HomeScreen> {
       ), // 0: Trang chủ (Wrapped with Filter BLoC)
       const MapTab(), // 1: Bản đồ
       const ChatbotTab(), // 2: Chatbot (Nút giữa)
-      const HighlightsTab(), // 3: Nổi bật
+      const FriendsMainScreen(), // 3: Cộng đồng & Bạn bè
       const ProfileTab(), // 4: Tài khoản
     ];
 
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _tabs),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textGrey,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
-          BottomNavigationBarItem(
-            icon: Image.asset(
-              'assets/images/map.png',
-              height: 24,
-              width: 24,
-              color: AppColors.textGrey,
-            ),
-            activeIcon: Image.asset(
-              'assets/images/map.png',
-              height: 24,
-              width: 24,
-              color: AppColors.primary,
-            ),
-            label: 'Bản đồ',
+      extendBody: true, // Allow body to stretch behind the navigation bar
+      body: Stack(
+        children: [
+          IndexedStack(index: _currentIndex, children: _tabs),
+          GlassBottomNavBar(
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
           ),
-          BottomNavigationBarItem(
-            icon: Image.asset(
-              'assets/images/chat-bot.png',
-              height: 24,
-              width: 24,
-              // Nếu icon chatbot có sẵn màu, bạn có thể bỏ dòng color đi
-              // color: AppColors.textGrey,
-            ),
-            activeIcon: Image.asset(
-              'assets/images/chat-bot.png',
-              height: 24,
-              width: 24,
-              // Nếu icon chatbot có sẵn màu, bạn có thể bỏ dòng color đi
-              // color: AppColors.primary,
-            ),
-            label: 'Chatbot',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Nổi bật'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Tài khoản'),
+          // const NetworkBanner(),
         ],
       ),
     );

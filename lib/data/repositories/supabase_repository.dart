@@ -70,7 +70,12 @@ class SupabaseRepository {
         .eq('court_id', courtId)
         .map(
           (data) => data
-              .where((e) => e['booking_date'] == dateStr)
+              .where((e) =>
+                  e['booking_date'] == dateStr &&
+                  // Chỉ hiển thị slot là "đã đặt" khi đã thanh toán thực sự
+                  // PENDING_PAYMENT = chưa thanh toán → không được chiếm chỗ
+                  e['status'] != 'PENDING_PAYMENT' &&
+                  e['status'] != 'cancelled')
               .map((e) => BookingModel.fromSupabase(e))
               .toList(),
         );
@@ -84,6 +89,15 @@ class SupabaseRepository {
         .select()
         .single();
     return response['id'];
+  }
+
+  // Xóa tất cả booking PENDING_PAYMENT của một giao dịch (khi hết giờ thanh toán)
+  Future<void> deletePendingBookingsByTransactionId(String transactionId) async {
+    await _client
+        .from('bookings')
+        .delete()
+        .eq('transaction_id', transactionId)
+        .eq('status', 'PENDING_PAYMENT');
   }
 
   // Lấy lịch sử đặt sân của user

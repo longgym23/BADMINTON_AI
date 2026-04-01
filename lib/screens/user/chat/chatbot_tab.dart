@@ -8,6 +8,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:badminton_ai/utils/app_colors.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
+import 'package:badminton_ai/data/models/court_location_model.dart';
+import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 
 class ChatbotTab extends StatefulWidget {
   const ChatbotTab({super.key});
@@ -76,7 +79,8 @@ class _ChatbotTabState extends State<ChatbotTab> {
     final messageText = text ?? _textController.text.trim();
     if (messageText.isEmpty && imagePath == null) return;
 
-    if (text == null) _textController.clear();
+    _textController.clear();
+    _recognizedText = '';
     FocusScope.of(context).unfocus();
 
     context.read<ChatBloc>().add(
@@ -146,6 +150,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
           if (_isListening) _buildVoiceIndicator(),
           _buildSuggestionChips(),
           _buildInputArea(),
+          const SizedBox(height: 100),
         ],
       ),
     );
@@ -247,9 +252,10 @@ class _ChatbotTabState extends State<ChatbotTab> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          _Chip('Giá dịch vụ đi kèm?'),
-          _Chip('Huỷ đặt sân'),
-          _Chip('Xem hướng dẫn'),
+          _Chip('Sân cầu lông gần đây'),
+          _Chip('Tìm sân bóng đá gần đây'),
+          _Chip('Sân Pickleball tốt nhất'),
+          _Chip('Tìm sân cầu lông trống'),
         ],
       ),
     );
@@ -279,8 +285,8 @@ class _ChatbotTabState extends State<ChatbotTab> {
         children: [
           IconButton(
             icon: const Icon(
-              Icons.add_circle_outline,
-              color: AppColors.textGrey,
+              Icons.add_circle,
+              color: AppColors.brandOrange,
             ),
             onPressed: () => _showAttachmentSheet(),
           ),
@@ -288,14 +294,17 @@ class _ChatbotTabState extends State<ChatbotTab> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: AppColors.background,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(25),
+                border: Border.all(color: AppColors.borderColor),
               ),
               child: TextField(
                 controller: _textController,
                 decoration: const InputDecoration(
                   hintText: 'Nhập tin nhắn...',
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(vertical: 12),
                 ),
@@ -314,7 +323,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
               ),
               child: Icon(
                 _isListening ? Icons.stop : Icons.mic,
-                color: _isListening ? AppColors.error : AppColors.textGrey,
+                color: _isListening ? AppColors.error : AppColors.brandOrange,
                 size: 24,
               ),
             ),
@@ -453,12 +462,16 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     bool isUser = message.isUser;
 
+    // Lọc mã ACTION
+    final actionMatch = RegExp(r'\[ACTION_SEARCH:([^\]]+)\]').firstMatch(message.text);
+    final String? searchSportType = !isUser && actionMatch != null ? actionMatch.group(1) : null;
+    
+    final cleanText = message.text.replaceAll(RegExp(r'\[ACTION_SEARCH:[^\]]+\]'), '').trim();
+
     // Check for "Success Card" trigger
-    // In real app, check message.type == 'booking_success'
-    // For now, parsing text for "thành công" from AI
     bool isSuccessCard =
         !isUser &&
-        (message.text.contains("thành công") ||
+        (cleanText.contains("thành công") ||
             message.type == 'booking_success');
 
     if (isSuccessCard) {
@@ -467,80 +480,90 @@ class _MessageBubble extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: isUser
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          if (!isUser) ...[
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.all(6),
-              decoration: const BoxDecoration(
-                color: AppColors.primary, // Blue avatar bg
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.smart_toy,
-                color: AppColors.surface,
-                size: 16,
-              ),
-            ),
-          ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isUser
-                    ? AppColors.primary
-                    : AppColors.surface, // Blue or White
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: isUser ? const Radius.circular(16) : Radius.zero,
-                  bottomRight: isUser ? Radius.zero : const Radius.circular(16),
-                ),
-                border: !isUser
-                    ? Border.all(color: AppColors.borderColor)
-                    : null,
-                boxShadow: !isUser
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : [],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (message.imagePath != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.file(
-                          File(message.imagePath!),
-                          height: 150,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                  Text(
-                    message.text,
-                    style: TextStyle(
-                      color: isUser ? AppColors.surface : AppColors.textBlack,
-                      fontSize: 15,
-                    ),
+          Row(
+            mainAxisAlignment: isUser
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isUser) ...[
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary, // Blue avatar bg
+                    shape: BoxShape.circle,
                   ),
-                ],
+                  child: const Icon(
+                    Icons.smart_toy,
+                    color: AppColors.surface,
+                    size: 16,
+                  ),
+                ),
+              ],
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isUser
+                        ? const Color(0xFFFF8C00) // Darker Orange
+                        : const Color(0xFFFFE0B2), // Light Orange
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: isUser ? const Radius.circular(16) : Radius.zero,
+                      bottomRight: isUser ? Radius.zero : const Radius.circular(16),
+                    ),
+                    boxShadow: !isUser
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (message.imagePath != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              File(message.imagePath!),
+                              height: 150,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      if (cleanText.isNotEmpty)
+                        Text(
+                          cleanText,
+                          style: TextStyle(
+                            color: isUser ? AppColors.surface : AppColors.textBlack,
+                            fontSize: 15,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+              if (isUser) const SizedBox(width: 40), // Spacer
+            ],
           ),
-          if (isUser) const SizedBox(width: 40), // Spacer
+          
+          // Thêm Carousel hiển thị sân nếu có action
+          if (searchSportType != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 40),
+              child: _CourtListCarousel(sportType: searchSportType),
+            ),
         ],
       ),
     );
@@ -574,7 +597,7 @@ class _MessageBubble extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               const Text(
-                "Đặt sân thành công!",
+                "Giao dịch ghi nhận!",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.success,
@@ -584,7 +607,7 @@ class _MessageBubble extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          // Mock details based on image
+          // Giả lập giao diện
           Row(
             children: [
               Container(
@@ -595,7 +618,7 @@ class _MessageBubble extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
-                  Icons.sports_tennis,
+                  Icons.sports_soccer,
                   color: AppColors.primary,
                 ),
               ),
@@ -604,11 +627,11 @@ class _MessageBubble extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
                   Text(
-                    "CLB Cầu lông Phú Lâm",
+                    "Thanh toán hoàn tất",
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    "Sân 5",
+                    "Sân sẽ được giữ chỗ",
                     style: TextStyle(color: Colors.black54, fontSize: 13),
                   ),
                 ],
@@ -620,3 +643,171 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 }
+
+class _CourtListCarousel extends StatefulWidget {
+  final String sportType;
+  const _CourtListCarousel({required this.sportType});
+
+  @override
+  State<_CourtListCarousel> createState() => _CourtListCarouselState();
+}
+
+class _CourtListCarouselState extends State<_CourtListCarousel> {
+  List<CourtLocationModel> courts = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCourts();
+  }
+
+  Future<void> _fetchCourts() async {
+    try {
+      final allData = await Supabase.instance.client.from('courts').select().limit(20);
+      final allCourts = allData.map((e) => CourtLocationModel.fromSupabase(e)).toList();
+      
+      // Lọc logic tại app để đảm bảo linh hoạt
+      courts = allCourts.where((c) {
+        final t = (c.sportType ?? c.name).toLowerCase();
+        final q = widget.sportType.toLowerCase();
+        if (q == 'football' && (t.contains('bóng đá') || t.contains('football'))) return true;
+        if (q == 'badminton' && (t.contains('cầu lông') || t.contains('badminton'))) return true;
+        if (q == 'tennis' && (t.contains('tennis'))) return true;
+        if (q == 'pickleball' && (t.contains('pickleball') || t.contains('pickle'))) return true;
+        return t.contains(q);
+      }).toList();
+      
+      // Nếu không tìm thấy, gợi ý đại các sân phổ biến
+      if (courts.isEmpty) {
+         courts = allCourts.take(4).toList(); 
+      }
+
+    } catch (e) {
+      debugPrint("Lỗi fetch sân cho carousel: $e");
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const SizedBox(
+        height: 120,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    
+    if (courts.isEmpty) {
+      return Container(
+         padding: const EdgeInsets.all(12),
+         decoration: BoxDecoration(
+           color: AppColors.surface,
+           borderRadius: BorderRadius.circular(8),
+           border: Border.all(color: AppColors.borderColor),
+         ),
+         child: const Text('Hiện không có sân nào phù hợp ở khu vực bạn.', style: TextStyle(color: AppColors.textGrey, fontSize: 13)),
+      );
+    }
+
+    return SizedBox(
+      height: 155, // 60 ảnh + 95 nội dung
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: courts.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final court = courts[index];
+          return Container(
+            width: 180,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.borderColor),
+              boxShadow: [
+                 BoxShadow(
+                   color: Colors.black.withOpacity(0.04),
+                   blurRadius: 4,
+                   offset: const Offset(0, 2),
+                 )
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Hình ảnh sân
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: Container(
+                    height: 60,
+                    width: double.infinity,
+                    color: AppColors.primaryBg,
+                    child: court.imageUrl != null && court.imageUrl!.isNotEmpty
+                         ? Image.network(court.imageUrl!, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.sports_tennis, color: AppColors.primary))
+                         : const Icon(Icons.sports_score, color: AppColors.primary),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        court.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textBlack),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(Icons.monetization_on_outlined, size: 12, color: AppColors.brandOrangeDark),
+                          const SizedBox(width: 4),
+                          Text(
+                            "${court.pricePerHour.toInt()}đ/h",
+                            style: const TextStyle(color: AppColors.brandOrangeDark, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 26,
+                        child: ElevatedButton(
+                          onPressed: () {
+                             Navigator.push(
+                               context,
+                               MaterialPageRoute(
+                                 builder: (context) => CourtSelectionScreen(
+                                   selectedCourt: court,
+                                   selectedDate: DateTime.now(),
+                                 ),
+                               ),
+                             );
+                          },
+                          style: ElevatedButton.styleFrom(
+                             backgroundColor: AppColors.primary,
+                             foregroundColor: Colors.white,
+                             padding: EdgeInsets.zero,
+                             elevation: 0,
+                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))
+                          ),
+                          child: const Text('Đặt Ngay', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+

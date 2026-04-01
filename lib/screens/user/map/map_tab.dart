@@ -3,12 +3,12 @@ import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
-import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
+import 'package:badminton_ai/screens/user/map/court_detail_sheet.dart';
+import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 // Tab 2: Bản đồ
 class MapTab extends StatefulWidget {
@@ -50,19 +50,19 @@ class _MapTabState extends State<MapTab> {
     try {
       _customIcons['badminton'] = await _createCustomMarkerBitmapFromAsset(
         'assets/images/caulong.png',
-        const ui.Color.fromARGB(255, 152, 226, 155),
+        AppColors.primary,
       );
       _customIcons['pickleball'] = await _createCustomMarkerBitmapFromAsset(
         'assets/images/pickleball.png',
-        Colors.blue,
+        AppColors.primaryLight,
       );
       _customIcons['football'] = await _createCustomMarkerBitmap(
         Icons.sports_soccer,
-        Colors.orange,
+        AppColors.primary,
       );
       _customIcons['tennis'] = await _createCustomMarkerBitmap(
         Icons.sports_tennis,
-        Colors.purple,
+        AppColors.primaryDark,
       );
 
       if (mounted) {
@@ -462,21 +462,7 @@ class _MapTabState extends State<MapTab> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _CourtBottomSheet(
-        court: court,
-        onBookPressed: () {
-          Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => CourtSelectionScreen(
-                selectedCourt: court,
-                selectedDate: DateTime.now(),
-              ),
-            ),
-          );
-        },
-      ),
+      builder: (_) => CourtDetailSheet(court: court),
     );
   }
 
@@ -639,7 +625,7 @@ class _MapTabState extends State<MapTab> {
           // Floating Buttons
           Positioned(
             right: 16,
-            bottom: 100,
+            bottom: 120,
             child: Column(
               children: [
                 FloatingActionButton(
@@ -724,37 +710,3 @@ class _MapTabState extends State<MapTab> {
   }
 }
 
-// Bottom sheet (kept concise)
-class _CourtBottomSheet extends StatelessWidget {
-  final CourtLocationModel court;
-  final VoidCallback onBookPressed;
-  const _CourtBottomSheet({required this.court, required this.onBookPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(court.name, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text(court.address),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: onBookPressed,
-              child: const Text('Đặt sân'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

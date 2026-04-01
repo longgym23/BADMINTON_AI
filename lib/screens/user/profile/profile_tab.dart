@@ -1,18 +1,82 @@
+import 'dart:io';
+import 'package:badminton_ai/l10n/generated/app_localizations.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
+import 'package:badminton_ai/providers/language_provider.dart';
 import 'package:badminton_ai/screens/user/booking/booking_history_screen.dart';
+import 'package:badminton_ai/screens/user/notifications/notifications_screen.dart';
 import 'package:badminton_ai/screens/user/profile/edit_profile_screen.dart';
+import 'package:badminton_ai/screens/user/profile/favorites_screen.dart';
+import 'package:badminton_ai/screens/user/profile/settings_screen.dart';
+import 'package:badminton_ai/screens/course/course_main_screen.dart';
+import 'package:badminton_ai/screens/course/watched_courses_screen.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:badminton_ai/utils/notification_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:badminton_ai/screens/user/friends/friends_main_screen.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
 
+  Future<void> _pickAndUploadImage(BuildContext context) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile == null) return;
+
+    final file = File(pickedFile.path);
+    final authProvider = context.read<AppAuthProvider>();
+    final l = AppLocalizations.of(context);
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.uploadingAvatar)));
+    final success = await authProvider.updateUserAvatar(file);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(success ? l.avatarUpdateSuccess : l.avatarUpdateFailed)),
+    );
+  }
+
+  void _showLanguageDialog(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final langProvider = context.read<LanguageProvider>();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(l.selectLanguage, style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _LangOption(
+              flag: '🇻🇳',
+              label: l.languageVietnamese,
+              isSelected: langProvider.isVietnamese,
+              onTap: () {
+                langProvider.setVietnamese();
+                Navigator.pop(ctx);
+              },
+            ),
+            const SizedBox(height: 8),
+            _LangOption(
+              flag: '🇺🇸',
+              label: l.languageEnglish,
+              isSelected: !langProvider.isVietnamese,
+              onTap: () {
+                langProvider.setEnglish();
+                Navigator.pop(ctx);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AppAuthProvider>();
+    final l = AppLocalizations.of(context);
+    final langProvider = context.watch<LanguageProvider>();
     final user = authProvider.userModel;
 
     if (user == null) {
@@ -21,280 +85,287 @@ class ProfileTab extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'Hồ sơ',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: AppColors.textBlack),
-            onPressed: () {
-              // Settings action
-            },
-          ),
-        ],
-      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         child: Column(
           children: [
-            // Avatar & Info Section
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                  backgroundImage: user.photoUrl != null
-                      ? NetworkImage(user.photoUrl!)
-                      : null,
-                  child: user.photoUrl == null
-                      ? const Icon(
-                          Icons.person,
-                          size: 50,
-                          color: AppColors.primary,
-                        )
-                      : null,
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      size: 16,
-                      color: AppColors.textBlack,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              user.displayName ?? 'Chưa cập nhật tên',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textBlack,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              user.email ?? 'Không có email',
-              style: const TextStyle(fontSize: 14, color: AppColors.textGrey),
-            ),
-            const SizedBox(height: 12),
+            // Header Section (Orange Gradient)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.successBg,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                'THÀNH VIÊN VÀNG',
-                style: TextStyle(
-                  color: AppColors.success,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.brandOrangeDark,
+                    AppColors.brandOrangeLight,
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
                 ),
               ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Stats Row (Mock Data)
-            Row(
-              children: [
-                _buildStatCard(
-                  icon: Icons.sports_tennis,
-                  value: '12',
-                  label: 'TRẬN ĐẤU',
-                  color: AppColors.success,
-                ),
-                const SizedBox(width: 12),
-                _buildStatCard(
-                  icon: Icons.access_time_filled,
-                  value: '24h',
-                  label: 'GIỜ CHƠI',
-                  color: Colors.orange,
-                ),
-                const SizedBox(width: 12),
-                _buildStatCard(
-                  icon: Icons.emoji_events,
-                  value: '68%',
-                  label: 'THẮNG',
-                  color: AppColors.primary,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Menu Options
-            _buildMenuItem(
-              context,
-              icon: Icons.edit,
-              color: Colors.blue,
-              title: 'Chỉnh sửa thông tin',
-              subtitle: 'Cập nhật tên, số điện thoại',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const EditProfileScreen(),
-                  ),
-                );
-              },
-            ),
-            _buildMenuItem(
-              context,
-              icon: Icons.history,
-              color: Colors.purple,
-              title: 'Lịch sử đặt sân',
-              subtitle: 'Xem lại các trận đấu đã đặt',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BookingHistoryScreen(),
-                  ),
-                );
-              },
-            ),
-            _buildMenuItem(
-              context,
-              icon: Icons.account_balance_wallet,
-              color: AppColors.success,
-              title: 'Ví của tôi',
-              // trailingText: '500k đ',
-              onTap: () {
-                // Wallet action
-              },
-            ),
-            _buildMenuItem(
-              context,
-              icon: Icons.notifications,
-              color: AppColors.textGrey,
-              title: 'Thông báo',
-              isSwitch: true,
-              onTap: () {},
-            ),
-            _buildMenuItem(
-              context,
-              icon: Icons.help_outline,
-              color: AppColors.textGrey,
-              title: 'Hỗ trợ & Chính sách',
-              onTap: () {},
-            ),
-            _buildMenuItem(
-              context,
-              icon: Icons.group,
-              color: AppColors.primary,
-              title: 'Cộng đồng & Bạn bè',
-              subtitle: 'Tìm bạn, quản lý kết bạn',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const FriendsMainScreen(),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 24),
-
-            // Logout Button
-            InkWell(
-              onTap: () {
-                context.read<AppAuthProvider>().signOut();
-              },
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: AppColors.errorBg.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.logout, color: AppColors.error),
-                    SizedBox(width: 8),
-                    Text(
-                      'Đăng xuất',
-                      style: TextStyle(
-                        color: AppColors.error,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+              padding: const EdgeInsets.only(
+                top: 60,
+                left: 16,
+                right: 16,
+                bottom: 24,
+              ),
+              child: Column(
+                children: [
+                  // User Info Card
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfileScreen(),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                        ),
                       ),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => _pickAndUploadImage(context),
+                            child: Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: 30,
+                                  backgroundColor: Colors.white,
+                                  backgroundImage: user.photoUrl != null
+                                      ? NetworkImage(user.photoUrl!)
+                                      : null,
+                                  child: user.photoUrl == null
+                                      ? Text(
+                                          user.displayName?[0].toUpperCase() ??
+                                              'U',
+                                          style: const TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.brandOrange,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                if (authProvider.isUpdatingProfile)
+                                  const Positioned.fill(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  user.displayName ?? l.noName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  user.email ?? l.noEmail,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right, color: Colors.white),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Membership Card
+                  // Container(
+                  //   padding: const EdgeInsets.symmetric(
+                  //     horizontal: 16,
+                  //     vertical: 12,
+                  //   ),
+                  //   decoration: BoxDecoration(
+                  //     color: Colors.white.withOpacity(0.15),
+                  //     borderRadius: BorderRadius.circular(12),
+                  //     border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  //   ),
+                    // child: Row(
+                    //   children: [
+                    //     const Icon(
+                    //       Icons.workspace_premium,
+                    //       color: Colors.yellow,
+                    //       size: 24,
+                    //     ),
+                    //     const SizedBox(width: 8),
+                    //     const Text(
+                    //       'Hạng thành viên',
+                    //       style: TextStyle(
+                    //         color: Colors.white,
+                    //         fontWeight: FontWeight.bold,
+                    //         fontSize: 14,
+                    //       ),
+                    //     ),
+                    //     const Spacer(),
+                    //     const Icon(
+                    //       Icons.chevron_right,
+                    //       color: Colors.white,
+                    //       size: 20,
+                    //     ),
+                    //   ],
+                    // ),
+                  // ),
+                ],
+              ),
+            ),
+
+            // Quick Actions (4 Boxes)
+            Transform.translate(
+              offset: const Offset(0, -20),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildQuickActionBtn(
+                      icon: Image.asset('assets/images/calendar.png', width: 28, height: 28),
+                      label: l.bookedCourts,
+                      onPressed: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const BookingHistoryScreen())),
+                    ),
+                    _buildQuickActionBtn(
+                      icon: Image.asset('assets/images/notification.png', width: 28, height: 28),
+                      label: l.notifications,
+                      onPressed: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+                    ),
+                    _buildQuickActionBtn(
+                      icon: Image.asset('assets/images/certificate.png', width: 28, height: 28),
+                      label: l.courses,
+                      onPressed: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const CourseMainScreen())),
+                    ),
+                    _buildQuickActionBtn(
+                      icon: Image.asset('assets/images/gift.png', width: 28, height: 28),
+                      label: l.offers,
+                      onPressed: () => NotificationUtils.showComingSoon(context),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 40),
+
+            // Main Content Lists
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l.activity,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppColors.brandOrangeDark,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildListSection([
+                    _buildListItem(icon: Icons.favorite_border_rounded, title: l.favoriteCourts,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen()))),
+                    const Divider(height: 1, color: AppColors.borderColor),
+                    _buildListItem(icon: Icons.school_outlined, title: l.courseList,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WatchedCoursesScreen()))),
+                    const Divider(height: 1, color: AppColors.borderColor),
+                    _buildListItem(icon: Icons.workspace_premium_outlined, title: l.membershipPackage,
+                        onTap: () => NotificationUtils.showComingSoon(context)),
+                  ]),
+
+                  const SizedBox(height: 24),
+
+                  Text(
+                    l.system,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppColors.brandOrangeDark,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildListSection([
+                    _buildListItem(icon: Icons.language_outlined, title: l.language,
+                        subtitle: langProvider.isVietnamese ? l.languageVietnamese : l.languageEnglish,
+                        onTap: () => _showLanguageDialog(context)),
+                    const Divider(height: 1, color: AppColors.borderColor),
+                    _buildListItem(icon: Icons.settings_outlined, title: l.settings,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
+                    const Divider(height: 1, color: AppColors.borderColor),
+                    _buildListItem(icon: Icons.info_outline, title: l.appVersion, onTap: () {}),
+                  ]),
+                  // Warning / Security Banner
+                  const SizedBox(height: 16),
+                  const SizedBox(
+                    height: 120,
+                  ), // Add padding for bottom navigation logic
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required String value,
+  Widget _buildQuickActionBtn({
+    required Widget icon,
     required String label,
-    required Color color,
+    required VoidCallback onPressed,
   }) {
-    return Expanded(
+    return GestureDetector(
+      onTap: onPressed,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        width: 75,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
             ),
           ],
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 24),
+            icon,
             const SizedBox(height: 8),
             Text(
-              value,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: AppColors.textBlack,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
               label,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 10,
-                color: AppColors.textGrey,
-                fontWeight: FontWeight.bold,
+                color: AppColors.textBlack,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -303,86 +374,84 @@ class ProfileTab extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem(
-    BuildContext context, {
-    required IconData icon,
-    required Color color,
-    required String title,
-    String? subtitle,
-    String? trailingText,
-    bool isSwitch = false,
-    VoidCallback? onTap,
-  }) {
+  Widget _buildListSection(List<Widget> children) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        onTap: onTap,
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildListItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    String? subtitle,
+  }) {
+    return ListTile(
+      onTap: onTap,
+      leading: Icon(icon, color: const Color.fromARGB(255, 229, 130, 16), size: 24),
+      title: Text(title, style: const TextStyle(color: AppColors.textBlack, fontSize: 15)),
+      subtitle: subtitle != null
+          ? Text(subtitle, style: TextStyle(color: Colors.grey[500], fontSize: 12))
+          : null,
+      trailing: const Icon(Icons.chevron_right, color: AppColors.textGrey, size: 20),
+    );
+  }
+}
+
+// ─── Language Option Tile ─────────────────────────────────────────────────────
+
+class _LangOption extends StatelessWidget {
+  final String flag;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _LangOption({
+    required this.flag,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primaryBg : Colors.grey[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.borderColor,
+            width: isSelected ? 1.5 : 1,
           ),
-          child: Icon(icon, color: color, size: 22),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: AppColors.textBlack,
-          ),
-        ),
-        subtitle: subtitle != null
-            ? Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textGrey,
-                  ),
-                ),
-              )
-            : null,
-        trailing: isSwitch
-            ? CupertinoSwitch(
-                value: true,
-                activeColor: AppColors.success,
-                onChanged: (val) {},
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (trailingText != null)
-                    Text(
-                      trailingText,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.success,
-                        fontSize: 14,
-                      ),
-                    ),
-                  if (trailingText != null) const SizedBox(width: 8),
-                  const Icon(
-                    Icons.chevron_right,
-                    color: AppColors.textGrey,
-                    size: 20,
-                  ),
-                ],
+        child: Row(
+          children: [
+            Text(flag, style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? AppColors.primary : AppColors.textBlack,
               ),
+            ),
+            const Spacer(),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: AppColors.primary, size: 20),
+          ],
+        ),
       ),
     );
   }

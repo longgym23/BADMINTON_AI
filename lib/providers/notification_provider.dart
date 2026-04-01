@@ -24,16 +24,18 @@ class NotificationProvider extends ChangeNotifier {
     required DateTime bookingDate,
     required int timeSlot,
     required int price,
+    int durationHours = 1,
   }) async {
     final dateStr = _formatDate(bookingDate);
-    final timeStr = '$timeSlot:00';
+    final endTime = timeSlot + durationHours;
+    final timeStr = '$timeSlot:00 - $endTime:00 (${durationHours}h)';
 
     final notification = NotificationModel(
       userId: userId,
       type: 'booking_success',
       title: 'Đặt sân thành công!',
       message:
-          'Bạn đã đặt sân $courtName - Sân $courtNumber vào $dateStr lúc $timeStr',
+          'Bạn đã đặt sân $courtName - Sân $courtNumber vào $dateStr từ $timeStr',
       createdAt: DateTime.now(),
       isRead: false,
       bookingId: bookingId,
