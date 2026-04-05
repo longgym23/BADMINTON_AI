@@ -1,0 +1,354 @@
+import 'package:badminton_ai/services/password_reset_service.dart';
+import 'package:badminton_ai/utils/app_colors.dart';
+import 'package:badminton_ai/widgets/app_toast.dart';
+import 'package:flutter/material.dart';
+
+class ResetPasswordScreen extends StatefulWidget {
+  final String email;
+  final String resetToken;
+
+  const ResetPasswordScreen({
+    super.key,
+    required this.email,
+    required this.resetToken,
+  });
+
+  @override
+  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
+}
+
+class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
+  bool _isLoading = false;
+
+  static const _orange = Color(0xFFFF6B00);
+  static const _inputBg = Color(0xFFF5F5F5);
+  static const _hintColor = Color(0xFFAAAAAA);
+  static const _textDark = Color(0xFF1A1A1A);
+  static const _textGray = Color(0xFF888888);
+
+  @override
+  void dispose() {
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _resetPassword() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _isLoading = true);
+
+    final error = await PasswordResetService.resetPassword(
+      email: widget.email,
+      resetToken: widget.resetToken,
+      newPassword: _newPasswordController.text.trim(),
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (error != null) {
+      AppToast.show(context, error, type: ToastType.error);
+    } else {
+      AppToast.show(
+        context,
+        'Đặt lại mật khẩu thành công!',
+        type: ToastType.success,
+      );
+      await Future.delayed(const Duration(milliseconds: 1200));
+      if (!mounted) return;
+      // Xóa toàn bộ stack navigation, về Login
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required bool obscure,
+    required VoidCallback onToggle,
+    required String? Function(String?) validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: _textGray,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          obscureText: obscure,
+          style: const TextStyle(fontSize: 15, color: _textDark),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: _hintColor, fontSize: 14),
+            filled: true,
+            fillColor: _inputBg,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            prefixIcon: const Icon(
+              Icons.lock_outline_rounded,
+              color: _orange,
+              size: 20,
+            ),
+            suffixIcon: IconButton(
+              icon: Icon(
+                obscure
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: _hintColor,
+                size: 20,
+              ),
+              onPressed: onToggle,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _orange, width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+          ),
+          validator: validator,
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+
+                  // Nút back
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    padding: EdgeInsets.zero,
+                    style: IconButton.styleFrom(
+                      backgroundColor: const Color(0xFFF5F5F5),
+                      foregroundColor: _textDark,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Icon
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBg,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(
+                      Icons.shield_outlined,
+                      color: AppColors.brandOrange,
+                      size: 34,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Tiêu đề
+                  const Text(
+                    'Đặt mật khẩu mới',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: _textDark,
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Mật khẩu mới phải khác mật khẩu cũ và có ít nhất 6 ký tự.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _textGray,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 36),
+
+                  // Mật khẩu mới
+                  _buildPasswordField(
+                    controller: _newPasswordController,
+                    label: 'Mật khẩu mới',
+                    hint: '••••••••',
+                    obscure: _obscureNew,
+                    onToggle: () => setState(() => _obscureNew = !_obscureNew),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return 'Vui lòng nhập mật khẩu mới';
+                      }
+                      if (val.length < 6) {
+                        return 'Mật khẩu phải có ít nhất 6 ký tự';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Xác nhận mật khẩu
+                  _buildPasswordField(
+                    controller: _confirmPasswordController,
+                    label: 'Xác nhận mật khẩu',
+                    hint: '••••••••',
+                    obscure: _obscureConfirm,
+                    onToggle: () =>
+                        setState(() => _obscureConfirm = !_obscureConfirm),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return 'Vui lòng xác nhận mật khẩu';
+                      }
+                      if (val != _newPasswordController.text) {
+                        return 'Mật khẩu xác nhận không khớp';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 36),
+
+                  // Nút đặt lại mật khẩu
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _resetPassword,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _orange,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Đặt lại mật khẩu',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Strength indicators
+                  _buildPasswordStrengthHint(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordStrengthHint() {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _newPasswordController,
+      builder: (_, value, __) {
+        final password = value.text;
+        if (password.isEmpty) return const SizedBox.shrink();
+
+        final hasLength = password.length >= 6;
+        final hasUpper = password.contains(RegExp(r'[A-Z]'));
+        final hasNumber = password.contains(RegExp(r'[0-9]'));
+
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F5F5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Độ mạnh mật khẩu:',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: _textGray,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildHintRow('Ít nhất 6 ký tự', hasLength),
+              const SizedBox(height: 4),
+              _buildHintRow('Có chữ hoa (A-Z)', hasUpper),
+              const SizedBox(height: 4),
+              _buildHintRow('Có chữ số (0-9)', hasNumber),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHintRow(String label, bool satisfied) {
+    return Row(
+      children: [
+        Icon(
+          satisfied ? Icons.check_circle_rounded : Icons.circle_outlined,
+          size: 14,
+          color: satisfied ? AppColors.success : _hintColor,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: satisfied ? AppColors.success : _textGray,
+          ),
+        ),
+      ],
+    );
+  }
+}

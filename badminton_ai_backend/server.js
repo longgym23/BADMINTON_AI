@@ -6,6 +6,24 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs-extra');
 const path = require('path');
+const sgMail = require('@sendgrid/mail');
+const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
+
+// ─── SendGrid Setup ───────────────────────────────────────────────────────────
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL;
+
+// ─── Supabase Admin Client ────────────────────────────────────────────────────
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
+
+// ─── OTP Store (in-memory) ────────────────────────────────────────────────────
+// Map: email -> { otp, expiresAt, verified, resetToken }
+const otpStore = new Map();
 
 // Cấu hình multer để lưu file tạm
 const upload = multer({
@@ -186,6 +204,182 @@ app.post('/ask', upload.single('image'), async (req, res) => {
     res.status(500).json({ error: 'Đã xảy ra lỗi khi kết nối với AI.' });
   }
 });
+
+// ─── FORGOT PASSWORD ENDPOINTS ────────────────────────────────────────────────
+
+/**
+ * POST /forgot-password
+ * Body: { email: string }
+ */
+app.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(400).json({ error: 'Email không hợp lệ.' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Kiểm tra email có tồn tại trong Supabase không
+  const { data: users, error: fetchError } = await supabaseAdmin.auth.admin.listUsers();
+  if (fetchError) {
+    return res.status(500).json({ error: 'Lỗi kết nối server.' });
+  }
+  const userExists = users.users.some(u => u.email?.toLowerCase() === normalizedEmail);
+  if (!userExists) {
+    // Trả về success giả để tránh email enumeration attack
+    return res.json({ message: 'Nếu email tồn tại, bạn sẽ nhận được mã OTP.' });
+  }
+
+  // Tạo OTP 6 số ngẫu nhiên
+  const otp = crypto.randomInt(100000, 999999).toString();
+  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 phút
+
+  otpStore.set(normalizedEmail, { otp, expiresAt, verified: false, resetToken: null });
+
+  // Template email HTML
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#FF6B00,#FFB347);padding:36px;text-align:center;">
+            <div style="font-size:32px;font-weight:800;color:#ffffff;letter-spacing:-1px;">🏸 KLOO</div>
+            <div style="color:rgba(255,255,255,0.85);font-size:14px;margin-top:6px;">Đặt sân cầu lông dễ dàng</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px 36px;">
+            <h2 style="margin:0 0 12px;font-size:22px;color:#1A1A1A;">Quên mật khẩu?</h2>
+            <p style="margin:0 0 28px;font-size:15px;color:#555;line-height:1.6;">
+              Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.
+              Sử dụng mã OTP dưới đây để tiếp tục:
+            </p>
+            <div style="background:#FFF5F0;border:2px dashed #FF6B00;border-radius:12px;padding:24px;text-align:center;margin-bottom:28px;">
+              <div style="font-size:11px;font-weight:600;color:#FF6B00;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Mã xác thực của bạn</div>
+              <div style="font-size:42px;font-weight:800;color:#FF6B00;letter-spacing:12px;">${otp}</div>
+              <div style="font-size:12px;color:#999;margin-top:8px;">Mã có hiệu lực trong <strong>10 phút</strong></div>
+            </div>
+            <p style="margin:0;font-size:13px;color:#999;line-height:1.6;">
+              Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#FAFAFA;padding:20px 36px;text-align:center;border-top:1px solid #EEEEEE;">
+            <p style="margin:0;font-size:12px;color:#BBBBBB;">© 2025 KLOO App. All rights reserved.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    await sgMail.send({
+      to: normalizedEmail,
+      from: FROM_EMAIL,
+      subject: `[KLOO] Mã OTP đặt lại mật khẩu: ${otp}`,
+      html: htmlContent,
+    });
+    res.json({ message: 'Mã OTP đã được gửi đến email của bạn.' });
+  } catch (err) {
+    console.error('SendGrid error:', err?.response?.body || err);
+    res.status(500).json({ error: 'Không thể gửi email. Vui lòng thử lại.' });
+  }
+});
+
+/**
+ * POST /verify-otp
+ * Body: { email: string, otp: string }
+ */
+app.post('/verify-otp', (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json({ error: 'Thiếu email hoặc mã OTP.' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const record = otpStore.get(normalizedEmail);
+
+  if (!record) {
+    return res.status(400).json({ error: 'Không tìm thấy yêu cầu OTP. Vui lòng gửi lại.' });
+  }
+  if (Date.now() > record.expiresAt) {
+    otpStore.delete(normalizedEmail);
+    return res.status(400).json({ error: 'Mã OTP đã hết hạn. Vui lòng gửi lại.' });
+  }
+  if (record.otp !== otp.trim()) {
+    return res.status(400).json({ error: 'Mã OTP không đúng. Vui lòng thử lại.' });
+  }
+
+  // Tạo resetToken ngắn hạn 15 phút
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  record.verified = true;
+  record.resetToken = resetToken;
+  record.resetTokenExpiresAt = Date.now() + 15 * 60 * 1000;
+  otpStore.set(normalizedEmail, record);
+
+  res.json({ message: 'Xác thực OTP thành công.', resetToken });
+});
+
+/**
+ * POST /reset-password
+ * Body: { email: string, resetToken: string, newPassword: string }
+ */
+app.post('/reset-password', async (req, res) => {
+  const { email, resetToken, newPassword } = req.body;
+  if (!email || !resetToken || !newPassword) {
+    return res.status(400).json({ error: 'Dữ liệu không đầy đủ.' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự.' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const record = otpStore.get(normalizedEmail);
+
+  if (!record || !record.verified) {
+    return res.status(400).json({ error: 'Phiên đặt lại mật khẩu không hợp lệ.' });
+  }
+  if (record.resetToken !== resetToken) {
+    return res.status(400).json({ error: 'Token không hợp lệ.' });
+  }
+  if (Date.now() > record.resetTokenExpiresAt) {
+    otpStore.delete(normalizedEmail);
+    return res.status(400).json({ error: 'Phiên đã hết hạn. Vui lòng bắt đầu lại.' });
+  }
+
+  // Tìm user trong Supabase
+  const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+  if (listError) {
+    return res.status(500).json({ error: 'Lỗi kết nối server.' });
+  }
+  const user = users.users.find(u => u.email?.toLowerCase() === normalizedEmail);
+  if (!user) {
+    return res.status(404).json({ error: 'Không tìm thấy tài khoản.' });
+  }
+
+  // Cập nhật password qua Supabase Admin API
+  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+    user.id,
+    { password: newPassword }
+  );
+
+  if (updateError) {
+    console.error('Supabase update error:', updateError);
+    return res.status(500).json({ error: 'Không thể cập nhật mật khẩu. Vui lòng thử lại.' });
+  }
+
+  otpStore.delete(normalizedEmail);
+  res.json({ message: 'Mật khẩu đã được cập nhật thành công.' });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Endpoint '/ask/audio' để xử lý audio
 app.post('/ask/audio', upload.single('audio'), async (req, res) => {

@@ -1,6 +1,7 @@
 import 'package:badminton_ai/data/models/notification_model.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/notification_provider.dart';
+import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -22,16 +23,25 @@ class NotificationsScreen extends StatelessWidget {
         title: const Text(
           'Thông báo',
           style: TextStyle(
-            color: Colors.black,
+            color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
+        flexibleSpace: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
@@ -40,7 +50,7 @@ class NotificationsScreen extends StatelessWidget {
               onPressed: () {
                 notificationProvider.markAllAsRead(userId);
               },
-              icon: const Icon(Icons.done_all, color: Colors.grey),
+              icon: const Icon(Icons.done_all, color: Colors.white),
               tooltip: 'Đánh dấu tất cả đã đọc',
             ),
         ],

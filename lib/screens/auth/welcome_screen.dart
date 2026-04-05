@@ -35,7 +35,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
-  Widget _safeImage(String path, {double? height, BoxFit fit = BoxFit.cover, Color fallbackColor = const Color(0xFFE0E0E0)}) {
+  Widget _safeImage(
+    String path, {
+    double? height,
+    BoxFit fit = BoxFit.cover,
+    Color fallbackColor = const Color(0xFFE0E0E0),
+  }) {
     return Image.asset(
       path,
       height: height,
@@ -52,7 +57,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               children: [
                 Icon(Icons.image, color: Colors.white, size: 40),
                 SizedBox(height: 8),
-                Text('Image Placeholder', style: TextStyle(color: Colors.white, fontSize: 12)),
+                Text(
+                  'Image Placeholder',
+                  style: TextStyle(color: Colors.white, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -64,7 +72,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFCFAF8), // Màu nền hơi ngả ấm
       body: Column(
         children: [
           Expanded(
@@ -75,11 +83,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   _currentPage = index;
                 });
               },
-              children: [
-                _buildPage1(),
-                _buildPage2(),
-                _buildPage3(),
-              ],
+              children: [_buildPage1(), _buildPage2(), _buildPage3()],
             ),
           ),
           _buildBottomArea(),
@@ -92,7 +96,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24, top: 16),
+        padding: const EdgeInsets.only(
+          left: 24,
+          right: 24,
+          bottom: 24,
+          top: 16,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -108,22 +117,40 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFE8722A),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                       elevation: 0,
                     ),
                     child: const Row(
                       children: [
-                        Text('Tiếp tục', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(
+                          'Tiếp tục',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ],
                     ),
                   ),
                 ],
               )
             else
-              _buildNextButtonFullWidth(_currentPage == 0 ? 'Tiếp tục' : 'Bắt đầu ngay'),
+              _buildNextButtonFullWidth(
+                _currentPage == 0 ? 'Tiếp tục' : 'Bắt đầu ngay',
+              ),
           ],
         ),
       ),
@@ -148,12 +175,17 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   child: _safeImage(
                     'assets/images/Modern indoor badminton court in warm tones.png', // Court image
                     height: MediaQuery.of(context).size.height * 0.45,
-                    fallbackColor: const Color(0xFF4CAF50).withValues(alpha: 0.5),
+                    fallbackColor: const Color(
+                      0xFF4CAF50,
+                    ).withValues(alpha: 0.5),
                   ),
                 ),
                 SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 8,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -174,17 +206,23 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 Positioned(
                   bottom: MediaQuery.of(context).size.height * 0.15,
                   left: 32,
-                  child: _buildFloatingImage('assets/images/destination-map.gif', size: 70),
+                  child: _buildFloatingImage(
+                    'assets/images/destination-map.gif',
+                    size: 70,
+                  ),
                 ),
                 Positioned(
                   bottom: MediaQuery.of(context).size.height * 0.05,
                   right: 48,
-                  child: _buildFloatingImage('assets/images/worldwide.gif', size: 70),
+                  child: _buildFloatingImage(
+                    'assets/images/worldwide.gif',
+                    size: 70,
+                  ),
                 ),
               ],
             ),
           ),
-          
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
@@ -192,12 +230,21 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               children: [
                 RichText(
                   text: const TextSpan(
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D), height: 1.2),
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2D2D2D),
+                      height: 1.2,
+                    ),
                     children: [
                       TextSpan(text: 'Tìm kiếm sân\n'),
                       TextSpan(
                         text: 'quanh bạn',
-                        style: TextStyle(color: Color(0xFFE8722A), decoration: TextDecoration.underline, decorationColor: Color(0xFFE8722A)),
+                        style: TextStyle(
+                          color: Color(0xFFE8722A),
+                          decoration: TextDecoration.underline,
+                          decorationColor: Color(0xFFE8722A),
+                        ),
                       ),
                     ],
                   ),
@@ -205,7 +252,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 const SizedBox(height: 16),
                 const Text(
                   'Dễ dàng tìm thấy các sân cầu lông đạt chuẩn thi đấu qua bản đồ trực quan hoặc danh sách chọn lọc.',
-                  style: TextStyle(fontSize: 15, color: Color(0xFF6B6B6B), height: 1.5),
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF6B6B6B),
+                    height: 1.5,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Wrap(
@@ -267,7 +318,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   padding: const EdgeInsets.only(top: 20, bottom: 20),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(30),
-                    child: _safeImage('assets/images/Hero Illustration Area_margin.png', fit: BoxFit.contain, fallbackColor: Colors.black87),
+                    child: _safeImage(
+                      'assets/images/Hero Illustration Area_margin.png',
+                      fit: BoxFit.contain,
+                      fallbackColor: Colors.black87,
+                    ),
                   ),
                 ),
               ],
@@ -281,20 +336,41 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 const SizedBox(height: 16),
                 RichText(
                   text: const TextSpan(
-                    style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D), height: 1.2),
+                    style: TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2D2D2D),
+                      height: 1.2,
+                    ),
                     children: [
                       TextSpan(text: 'Đặt sân '),
-                      TextSpan(text: 'cực\nnhanh', style: TextStyle(color: Color(0xFFE8722A))),
+                      TextSpan(
+                        text: 'cực\nnhanh',
+                        style: TextStyle(color: Color(0xFFE8722A)),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
                 RichText(
                   text: const TextSpan(
-                    style: TextStyle(fontSize: 15, color: Color(0xFF6B6B6B), height: 1.5),
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF6B6B6B),
+                      height: 1.5,
+                    ),
                     children: [
-                      TextSpan(text: 'Cập nhật lịch thi đấu theo thời gian thực và thanh toán trực tuyến bảo mật chỉ trong '),
-                      TextSpan(text: '30 giây.', style: TextStyle(color: Color(0xFFE8722A), fontWeight: FontWeight.bold)),
+                      TextSpan(
+                        text:
+                            'Cập nhật lịch thi đấu theo thời gian thực và thanh toán trực tuyến bảo mật chỉ trong ',
+                      ),
+                      TextSpan(
+                        text: '30 giây.',
+                        style: TextStyle(
+                          color: Color(0xFFE8722A),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -317,15 +393,15 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         children: [
           // Header Image & Top Bar
           SizedBox(
-            height: MediaQuery.of(context).size.height * 0.52,
+            height: MediaQuery.of(context).size.height * 0.45,
             child: Stack(
               children: [
                 _safeImage(
-                  'assets/images/Hero Section with Orange Kinetic Energy.png', // Racket image
-                  fit: BoxFit.fitWidth,
-                  fallbackColor: const Color(0xFF795548).withValues(alpha: 0.5),
+                  'assets/images/Mask Group.png', // Racket image
+                  // fit: BoxFit.fitWidth,
+                  // fallbackColor: const Color(0xFF795548).withValues(alpha: 0.5),
                 ),
-                SafeArea( 
+                SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.only(left: 24, top: 8),
                     child: const Text(
@@ -339,42 +415,115 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     ),
                   ),
                 ),
+                // Badge vàng "CỘNG ĐỒNG MẠNH MẼ" nằm ở đáy, đè lên viền chéo
+                Positioned(
+                  bottom: 16,
+                  left: 24,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFD700),
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.people_alt, color: Colors.black87, size: 15),
+                        SizedBox(width: 6),
+                        Text(
+                          'CỘNG ĐỒNG MẠNH MẼ',
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: 8),
                 RichText(
                   text: const TextSpan(
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D), height: 1.2),
+                    style: TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF2D2D2D),
+                      height: 1.2,
+                    ),
                     children: [
                       TextSpan(text: 'Giao lưu cùng\n'),
-                      TextSpan(text: 'Cộng đồng', style: TextStyle(color: Color(0xFFE8722A))),
+                      TextSpan(
+                        text: 'Cộng đồng',
+                        style: TextStyle(color: Color(0xFFE8722A)),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Kết nối với các người chơi và cộng đồng thể thao mạnh mẽ, lành mạnh. Khám phá nhiều trận đấu đỉnh cao và hàng ngàn cao thủ cùng chung đam mê đầy nhiệt huyết',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF6B6B6B), height: 1.5),
+                Padding(
+                  padding: const EdgeInsets.only(right: 20),
+                  child: const Text(
+                    'Kết nối với các người chơi và cộng đồng thể thao mạnh mẽ, lành mạnh. Khám phá nhiều trận đấu đỉnh cao và hàng ngàn cao thủ cùng chung đam mê đầy nhiệt huyết',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF6B6B6B),
+                      height: 1.6,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Row(
                   children: [
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: const Color(0xFFFFF3ED), borderRadius: BorderRadius.circular(16)),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 24,
+                          horizontal: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF2EC),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
                         child: const Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.emoji_events_outlined, color: Color(0xFFE8722A), size: 28),
-                            SizedBox(height: 12),
-                            Text('Giải đấu hàng\ntuần', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D))),
+                            Icon(
+                              Icons.emoji_events_outlined,
+                              color: Color(0xFFFF5722),
+                              size: 30,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Giải đấu hàng\ntuần',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2D2D2D),
+                                height: 1.4,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -382,14 +531,32 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(16)),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 24,
+                          horizontal: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFE8E3),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
                         child: const Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.hub_outlined, color: Color(0xFF6B6B6B), size: 28),
-                            SizedBox(height: 12),
-                            Text('Câu lạc bộ địa\nphương', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D))),
+                            Icon(
+                              Icons.hub_outlined,
+                              color: Color(0xFF7A655A),
+                              size: 30,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Câu lạc bộ địa\nphương',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2D2D2D),
+                                height: 1.4,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -416,7 +583,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
         ],
       ),
       child: Center(
@@ -433,11 +604,20 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
         ],
       ),
       child: Center(
-        child: Image.asset(imagePath, width: size * 0.6, height: size * 0.6, fit: BoxFit.contain),
+        child: Image.asset(
+          imagePath,
+          width: size * 0.6,
+          height: size * 0.6,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
@@ -455,7 +635,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         onPressed: _goToLogin,
-        child: const Text('Bỏ qua', style: TextStyle(color: Color.fromARGB(255, 8, 8, 8), fontWeight: FontWeight.bold, fontSize: 16)),
+        child: const Text(
+          'Bỏ qua',
+          style: TextStyle(
+            color: Color.fromARGB(255, 8, 8, 8),
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
       ),
     );
   }
@@ -472,7 +659,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         children: [
           Icon(icon, color: const Color(0xFFE8722A), size: 18),
           const SizedBox(width: 8),
-          Text(label, style: const TextStyle(color: Color(0xFF2D2D2D), fontWeight: FontWeight.bold, fontSize: 13)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF2D2D2D),
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
         ],
       ),
     );
@@ -506,15 +700,28 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           backgroundColor: const Color(0xFFE8722A),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
           elevation: 0,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(text, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+            const Icon(
+              Icons.arrow_forward_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -531,14 +738,18 @@ class _SlantClipper1 extends CustomClipper<Path> {
   Path getClip(Size size) {
     // Page 1: Left is lower, Right is higher
     Path path = Path();
-    path.lineTo(0, size.height - 20); 
-    path.quadraticBezierTo(size.width / 2, size.height, size.width, size.height - 80);
+    path.lineTo(0, size.height - 20);
+    path.quadraticBezierTo(
+      size.width / 2,
+      size.height,
+      size.width,
+      size.height - 80,
+    );
     path.lineTo(size.width, 0);
     path.close();
     return path;
   }
+
   @override
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
-
-

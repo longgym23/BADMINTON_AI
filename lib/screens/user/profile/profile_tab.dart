@@ -7,8 +7,13 @@ import 'package:badminton_ai/screens/user/notifications/notifications_screen.dar
 import 'package:badminton_ai/screens/user/profile/edit_profile_screen.dart';
 import 'package:badminton_ai/screens/user/profile/favorites_screen.dart';
 import 'package:badminton_ai/screens/user/profile/settings_screen.dart';
+import 'package:badminton_ai/screens/user/profile/statistics_screen.dart';
 import 'package:badminton_ai/screens/course/course_main_screen.dart';
 import 'package:badminton_ai/screens/course/watched_courses_screen.dart';
+import 'package:badminton_ai/screens/admin/events/admin_event_list_screen.dart';
+import 'package:badminton_ai/screens/admin/manage_bookings_screen.dart';
+import 'package:badminton_ai/screens/admin/manage_courts_screen.dart';
+import 'package:badminton_ai/screens/admin/manage_users_screen.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/utils/notification_utils.dart';
 import 'package:flutter/material.dart';
@@ -196,42 +201,6 @@ class ProfileTab extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Membership Card
-                  // Container(
-                  //   padding: const EdgeInsets.symmetric(
-                  //     horizontal: 16,
-                  //     vertical: 12,
-                  //   ),
-                  //   decoration: BoxDecoration(
-                  //     color: Colors.white.withOpacity(0.15),
-                  //     borderRadius: BorderRadius.circular(12),
-                  //     border: Border.all(color: Colors.white.withOpacity(0.3)),
-                  //   ),
-                    // child: Row(
-                    //   children: [
-                    //     const Icon(
-                    //       Icons.workspace_premium,
-                    //       color: Colors.yellow,
-                    //       size: 24,
-                    //     ),
-                    //     const SizedBox(width: 8),
-                    //     const Text(
-                    //       'Hạng thành viên',
-                    //       style: TextStyle(
-                    //         color: Colors.white,
-                    //         fontWeight: FontWeight.bold,
-                    //         fontSize: 14,
-                    //       ),
-                    //     ),
-                    //     const Spacer(),
-                    //     const Icon(
-                    //       Icons.chevron_right,
-                    //       color: Colors.white,
-                    //       size: 20,
-                    //     ),
-                    //   ],
-                    // ),
-                  // ),
                 ],
               ),
             ),
@@ -278,6 +247,44 @@ class ProfileTab extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (user.role == 'admin') ...[
+                    const Text(
+                      'QUẢN LÝ ADMIN',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildListSection([
+                      _buildListItem(
+                        icon: Icons.store, 
+                        title: 'Quản lý lịch đặt', 
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ManageBookingsScreen())),
+                      ),
+                      const Divider(height: 1, color: AppColors.borderColor),
+                      _buildListItem(
+                        icon: Icons.event,
+                        title: 'Quản lý sự kiện sân',
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminEventListScreen())),
+                      ),
+                      const Divider(height: 1, color: AppColors.borderColor),
+                      _buildListItem(
+                        icon: Icons.people, 
+                        title: 'Thông tin khách hàng', 
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageUsersScreen())),
+                      ),
+                      const Divider(height: 1, color: AppColors.borderColor),
+                      _buildListItem(
+                        icon: Icons.add_home_work, 
+                        title: 'Thêm / Quản lý sân mới', 
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ManageCourtsScreen())),
+                      ),
+                    ]),
+                    const SizedBox(height: 24),
+                  ],
+
                   Text(
                     l.activity,
                     style: const TextStyle(
@@ -288,14 +295,14 @@ class ProfileTab extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   _buildListSection([
-                    _buildListItem(icon: Icons.favorite_border_rounded, title: l.favoriteCourts,
+                    _buildListItem(icon: Icons.favorite, title: l.favoriteCourts,
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen()))),
                     const Divider(height: 1, color: AppColors.borderColor),
-                    _buildListItem(icon: Icons.school_outlined, title: l.courseList,
+                    _buildListItem(icon: Icons.school, title: l.courseList,
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WatchedCoursesScreen()))),
                     const Divider(height: 1, color: AppColors.borderColor),
-                    _buildListItem(icon: Icons.workspace_premium_outlined, title: l.membershipPackage,
-                        onTap: () => NotificationUtils.showComingSoon(context)),
+                    _buildListItem(icon: Icons.dashboard, title: l.statistics,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StatisticsScreen()))),
                   ]),
 
                   const SizedBox(height: 24),
@@ -310,14 +317,14 @@ class ProfileTab extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   _buildListSection([
-                    _buildListItem(icon: Icons.language_outlined, title: l.language,
+                    _buildListItem(icon: Icons.language, title: l.language,
                         subtitle: langProvider.isVietnamese ? l.languageVietnamese : l.languageEnglish,
                         onTap: () => _showLanguageDialog(context)),
                     const Divider(height: 1, color: AppColors.borderColor),
-                    _buildListItem(icon: Icons.settings_outlined, title: l.settings,
+                    _buildListItem(icon: Icons.settings, title: l.settings,
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
                     const Divider(height: 1, color: AppColors.borderColor),
-                    _buildListItem(icon: Icons.info_outline, title: l.appVersion, onTap: () {}),
+                    _buildListItem(icon: Icons.info, title: l.appVersion, onTap: () {}),
                   ]),
                   // Warning / Security Banner
                   const SizedBox(height: 16),

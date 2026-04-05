@@ -159,6 +159,24 @@ class AppLocalizationsVi extends AppLocalizations {
   String get membershipPackage => 'Gói hội viên';
 
   @override
+  String get statistics => 'Thống kê';
+
+  @override
+  String get statisticalFilter => 'Lọc thống kê';
+
+  @override
+  String get pieChartTitle => 'Phân bổ loại sân';
+
+  @override
+  String get football => 'Bóng đá';
+
+  @override
+  String get pickleball => 'Pickleball';
+
+  @override
+  String get otherSports => 'Khác';
+
+  @override
   String get settings => 'Cài đặt';
 
   @override

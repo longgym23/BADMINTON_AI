@@ -1,6 +1,8 @@
 import 'package:badminton_ai/providers/auth_provider.dart';
+import 'package:badminton_ai/screens/auth/forgot_password_screen.dart';
 import 'package:badminton_ai/screens/auth/register_screen.dart';
 import 'package:badminton_ai/screens/splash/splash_screen.dart';
+import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +17,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+
+  static const Color _orange = Color(0xFFE8722A);
+  static const Color _inputBg = Color(0xFFF5F5F5);
+  static const Color _hintColor = Color(0xFFAAAAAA);
+  static const Color _textDark = Color(0xFF1A1A1A);
+  static const Color _textGray = Color(0xFF888888);
 
   @override
   void dispose() {
@@ -33,8 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (error != null && mounted) {
         String displayError = error;
         if (error.contains('Email not confirmed')) {
-          displayError =
-              'Email chưa được xác thực. Vui lòng kiểm tra hộp thư hoặc liên hệ Admin.';
+          displayError = 'Email chưa được xác thực. Vui lòng kiểm tra hộp thư.';
         } else if (error.contains('Invalid login credentials')) {
           displayError = 'Email hoặc mật khẩu không đúng.';
         }
@@ -54,9 +61,12 @@ class _LoginScreenState extends State<LoginScreen> {
   void _loginWithGoogle() async {
     final authProvider = context.read<AppAuthProvider>();
     bool success = await authProvider.signInWithGoogle();
-    
     if (success && mounted) {
-      AppToast.show(context, 'Đăng nhập Google thành công', type: ToastType.success);
+      AppToast.show(
+        context,
+        'Đăng nhập Google thành công',
+        type: ToastType.success,
+      );
       await Future.delayed(const Duration(milliseconds: 1200));
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
@@ -64,333 +74,380 @@ class _LoginScreenState extends State<LoginScreen> {
         (route) => false,
       );
     } else if (mounted) {
-      AppToast.show(context, 'Đăng nhập Google thất bại hoặc bị hủy.', type: ToastType.error);
+      AppToast.show(
+        context,
+        'Đăng nhập Google thất bại hoặc bị hủy.',
+        type: ToastType.error,
+      );
     }
   }
 
-  // --- UI THEME COLORS ---
-  final Color _primaryGreen = const Color(0xFF006436); // Màu xanh lá sậm
-  final Color _grayBorder = const Color(0xFFE0E0E0);
-  final Color _hintTextColor = const Color(0xFF9E9E9E);
-
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 4),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: _primaryGreen,
-          fontSize: 15,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
+  Widget _buildField({
     required TextEditingController controller,
+    required String label,
     required String hint,
+    required IconData icon,
     bool isPassword = false,
     String? Function(String?)? validator,
   }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: isPassword ? _obscurePassword : false,
-      style: const TextStyle(color: Colors.black87, fontSize: 15),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: _hintTextColor, fontSize: 14),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: _grayBorder),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: _textGray,
+          ),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: _primaryGreen, width: 1.5),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          obscureText: isPassword ? _obscurePassword : false,
+          style: const TextStyle(fontSize: 15, color: _textDark),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: _hintColor, fontSize: 14),
+            filled: true,
+            fillColor: _inputBg,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            prefixIcon: Icon(icon, color: _orange, size: 20),
+            suffixIcon: isPassword
+                ? IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: _hintColor,
+                      size: 20,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  )
+                : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _orange, width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+          ),
+          validator: validator,
         ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
-        ),
-        suffixIcon: isPassword
-            ? IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  color: _primaryGreen,
-                  size: 20,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _obscurePassword = !_obscurePassword;
-                  });
-                },
-              )
-            : IconButton(
-                icon: Icon(Icons.cancel, color: _primaryGreen, size: 20),
-                onPressed: () => controller.clear(),
-              ),
-      ),
-      validator: validator,
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AppAuthProvider>();
+    final isLoading = authProvider.authState == AuthState.loading;
+    final size = MediaQuery.of(context).size;
+    final imageH = size.height * 0.42;
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Đăng nhập',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'lexend',
-          ),
-        ),
-        centerTitle: true,
-      ),
+      backgroundColor: Colors.white,
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: Stack(
           children: [
-            // Background Layer (Gradient màu Cam)
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFD66A2C), // Cam đậm
-                      const Color(0xFFB14E18), // Nâu cam
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+            // ── Phần ảnh nền phía trên ──
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: imageH,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    'assets/images/background_badminton.jpg',
+                    fit: BoxFit.cover,
+                  ),
+                  // Overlay tối nhẹ
+                  // Container(
+                  //   decoration: BoxDecoration(
+                  //     gradient: LinearGradient(
+                  //       begin: Alignment.topCenter,
+                  //       end: Alignment.bottomCenter,
+                  //       colors: [
+                  //         Colors.black.withOpacity(0.25),
+                  //         Colors.black.withOpacity(0.50),
+                  //       ],
+                  //     ),
+                  //   ),
+                  // ),
+                  // // Logo nhỏ 44x44 góc trên trái
+                  // Positioned(
+                  //   top: MediaQuery.of(context).padding.top + 0.5,
+                  //   left: 10,
+                  //   child: Container(
+                  //     width: 100,
+                  //     height: 100,
+                  //     // decoration: BoxDecoration(
+                  //     //   color: Colors.white,
+                  //     //   borderRadius: BorderRadius.circular(12),
+                  //     //   boxShadow: [
+                  //     //     BoxShadow(
+                  //     //       color: Colors.black.withOpacity(0.15),
+                  //     //       blurRadius: 8,
+                  //     //       offset: const Offset(0, 3),
+                  //     //     ),
+                  //     //   ],
+                  //     // ),
+                  //     padding: const EdgeInsets.all(6),
+                  //     child: Image.asset(
+                  //       'assets/images/logo1.png',
+                  //       fit: BoxFit.contain,
+                  //     ),
+                  //   ),
+                  // ),
+                ],
+              ),
+            ),
+
+            // ── Card trắng phía dưới ──
+            Positioned(
+              top: imageH - 24,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(28),
+                    topRight: Radius.circular(28),
                   ),
                 ),
-              ),
-            ),
-            
-            // Texture vòng cung giả lập vệt sóng
-            Positioned(
-              top: -100,
-              right: -50,
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.05), width: 40),
-                ),
-              ),
-            ),
-            
-            // Nội dung Form trắng
-            SafeArea(
-              child: Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          
-                          // 1. Email Field
-                          _buildLabel('Email của bạn?'),
-                          _buildTextField(
-                            controller: _emailController,
-                            hint: 'Nhập email của bạn',
-                            validator: (val) {
-                              if (val == null || val.isEmpty) return 'Vui lòng nhập email';
-                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(val)) {
-                                return 'Email không hợp lệ';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                          
-                          // 2. Mật khẩu
-                          _buildLabel('Mật khẩu (*)'),
-                          _buildTextField(
-                            controller: _passwordController,
-                            hint: 'Nhập mật khẩu (*)',
-                            isPassword: true,
-                            validator: (val) => (val?.isEmpty ?? true) ? 'Vui lòng nhập mật khẩu' : null,
-                          ),
-                          
-                          // Quên mật khẩu
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {}, // TODO: Xử lý quên mật khẩu sau này
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: Text(
-                                'Quên mật khẩu?',
-                                style: TextStyle(
-                                  color: _primaryGreen,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Nút Đăng Nhập
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: authProvider.authState == AuthState.loading ? null : _login,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _primaryGreen,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: authProvider.authState == AuthState.loading
-                                  ? const SizedBox(
-                                      height: 22,
-                                      width: 22,
-                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                    )
-                                  : const Text(
-                                      'ĐĂNG NHẬP',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1.0,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          // Divider "hoặc"
-                          Row(
-                            children: [
-                              Expanded(child: Divider(color: _grayBorder)),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                child: Text('hoặc', style: TextStyle(color: _hintTextColor, fontSize: 13)),
-                              ),
-                              Expanded(child: Divider(color: _grayBorder)),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Nút Google Sign In
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton(
-                              onPressed: authProvider.authState == AuthState.loading ? null : _loginWithGoogle,
-                              style: OutlinedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                side: BorderSide(color: _grayBorder, width: 1.5),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                  padding: const EdgeInsets.fromLTRB(28, 32, 28, 16),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header row: "Chào mừng trở lại" + Avatar
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Hiển thị tạm chữ 'G' logo nếu không có hình
-                                  Container(
-                                    width: 24,
-                                    height: 24,
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Color(0xFFDB4437),
-                                    ),
-                                    child: const Center(
-                                      child: Text(
-                                        'G',
-                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                                      ),
+                                  const Text(
+                                    'Chào mừng\ntrở lại KLOO',
+                                    style: TextStyle(
+                                      fontSize: 34,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.brandOrange,
+                                      height: 1.2,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(height: 4),
                                   const Text(
-                                    'Đăng nhập với Google',
+                                    'Sân chơi của bạn',
                                     style: TextStyle(
-                                      color: Colors.black87,
                                       fontSize: 15,
-                                      fontWeight: FontWeight.bold,
+                                      color: _textGray,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 28),
+                            // Avatar người dùng (placeholder khi chưa login)
+                            Container(
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: Image.asset(
+                                'assets/images/teamwork.gif',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 28),
 
-                          // Đăng ký Footer
-                          Center(
-                            child: Wrap(
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                const Text(
-                                  'Bạn chưa có tài khoản? ',
-                                  style: TextStyle(color: Colors.black87, fontSize: 13),
-                                ),
-                                InkWell(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => RegisterScreen()),
-                                    );
-                                  },
-                                  child: Text(
-                                    'Đăng ký ngay',
+                        // Email field
+                        _buildField(
+                          controller: _emailController,
+                          label: 'Email',
+                          hint: 'Nhập email của bạn',
+                          icon: Icons.email,
+                          validator: (val) {
+                            if (val == null || val.isEmpty)
+                              return 'Vui lòng nhập email';
+                            if (!RegExp(
+                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                            ).hasMatch(val)) {
+                              return 'Email không hợp lệ';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Password field
+                        _buildField(
+                          controller: _passwordController,
+                          label: 'Mật khẩu',
+                          hint: '••••••',
+                          icon: Icons.lock,
+                          isPassword: true,
+                          validator: (val) => (val?.isEmpty ?? true)
+                              ? 'Vui lòng nhập mật khẩu'
+                              : null,
+                        ),
+
+                        // Quên mật khẩu
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ForgotPasswordScreen(),
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Quên mật khẩu?',
+                              style: TextStyle(color: AppColors.brandOrange, fontSize: 12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Nút đăng nhập
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: isLoading ? null : _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _orange,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: isLoading
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Đăng nhập',
                                     style: TextStyle(
-                                      color: _primaryGreen,
-                                      fontSize: 13,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // or sign in with
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Divider(color: Colors.grey.shade300),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              child: Text(
+                                'hoặc đăng nhập với',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Divider(color: Colors.grey.shade300),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Social buttons
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildSocialBtn(
+                              onTap: _loginWithGoogle,
+                              child: Image.asset(
+                                'assets/images/google.png',
+                                width: 24,
+                                height: 24,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Chưa có tài khoản
+                        Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'Chưa có tài khoản? ',
+                                style: TextStyle(
+                                  color: _textGray,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => RegisterScreen(),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Đăng ký',
+                                  style: TextStyle(
+                                    color: _orange,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
                   ),
                 ),
@@ -398,6 +455,30 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSocialBtn({required Widget child, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 52,
+        height: 52,
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(child: child),
       ),
     );
   }

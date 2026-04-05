@@ -159,6 +159,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get membershipPackage => 'Membership Package';
 
   @override
+  String get statistics => 'Statistics';
+
+  @override
+  String get statisticalFilter => 'Filter Statistics';
+
+  @override
+  String get pieChartTitle => 'Court Distribution';
+
+  @override
+  String get football => 'Football';
+
+  @override
+  String get pickleball => 'Pickleball';
+
+  @override
+  String get otherSports => 'Other';
+
+  @override
   String get settings => 'Settings';
 
   @override

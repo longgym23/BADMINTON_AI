@@ -4,6 +4,7 @@ import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/notification_provider.dart';
 import 'package:badminton_ai/screens/user/booking/booking_method_modal.dart';
+import 'package:badminton_ai/screens/user/booking/event_list_screen.dart';
 import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 import 'package:badminton_ai/screens/user/notifications/notifications_screen.dart';
 import 'package:badminton_ai/screens/user/scanner/qr_scanner_screen.dart';
@@ -121,9 +122,10 @@ class _HomeTabState extends State<HomeTab> {
         },
         onEventBooking: () {
           Navigator.pop(ctx);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Tính năng đặt sự kiện đang được phát triển"),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => EventListScreen(court: court),
             ),
           );
         },

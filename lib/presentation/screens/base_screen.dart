@@ -1,0 +1,15 @@
+import 'package:flutter/material.dart';
+
+abstract class BaseScreen extends StatelessWidget {
+  const BaseScreen({super.key});
+
+  @override
+  Widget build(BuildContext context);
+}
+
+abstract class BaseStatefulScreen extends StatefulWidget {
+  const BaseStatefulScreen({super.key});
+
+  @override
+  State<BaseStatefulScreen> createState();
+}

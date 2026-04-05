@@ -398,6 +398,42 @@ abstract class AppLocalizations {
   /// **'Gói hội viên'**
   String get membershipPackage;
 
+  /// No description provided for @statistics.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thống kê'**
+  String get statistics;
+
+  /// No description provided for @statisticalFilter.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lọc thống kê'**
+  String get statisticalFilter;
+
+  /// No description provided for @pieChartTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Phân bổ loại sân'**
+  String get pieChartTitle;
+
+  /// No description provided for @football.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bóng đá'**
+  String get football;
+
+  /// No description provided for @pickleball.
+  ///
+  /// In vi, this message translates to:
+  /// **'Pickleball'**
+  String get pickleball;
+
+  /// No description provided for @otherSports.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khác'**
+  String get otherSports;
+
   /// No description provided for @settings.
   ///
   /// In vi, this message translates to:
