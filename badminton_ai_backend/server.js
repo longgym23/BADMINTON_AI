@@ -6,13 +6,14 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs-extra');
 const path = require('path');
-const sgMail = require('@sendgrid/mail');
+const { MailerSend, EmailParams, Sender, Recipient } = require('mailersend');
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 
-// ─── SendGrid Setup ───────────────────────────────────────────────────────────
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL;
+// ─── MailerSend Setup ─────────────────────────────────────────────────────────
+const mailerSend = new MailerSend({
+  apiKey: process.env.MAILERSEND_API_KEY,
+});
 
 // ─── Supabase Admin Client ────────────────────────────────────────────────────
 const supabaseAdmin = createClient(
@@ -280,15 +281,18 @@ app.post('/forgot-password', async (req, res) => {
 </html>`;
 
   try {
-    await sgMail.send({
-      to: normalizedEmail,
-      from: FROM_EMAIL,
-      subject: `[KLOO] Mã OTP đặt lại mật khẩu: ${otp}`,
-      html: htmlContent,
-    });
+    const sentFrom = new Sender(process.env.MAILERSEND_FROM_EMAIL, 'KLOO App');
+    const recipients = [new Recipient(normalizedEmail)];
+    const emailParams = new EmailParams()
+      .setFrom(sentFrom)
+      .setTo(recipients)
+      .setSubject(`[KLOO] Mã OTP đặt lại mật khẩu: ${otp}`)
+      .setHtml(htmlContent);
+
+    await mailerSend.email.send(emailParams);
     res.json({ message: 'Mã OTP đã được gửi đến email của bạn.' });
   } catch (err) {
-    console.error('SendGrid error:', err?.response?.body || err);
+    console.error('MailerSend error:', JSON.stringify(err?.body || err));
     res.status(500).json({ error: 'Không thể gửi email. Vui lòng thử lại.' });
   }
 });
