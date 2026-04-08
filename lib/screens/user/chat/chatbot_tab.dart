@@ -425,13 +425,17 @@ class _ChatbotTabState extends State<ChatbotTab> {
     try {
       final file = await _imagePicker.pickImage(
         source: source,
-        imageQuality: 85,
+        imageQuality: 80,   // Nén chất lượng
+        maxWidth: 1024,     // Giới hạn chiều rộng tối đa
+        maxHeight: 1024,    // Giới hạn chiều cao tối đa
+        // Giảm kích thước file từ ~5MB xuống ~200-400KB
+        // → Tránh Connection reset trên Render free tier
       );
       if (file != null) _showImageDescDialog(file.path);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Lỗi ảnh: $e')));
+      ).showSnackBar(const SnackBar(content: Text('Không thể chọn ảnh. Vui lòng thử lại!')));
     }
   }
 

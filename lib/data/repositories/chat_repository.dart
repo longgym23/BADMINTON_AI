@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:badminton_ai/data/models/chat_message_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -93,13 +95,16 @@ class ChatRepository {
       http.Response response;
 
       if (imagePath != null) {
-        // Gửi ảnh kèm user_id qua multipart
+        // Gửi ảnh kèm user_id qua multipart — có timeout 120s
         final request = http.MultipartRequest('POST', Uri.parse(backendUrl));
         request.fields['prompt']  = text.isNotEmpty ? text : 'Phân tích ảnh này';
         request.fields['user_id'] = userId;
         request.files.add(await http.MultipartFile.fromPath('image', imagePath));
-        final streamedResponse = await request.send();
-        response = await http.Response.fromStream(streamedResponse);
+        // Thêm timeout để tránh treo vĩnh viễn khi Render cold start
+        final streamedResponse = await request.send()
+            .timeout(const Duration(seconds: 120));
+        response = await http.Response.fromStream(streamedResponse)
+            .timeout(const Duration(seconds: 30));
 
       } else if (audioPath != null) {
         // Gửi audio kèm user_id qua multipart
@@ -107,8 +112,10 @@ class ChatRepository {
         request.fields['prompt']  = text;
         request.fields['user_id'] = userId;
         request.files.add(await http.MultipartFile.fromPath('audio', audioPath));
-        final streamedResponse = await request.send();
-        response = await http.Response.fromStream(streamedResponse);
+        final streamedResponse = await request.send()
+            .timeout(const Duration(seconds: 60));
+        response = await http.Response.fromStream(streamedResponse)
+            .timeout(const Duration(seconds: 30));
 
       } else {
         // Gửi text + user_id → Backend thực hiện full RAG pipeline
@@ -118,7 +125,7 @@ class ChatRepository {
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode({
                 'prompt':  text,
-                'user_id': userId,  // Backend dùng để lấy lịch cá nhân
+                'user_id': userId,
               }),
             )
             .timeout(const Duration(seconds: 90));
@@ -130,14 +137,22 @@ class ChatRepository {
       } else {
         try {
           final responseBody = jsonDecode(response.body);
-          answer = 'Lỗi: ' + (responseBody['error'] ?? 'Lỗi server (${response.statusCode})');
+          answer = responseBody['error'] ?? 'Máy chủ phản hồi lỗi. Vui lòng thử lại!';
         } catch (_) {
-          answer = 'Lỗi server (${response.statusCode})';
+          answer = 'Máy chủ phản hồi lỗi. Vui lòng thử lại!';
         }
       }
+    } on TimeoutException {
+      // Server Render free tier đang khởi động hoặc xử lý lâu
+      answer = 'Trợ lý AI đang khởi động, vui lòng gửi lại sau vài giây nhé!';
+      print('sendMessageWithRAG: Timeout');
+    } on SocketException catch (e) {
+      // Mất kết nối hoặc server reset connection (Render cold start)
+      answer = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại!';
+      print('sendMessageWithRAG SocketException: $e');
     } catch (e) {
-      answer = 'Lỗi hệ thống/mạng: $e';
-      print('Lỗi sendMessageWithRAG: $e');
+      answer = 'Đã xảy ra lỗi, vui lòng thử lại sau!';
+      print('sendMessageWithRAG error: $e');
     }
 
     // 3. Lưu câu trả lời của AI vào Supabase
