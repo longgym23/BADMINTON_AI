@@ -3,6 +3,7 @@
 // Architecture:
 //   User Query → Embed Query → Vector Search (Supabase pgvector)
 //               → Augmented Prompt → Gemini → Answer
+// Version: 3.1.0 — Updated to gemini-2.5-flash-lite
 // ============================================================
 
 require('dotenv').config();
@@ -29,9 +30,18 @@ const supabaseAdmin = createClient(
 const otpStore = new Map();
 
 // ─── Multer File Upload ───────────────────────────────────────────────────────
+// Giảm limit xuống 5MB và chỉ chấp nhận ảnh để tránh Connection reset trên Render
 const upload = multer({
   dest: 'uploads/',
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Chỉ chấp nhận ảnh JPEG, PNG, WebP hoặc GIF.'));
+    }
+  },
 });
 fs.ensureDirSync('uploads');
 
@@ -45,10 +55,9 @@ let genAI, chatModel, visionModel, embeddingModel;
 try {
   genAI          = new GoogleGenerativeAI(GEMINI_API_KEY);
   chatModel      = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  visionModel    = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-  // text-embedding-004: Model embedding của Google, 768 chiều
+  visionModel    = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
   embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-  console.log('✅ Gemini models initialized (chat + vision + embedding)');
+  console.log('✅ Gemini models initialized (chat + vision + embedding) — gemini-2.5-flash-lite');
 } catch (err) {
   console.error('❌ Lỗi khởi tạo Gemini:', err.message);
 }
@@ -74,16 +83,70 @@ const removeMarkdown = (text) => {
     .trim();
 };
 
+// ─── Sports Tips Knowledge ────────────────────────────────────────────────────
+const SPORTS_TIPS = {
+  badminton: {
+    name: 'Cầu lông',
+    tips: [
+      'Giữ vợt nhẹ nhàng, không siết chặt — giúp cổ tay linh hoạt và đánh mạnh hơn.',
+      'Luôn trở về vị trí trung tâm sân sau mỗi cú đánh để sẵn sàng cho pha tiếp theo.',
+      'Luyện tập smash chéo sân — khó đỡ hơn smash thẳng.',
+      'Mang giày cầu lông chuyên dụng để bảo vệ mắt cá chân khi di chuyển nhanh.',
+      'Khởi động kỹ vai, cổ tay và đầu gối trước khi thi đấu để tránh chấn thương.',
+      'Sử dụng cầu lông chất lượng tốt để kiểm soát đường bay chính xác hơn.',
+    ],
+    equipment: 'Vợt, cầu lông, giày chuyên dụng, quần áo thể thao thoáng khí.',
+    benefits: 'Tăng cường phản xạ, đốt calo hiệu quả, cải thiện tim mạch và sự linh hoạt.',
+  },
+  football: {
+    name: 'Bóng đá',
+    tips: [
+      'Kiểm soát bóng bằng lòng bàn chân để giữ bóng chắc và chuyền chính xác.',
+      'Luôn quan sát đồng đội và không gian xung quanh trước khi nhận bóng.',
+      'Tập sút bằng cả hai chân để trở thành cầu thủ toàn diện hơn.',
+      'Mang giày đinh phù hợp với mặt sân (cỏ nhân tạo hoặc sân cứng).',
+      'Uống đủ nước trước, trong và sau trận đấu — bóng đá tiêu hao năng lượng rất lớn.',
+      'Luyện sút phạt đều đặn — đây là kỹ năng quyết định nhiều trận đấu.',
+    ],
+    equipment: 'Bóng đá, giày đinh, shin guard (bảo vệ ống chân), áo đấu.',
+    benefits: 'Rèn luyện toàn thân, tăng sức bền, cải thiện kỹ năng làm việc nhóm.',
+  },
+  tennis: {
+    name: 'Tennis',
+    tips: [
+      'Nắm vợt theo kiểu Continental để linh hoạt cho cả forehand và backhand.',
+      'Giữ mắt trên bóng cho đến khi vợt chạm bóng — đừng nhìn nơi muốn đánh!',
+      'Cú serve đóng vai trò then chốt — luyện tossing bóng đúng điểm trước.',
+      'Di chuyển bằng bước nhỏ nhanh (split step) trước khi đối thủ đánh bóng.',
+      'Dây vợt căng vừa phải (khoảng 55-60 lbs) để cân bằng lực và kiểm soát.',
+      'Mang giày tennis để đảm bảo bám sân và hỗ trợ cổ chân.',
+    ],
+    equipment: 'Vợt tennis, bóng tennis, giày tennis, băng cổ tay.',
+    benefits: 'Tăng phản xạ, sức mạnh tay, sức bền và tập trung tâm lý.',
+  },
+  pickleball: {
+    name: 'Pickleball',
+    tips: [
+      'Luôn giữ vị trí ở kitchen line (vạch không-volley) để kiểm soát trận đấu.',
+      'Dink shot (đánh nhẹ qua lưới) là vũ khí chiến lược quan trọng nhất trong pickleball.',
+      'Tránh đứng ở "no man\'s land" (giữa sân) — dễ bị bắt bài.',
+      'Giao bóng xoáy dưới (topspin drop serve) để tăng khó khăn cho đối thủ.',
+      'Luyện backhand dink vì đây là điểm yếu của hầu hết người mới chơi.',
+      'Pickleball phù hợp mọi lứa tuổi — sân nhỏ hơn, ít chạy hơn tennis nhưng chiến thuật nhiều.',
+    ],
+    equipment: 'Vợt pickleball, bóng pickleball có lỗ, giày court sports.',
+    benefits: 'Thân thiện với khớp, cải thiện phản xạ, phù hợp người cao tuổi và người mới.',
+  },
+};
+
 // ─── RAG: Step 1 — Generate Embedding ────────────────────────────────────────
-// Chuyển đoạn text bất kỳ thành vector 768 chiều
 async function generateEmbedding(text) {
   if (!embeddingModel) throw new Error('Embedding model chưa sẵn sàng');
   const result = await embeddingModel.embedContent(text);
-  return result.embedding.values; // Array<number> length=768
+  return result.embedding.values;
 }
 
 // ─── RAG: Step 2 — Retrieve Relevant Knowledge Chunks ────────────────────────
-// Tìm kiếm các đoạn kiến thức liên quan nhất bằng cosine similarity
 async function retrieveRelevantChunks(queryEmbedding, matchCount = 5, matchThreshold = 0.50) {
   try {
     const { data, error } = await supabaseAdmin.rpc('match_documents', {
@@ -103,7 +166,6 @@ async function retrieveRelevantChunks(queryEmbedding, matchCount = 5, matchThres
 }
 
 // ─── RAG: Step 3 — Personalized User Context ─────────────────────────────────
-// Lấy lịch đặt sân sắp tới của user để cá nhân hóa trả lời
 async function getUserContext(userId) {
   if (!userId) return 'Người dùng chưa đăng nhập.';
   try {
@@ -130,9 +192,7 @@ async function getUserContext(userId) {
 }
 
 // ─── RAG: Step 4 — Build Augmented Prompt ────────────────────────────────────
-// Kết hợp: [Role] + [Retrieved Chunks] + [User Context] + [Rules] + [Question]
 function buildAugmentedPrompt(retrievedChunks, userContext, userQuestion) {
-  // Xây dựng phần kiến thức từ các chunks được truy xuất
   let knowledgeSection = '';
   if (retrievedChunks.length > 0) {
     knowledgeSection = retrievedChunks
@@ -144,7 +204,8 @@ function buildAugmentedPrompt(retrievedChunks, userContext, userQuestion) {
     knowledgeSection = 'Không tìm thấy thông tin liên quan trong cơ sở dữ liệu nội bộ.';
   }
 
-  return `Bạn là trợ lý ảo KLOO - ứng dụng đặt sân thể thao (cầu lông, bóng đá, tennis, pickleball).
+  return `Bạn là trợ lý ảo KLOO - ứng dụng đặt sân thể thao chuyên nghiệp (cầu lông, bóng đá, tennis, pickleball).
+Bạn thân thiện, nhiệt tình và chỉ hỗ trợ các chủ đề liên quan đến thể thao và dịch vụ KLOO.
 
 [THÔNG TIN ĐƯỢC TRUY XUẤT TỪ CƠ SỞ DỮ LIỆU]
 ${knowledgeSection}
@@ -154,10 +215,11 @@ ${userContext}
 
 [NGUYÊN TẮC TRẢ LỜI BẮT BUỘC]
 1. Ưu tiên dùng thông tin trong phần THÔNG TIN ĐƯỢC TRUY XUẤT để trả lời chính xác.
-2. Nếu câu hỏi KHÔNG liên quan đến sân thể thao, ứng dụng KLOO, đặt sân, sự kiện, hoặc thanh toán, hãy từ chối lịch sự: "Xin lỗi, tôi chỉ hỗ trợ về sân thể thao và dịch vụ của KLOO."
+2. Nếu câu hỏi KHÔNG liên quan đến: sân thể thao, KLOO, đặt sân, sự kiện, thanh toán, tập luyện thể thao, hoặc lời khuyên về 4 môn (cầu lông, bóng đá, tennis, pickleball) → từ chối lịch sự: "Xin lỗi, tôi chỉ hỗ trợ về sân thể thao và dịch vụ của KLOO. Bạn có câu hỏi nào về đặt sân hoặc các môn thể thao không?"
 3. Nếu người dùng muốn TÌM SÂN hoặc GỢI Ý SÂN, thêm đúng 1 đoạn mã [ACTION_SEARCH:sport_type] ở cuối câu trả lời. Giá trị sport_type CHỈ được chọn trong: football, badminton, tennis, pickleball.
 4. Không được bịa thông tin không có trong ngữ cảnh.
 5. Trả lời ngắn gọn, thân thiện, tiếng Việt. KHÔNG dùng markdown, dấu *, **, #, hoặc ký hiệu đặc biệt.
+6. Hướng dẫn đặt sân: Mở app KLOO → Tab "Đặt sân" → Chọn ngày → Chọn sân → Chọn giờ → Thanh toán ví KLOO hoặc SePay.
 
 [CÂU HỎI NGƯỜI DÙNG]
 ${userQuestion}`;
@@ -167,26 +229,134 @@ ${userQuestion}`;
 const app  = express();
 const port = process.env.PORT || 3000;
 
+// Keep-alive headers để Render không đột ngột cắt kết nối
+app.use((req, res, next) => {
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Keep-Alive', 'timeout=120');
+  next();
+});
+
 app.use(cors());
 app.use(express.json());
+
+// Timeout middleware: trả về lỗi rõ ràng thay vì để kết nối bị cắt đột ngột
+app.use((req, res, next) => {
+  res.setTimeout(110_000, () => {
+    console.error('⏰ Request timeout sau 110s:', req.path);
+    if (!res.headersSent) {
+      res.status(503).json({
+        error: 'Yêu cầu mất quá nhiều thời gian. Máy chủ đang bận, vui lòng thử lại sau vài giây nhé!',
+      });
+    }
+  });
+  next();
+});
 
 // Health Check
 app.get('/', (req, res) => {
   res.json({
     status: 'running',
-    version: '2.0.0-rag',
+    version: '3.1.0',
     mode: 'Retrieval-Augmented Generation (RAG)',
     models: {
       chat:      'gemini-2.5-flash-lite',
-      vision:    'gemini-1.5-flash',
+      vision:    'gemini-2.5-flash-lite',
       embedding: 'text-embedding-004 (768 dims)',
     },
   });
 });
 
+// ─── GET /courts — Lấy danh sách sân theo loại môn thể thao ─────────────────
+// Query: ?sport_type=badminton&limit=8
+app.get('/courts', async (req, res) => {
+  const sportType = (req.query.sport_type || '').toLowerCase().trim();
+  const limit     = Math.min(parseInt(req.query.limit) || 8, 20);
+
+  try {
+    let query = supabaseAdmin
+      .from('courts')
+      .select('id, name, sport_type, address, price_per_hour, image_url, status, sub_courts, description')
+      .eq('status', 'active')
+      .limit(limit);
+
+    // Lọc theo loại sân nếu có
+    if (sportType && ['football', 'badminton', 'tennis', 'pickleball'].includes(sportType)) {
+      query = query.ilike('sport_type', `%${sportType}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('❌ /courts error:', error.message);
+      return res.status(500).json({ error: 'Không thể lấy danh sách sân.' });
+    }
+
+    const courts = (data || []).map(c => ({
+      id:            c.id,
+      name:          c.name,
+      sport_type:    c.sport_type || 'Đa năng',
+      address:       c.address || 'Chưa cập nhật',
+      price_per_hour: c.price_per_hour || 0,
+      image_url:     c.image_url || null,
+      sub_courts:    c.sub_courts || 1,
+      description:   c.description || '',
+    }));
+
+    console.log(`✅ /courts [${sportType || 'all'}] → ${courts.length} sân`);
+    res.json({ courts, sport_type: sportType || 'all', count: courts.length });
+  } catch (e) {
+    console.error('❌ /courts exception:', e.message);
+    res.status(500).json({ error: 'Lỗi server.' });
+  }
+});
+
+// ─── POST /sports-tips — Lời khuyên về môn thể thao ─────────────────────────
+// Body: { "sport": "badminton" }
+app.post('/sports-tips', async (req, res) => {
+  const sport = (req.body.sport || '').toLowerCase().trim();
+  const validSports = ['badminton', 'football', 'tennis', 'pickleball'];
+
+  if (!sport || !validSports.includes(sport)) {
+    return res.status(400).json({
+      error: 'Môn thể thao không hợp lệ. Chọn: badminton, football, tennis, pickleball.',
+    });
+  }
+
+  const data = SPORTS_TIPS[sport];
+  if (!data) {
+    return res.status(404).json({ error: 'Không tìm thấy thông tin.' });
+  }
+
+  // Dùng Gemini để tạo lời khuyên tự nhiên hơn dựa trên data tĩnh
+  try {
+    if (chatModel) {
+      const prompt = `Bạn là huấn luyện viên thể thao chuyên nghiệp trong ứng dụng KLOO.
+Hãy đưa ra 3 lời khuyên ngắn gọn, thực tế và hữu ích nhất cho người mới bắt đầu chơi ${data.name}.
+Sử dụng thông tin này làm cơ sở: ${data.tips.join('. ')}
+Dụng cụ cần: ${data.equipment}
+Lợi ích: ${data.benefits}
+
+Trả lời thân thiện, ngắn gọn bằng tiếng Việt. KHÔNG dùng markdown hay ký hiệu đặc biệt. Mỗi lời khuyên trên 1 dòng với số thứ tự.`;
+
+      const result = await chatModel.generateContent(prompt);
+      let answer = result.response.text();
+      answer = removeMarkdown(answer);
+      return res.json({ sport, name: data.name, tips: answer, equipment: data.equipment, benefits: data.benefits });
+    }
+  } catch (e) {
+    console.error('❌ /sports-tips Gemini error:', e.message);
+  }
+
+  // Fallback nếu Gemini lỗi
+  res.json({
+    sport,
+    name:      data.name,
+    tips:      data.tips.slice(0, 3).join('\n'),
+    equipment: data.equipment,
+    benefits:  data.benefits,
+  });
+});
+
 // ─── SEED KNOWLEDGE BASE ──────────────────────────────────────────────────────
-// POST /admin/seed-knowledge
-// Gọi endpoint này sau khi chạy SQL migration để nạp dữ liệu vào vector DB
 app.post('/admin/seed-knowledge', async (req, res) => {
   console.log('\n🌱 ===== BẮT ĐẦU SEED KNOWLEDGE BASE =====');
   const allChunks = [];
@@ -324,6 +494,47 @@ app.post('/admin/seed-knowledge', async (req, res) => {
       category: 'app_guide',
       metadata: { topic: 'account_guide' },
     },
+    // Sports tips knowledge
+    {
+      content: 'Lời khuyên chơi cầu lông (badminton): ' +
+        'Giữ vợt nhẹ nhàng để cổ tay linh hoạt. ' +
+        'Luôn trở về trung tâm sân sau mỗi cú đánh. ' +
+        'Luyện smash chéo sân và drop shot để đối thủ khó đỡ. ' +
+        'Mang giày cầu lông chuyên dụng để bảo vệ mắt cá chân. ' +
+        'Khởi động vai và cổ tay kỹ trước khi thi đấu.',
+      category: 'sport_tips',
+      metadata: { topic: 'badminton_tips', sport: 'badminton' },
+    },
+    {
+      content: 'Lời khuyên chơi bóng đá (football): ' +
+        'Kiểm soát bóng bằng lòng bàn chân để chuyền chính xác. ' +
+        'Quan sát đồng đội và không gian trước khi nhận bóng. ' +
+        'Tập sút bằng cả hai chân để toàn diện hơn. ' +
+        'Uống đủ nước vì bóng đá tiêu hao năng lượng rất lớn. ' +
+        'Mang giày đinh phù hợp với mặt sân.',
+      category: 'sport_tips',
+      metadata: { topic: 'football_tips', sport: 'football' },
+    },
+    {
+      content: 'Lời khuyên chơi tennis: ' +
+        'Giữ mắt trên bóng đến khi vợt chạm bóng. ' +
+        'Luyện serve kỹ vì đây là cú đánh quan trọng nhất. ' +
+        'Di chuyển bằng bước nhỏ nhanh (split step) trước khi đối thủ đánh. ' +
+        'Dây vợt căng 55-60 lbs để cân bằng lực và kiểm soát. ' +
+        'Mang giày tennis chuyên dụng để bám sân tốt.',
+      category: 'sport_tips',
+      metadata: { topic: 'tennis_tips', sport: 'tennis' },
+    },
+    {
+      content: 'Lời khuyên chơi pickleball: ' +
+        'Luôn giữ vị trí ở kitchen line để kiểm soát trận đấu. ' +
+        'Dink shot (đánh nhẹ qua lưới) là vũ khí chiến lược quan trọng nhất. ' +
+        'Tránh đứng ở no man\'s land giữa sân vì dễ bị bắt bài. ' +
+        'Luyện backhand dink vì đây là điểm yếu của hầu hết người mới. ' +
+        'Pickleball phù hợp mọi lứa tuổi, thân thiện với khớp hơn tennis.',
+      category: 'sport_tips',
+      metadata: { topic: 'pickleball_tips', sport: 'pickleball' },
+    },
   ];
 
   allChunks.push(...staticChunks);
@@ -344,15 +555,12 @@ app.post('/admin/seed-knowledge', async (req, res) => {
   for (let i = 0; i < allChunks.length; i++) {
     const chunk = allChunks[i];
     try {
-      // Tạo embedding vector 768 chiều
       const embedding = await generateEmbedding(chunk.content);
-
-      // Lưu vào Supabase
       const { error } = await supabaseAdmin.from('knowledge_base').insert({
         content:   chunk.content,
         category:  chunk.category,
         metadata:  chunk.metadata,
-        embedding, // pgvector nhận Array<number> trực tiếp
+        embedding,
       });
 
       if (error) {
@@ -363,7 +571,6 @@ app.post('/admin/seed-knowledge', async (req, res) => {
         console.log(`  ✅ [${i + 1}/${allChunks.length}] ${chunk.category}: "${chunk.content.substring(0, 50)}..."`);
       }
 
-      // Delay 150ms giữa các request để tránh rate limit Gemini
       if (i < allChunks.length - 1) {
         await new Promise(r => setTimeout(r, 150));
       }
@@ -379,9 +586,10 @@ app.post('/admin/seed-knowledge', async (req, res) => {
     success:  successCount,
     errors:   errorCount,
     breakdown: {
-      courts: allChunks.filter(c => c.category === 'court_info').length,
-      events: allChunks.filter(c => c.category === 'event_info').length,
-      guides: allChunks.filter(c => ['app_guide', 'app_policy', 'faq'].includes(c.category)).length,
+      courts:      allChunks.filter(c => c.category === 'court_info').length,
+      events:      allChunks.filter(c => c.category === 'event_info').length,
+      guides:      allChunks.filter(c => ['app_guide', 'app_policy', 'faq'].includes(c.category)).length,
+      sport_tips:  allChunks.filter(c => c.category === 'sport_tips').length,
     },
   };
   console.log('\n🏁 ===== SEED HOÀN TẤT =====', summary);
@@ -409,25 +617,45 @@ app.post('/ask', upload.single('image'), async (req, res) => {
       const mimeType    = imageFile.mimetype || 'image/jpeg';
       const userCaption = userPrompt || '';
 
-      // Prompt kiểm duyệt ảnh chi tiết, rõ ràng — với rejection message cố định
-      const visionSystemPrompt = `Bạn là trợ lý kiểm duyệt ảnh cho ứng dụng KLOO - đặt sân thể thao.
+      // ── Vision Prompt với 2 bước kiểm duyệt chặt chẽ ─────────────────
+      // Bước 1: Phân loại ảnh
+      // Bước 2: Chỉ xử lý nếu thuộc phạm vi thể thao
+      const visionSystemPrompt = `Bạn là trợ lý AI của ứng dụng KLOO - đặt sân thể thao. Nhiệm vụ của bạn là phân tích ảnh liên quan đến thể thao và từ chối lịch sự các ảnh không phù hợp.
 
-NHIỆM VỤ DUY NHẤT: Xác định xem ảnh có thuộc các loại SAU ĐÂY không:
-  ✔ Loại SÂN: Sân thể thao (cầu lông, bóng đá, tennis, pickleball, bida...)
-  ✔ Loại DC: Dụng cụ thể thao (vợt, giày thể thao, quần áo thể thao, bóng...)
-  ✔ Loại HD: Hóa đơn, biên lai thanh toán đặt sân, QR code thanh toán
-  ✔ Loại APP: Ảnh chụp màn hình ứng dụng KLOO, lịch đặt sân
-  ✔ Loại KQ: Kết quả thi đấu, bảng điểm môn thể thao
+BƯỚC 1 - KIỂM TRA ẢNH:
+Xác định ảnh thuộc loại nào:
 
-NẾU ảnh KHÔNG thuộc bất kỳ loại nào trên (ví dụ: ảnh selfie, ảnh đồ ăn, ảnh phong cảnh, ảnh động vật, mèo/chó, meme, tài liệu học tập, code, phim/truyện, ảnh cá nhân không liên quan...):
-  → Hãy trả lời ĐÚNG CHÍNH XÁC câu sau (không thêm bớt gì):
-  "Xin lỗi, tôi chỉ có thể phân tích ảnh liên quan đến sân thể thao, dụng cụ thể thao, hoặc hóa đơn đặt sân. Bạn hãy gửi ảnh phù hợp để tôi hỗ trợ bạn nhé!"
+CHẤP NHẬN (liên quan đến thể thao và KLOO):
+- Sân thể thao: sân cầu lông, sân bóng đá, sân tennis, sân pickleball
+- Dụng cụ thể thao: vợt cầu lông/tennis/pickleball, bóng đá, giày thể thao, quần áo thi đấu
+- Hóa đơn/biên lai đặt sân, QR code thanh toán sân
+- Ảnh chụp màn hình ứng dụng KLOO, lịch đặt sân
+- Kết quả thi đấu, bảng điểm thể thao
 
-NẾU ảnh thuộc loại SÂN/DC/HD/APP/KQ:
-  → Phân tích ảnh, trả lời cởi mở và hữu ích.
-  → Nếu người dùng có nhận xét/câu hỏi kèm theo ("${userCaption}"), hãy trả lời câu hỏi đó.
+TỪ CHỐI (KHÔNG liên quan, phải từ chối ngay):
+- Phòng gym, máy tập gym, dụng cụ tập gym (tạ, thanh tập, máy chạy bộ, máy đạp xe...)
+- Yoga, thiền, stretching trong nhà
+- Ảnh selfie, chân dung người không liên quan thể thao sân
+- Ảnh đồ ăn, thức uống, nhà hàng
+- Ảnh phong cảnh, du lịch, thiên nhiên
+- Ảnh động vật, mèo, chó, thú cưng
+- Meme, ảnh hài hước không liên quan thể thao
+- Tài liệu học tập, sách vở, code
+- Ảnh chụp màn hình mạng xã hội, chat cá nhân
+- Ảnh xe cộ, nhà cửa, đồ vật không liên quan
 
-KHÔNG dùng markdown, dấu *, **, #. Chỉ viết tiếng Việt. Ngắn gọn, thân thiện.`;
+BƯỚC 2 - TRẢ LỜI:
+
+NẾU ảnh KHÔNG thuộc danh sách CHẤP NHẬN → trả lời CHÍNH XÁC câu này (không thêm bớt):
+"Xin lỗi, tôi chỉ có thể phân tích ảnh liên quan đến sân thể thao, dụng cụ thể thao, hoặc hóa đơn đặt sân. Bạn hãy gửi ảnh phù hợp để tôi hỗ trợ bạn nhé!"
+
+NẾU ảnh CHẤP NHẬN → phân tích chi tiết và hữu ích:
+- Mô tả những gì thấy trong ảnh
+- Đưa ra nhận xét/lời khuyên liên quan đến sport
+- Nếu người dùng có câu hỏi kèm theo ("${userCaption}"), trả lời câu hỏi đó
+- Nếu phù hợp, gợi ý người dùng đặt sân qua KLOO
+
+QUAN TRỌNG: KHÔNG dùng markdown, dấu *, **, #. Chỉ viết tiếng Việt. Ngắn gọn và thân thiện.`;
 
       const result = await visionModel.generateContent([
         { text: visionSystemPrompt },
@@ -437,12 +665,13 @@ KHÔNG dùng markdown, dấu *, **, #. Chỉ viết tiếng Việt. Ngắn gọn
       cleanupFile(imageFile.path);
       let answer = result.response.text();
       answer = removeMarkdown(answer);
-      console.log(`🖼️ [Vision] Answer: "${answer.substring(0, 80)}..."`);
+      console.log(`🖼️ [Vision] Answer: "${answer.substring(0, 100)}..."`);
       return res.json({ answer });
+
     } catch (error) {
       cleanupFile(imageFile.path);
       console.error('❌ Vision error:', error.message);
-      return res.status(500).json({ error: 'Lỗi khi xử lý ảnh.' });
+      return res.status(500).json({ error: 'Lỗi khi xử lý ảnh. Vui lòng thử lại!' });
     }
   }
 
@@ -469,16 +698,13 @@ KHÔNG dùng markdown, dấu *, **, #. Chỉ viết tiếng Việt. Ngắn gọn
       retrievedChunks.map(c => `[${c.category} ${(c.similarity * 100).toFixed(0)}%]`).join(', ')
     );
 
-    // ── Guardrail tự động: Câu hỏi ngoài phạm vi ─────────────────────────
-    // Nếu RAG không tìm được chunk nào liên quan (similarity < 0.50),
-    // câu hỏi chắc chắn không thuộc phạm vi sân thể thao → từ chối ngay,
-    // không tốn token gọi Gemini.
+    // ── Guardrail: Câu hỏi ngoài phạm vi ─────────────────────────────────
     if (retrievedChunks.length === 0) {
       console.log('  ⚠️  0 chunks retrieved → Câu hỏi ngoài phạm vi, từ chối ngay.');
       return res.json({
         answer:
           'Xin lỗi, tôi chỉ hỗ trợ các câu hỏi về sân thể thao và dịch vụ của KLOO. ' +
-          'Bạn có thể hỏi tôi về cách đặt sân, giá sân, lịch sự kiện, hoặc chính sách hoàn tiền nhé!',
+          'Bạn có thể hỏi tôi về cách đặt sân, giá sân, lịch sự kiện, lời khuyên tập luyện, hoặc chính sách hoàn tiền nhé!',
       });
     }
 
@@ -492,7 +718,7 @@ KHÔNG dùng markdown, dấu *, **, #. Chỉ viết tiếng Việt. Ngắn gọn
 
     // ── Step 5: Gemini sinh câu trả lời ──────────────────────────────────
     const chat = chatModel.startChat({
-      generationConfig: { maxOutputTokens: 350 },
+      generationConfig: { maxOutputTokens: 400 },
     });
     const result = await chat.sendMessage(augmentedPrompt);
     let answer   = result.response.text();
@@ -503,7 +729,7 @@ KHÔNG dùng markdown, dấu *, **, #. Chỉ viết tiếng Việt. Ngắn gọn
 
   } catch (error) {
     console.error('❌ RAG pipeline error:', error.message);
-    res.status(500).json({ error: 'Đã xảy ra lỗi khi xử lý yêu cầu.' });
+    res.status(500).json({ error: 'Đã xảy ra lỗi khi xử lý yêu cầu. Vui lòng thử lại!' });
   }
 });
 
@@ -515,6 +741,20 @@ app.post('/ask/audio', upload.single('audio'), async (req, res) => {
   res.json({
     answer: 'Tính năng xử lý audio đang được phát triển. Vui lòng sử dụng nút nhận diện giọng nói để chuyển thành text rồi gửi.'
   });
+});
+
+// ─── Multer Error Handler ─────────────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'Ảnh quá lớn. Vui lòng gửi ảnh nhỏ hơn 5MB.' });
+    }
+    return res.status(400).json({ error: `Lỗi upload: ${err.message}` });
+  }
+  if (err && err.message && err.message.includes('Chỉ chấp nhận')) {
+    return res.status(400).json({ error: err.message });
+  }
+  next(err);
 });
 
 // ─── FORGOT PASSWORD ──────────────────────────────────────────────────────────
@@ -664,8 +904,9 @@ app.post('/reset-password', async (req, res) => {
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 app.listen(port, () => {
-  console.log(`\n🚀 KLOO Backend (RAG v2.0) đang chạy tại http://localhost:${port}`);
+  console.log(`\n🚀 KLOO Backend (RAG v3.1) đang chạy tại http://localhost:${port}`);
+  console.log(`   Chat/Vision model: gemini-2.5-flash-lite`);
   console.log(`   Embedding model: text-embedding-004 (768 dims)`);
   console.log(`   Vector DB: Supabase pgvector`);
-  console.log(`   Seed: POST /admin/seed-knowledge\n`);
+  console.log(`   Endpoints: /ask, /courts, /sports-tips, /admin/seed-knowledge\n`);
 });

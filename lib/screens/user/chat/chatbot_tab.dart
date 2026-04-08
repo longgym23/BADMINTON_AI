@@ -264,16 +264,18 @@ class _ChatbotTabState extends State<ChatbotTab> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          _Chip('Sân cầu lông gần đây'),
-          _Chip('Tìm sân bóng đá gần đây'),
-          _Chip('Sân Pickleball tốt nhất'),
-          _Chip('Tìm sân cầu lông trống'),
+          _Chip('Tìm sân cầu lông gần đây', 'badminton'),
+          _Chip('Tìm sân bóng đá gần đây', 'football'),
+          _Chip('Tìm sân tennis gần đây', 'tennis'),
+          _Chip('Tìm sân Pickleball gần đây', 'pickleball'),
+          _Chip('Hướng dẫn đặt sân', 'guide'),
+          _Chip('Lời khuyên cầu lông', 'badminton_tips'),
         ],
       ),
     );
   }
 
-  Widget _Chip(String label) {
+  Widget _Chip(String label, String? sportType) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ActionChip(
@@ -281,9 +283,30 @@ class _ChatbotTabState extends State<ChatbotTab> {
         backgroundColor: AppColors.surface,
         side: const BorderSide(color: AppColors.borderColor),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        onPressed: () => _sendMessage(label),
+        onPressed: () {
+          if (sportType != null && sportType.endsWith('_tips')) {
+            final sport = sportType.replaceAll('_tips', '');
+            _sendMessage('Cho tôi lời khuyên chơi ${_getSportName(sport)}');
+          } else if (sportType == 'guide') {
+            _sendMessage('Hướng dẫn cách đặt sân trên KLOO');
+          } else if (sportType != null) {
+            _sendMessage('Tìm sân ${_getSportName(sportType)} gần đây');
+          } else {
+            _sendMessage(label);
+          }
+        },
       ),
     );
+  }
+
+  String _getSportName(String type) {
+    switch (type) {
+      case 'badminton': return 'cầu lông';
+      case 'football': return 'bóng đá';
+      case 'tennis': return 'tennis';
+      case 'pickleball': return 'pickleball';
+      default: return type;
+    }
   }
 
   Widget _buildInputArea() {
@@ -687,7 +710,6 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
       final allData = await Supabase.instance.client.from('courts').select().limit(20);
       final allCourts = allData.map((e) => CourtLocationModel.fromSupabase(e)).toList();
       
-      // Lọc logic tại app để đảm bảo linh hoạt
       courts = allCourts.where((c) {
         final t = (c.sportType ?? c.name).toLowerCase();
         final q = widget.sportType.toLowerCase();
@@ -698,7 +720,6 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
         return t.contains(q);
       }).toList();
       
-      // Nếu không tìm thấy, gợi ý đại các sân phổ biến
       if (courts.isEmpty) {
          courts = allCourts.take(4).toList(); 
       }
@@ -716,7 +737,7 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
   Widget build(BuildContext context) {
     if (isLoading) {
       return const SizedBox(
-        height: 120,
+        height: 180,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
@@ -733,101 +754,129 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
       );
     }
 
-    return SizedBox(
-      height: 155, // 60 ảnh + 95 nội dung
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: courts.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
-          final court = courts[index];
-          return Container(
-            width: 180,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.borderColor),
-              boxShadow: [
-                 BoxShadow(
-                   color: Colors.black.withOpacity(0.04),
-                   blurRadius: 4,
-                   offset: const Offset(0, 2),
-                 )
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Hình ảnh sân
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                  child: Container(
-                    height: 60,
-                    width: double.infinity,
-                    color: AppColors.primaryBg,
-                    child: court.imageUrl != null && court.imageUrl!.isNotEmpty
-                         ? Image.network(court.imageUrl!, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.sports_tennis, color: AppColors.primary))
-                         : const Icon(Icons.sports_score, color: AppColors.primary),
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 40, bottom: 8),
+          child: Text(
+            'Danh sách sân ${_getSportDisplayName(widget.sportType)}',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textBlack),
+          ),
+        ),
+        SizedBox(
+          height: 200,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: courts.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final court = courts[index];
+              return Container(
+                width: 160,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.borderColor),
+                  boxShadow: [
+                     BoxShadow(
+                       color: Colors.black.withOpacity(0.04),
+                       blurRadius: 4,
+                       offset: const Offset(0, 2),
+                     )
+                  ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        court.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textBlack),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                      child: Container(
+                        height: 70,
+                        width: double.infinity,
+                        color: AppColors.primaryBg,
+                        child: court.imageUrl != null && court.imageUrl!.isNotEmpty
+                             ? Image.network(court.imageUrl!, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.sports_tennis, color: AppColors.primary, size: 30))
+                             : const Icon(Icons.sports_score, color: AppColors.primary, size: 30),
                       ),
-                      const SizedBox(height: 2),
-                      Row(
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.monetization_on_outlined, size: 12, color: AppColors.brandOrangeDark),
-                          const SizedBox(width: 4),
                           Text(
-                            "${court.pricePerHour.toInt()}đ/h",
-                            style: const TextStyle(color: AppColors.brandOrangeDark, fontSize: 12, fontWeight: FontWeight.bold),
+                            court.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.textBlack),
                           ),
+                          const SizedBox(height: 2),
+                          Text(
+                            court.address ?? 'Chưa cập nhật',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 10, color: AppColors.textGrey),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.monetization_on_outlined, size: 12, color: AppColors.brandOrangeDark),
+                              const SizedBox(width: 4),
+                              Text(
+                                "${court.pricePerHour.toInt()}đ/giờ",
+                                style: const TextStyle(color: AppColors.brandOrangeDark, fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 28,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                 Navigator.push(
+                                   context,
+                                   MaterialPageRoute(
+                                     builder: (context) => CourtSelectionScreen(
+                                       selectedCourt: court,
+                                       selectedDate: DateTime.now(),
+                                     ),
+                                   ),
+                                 );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                 backgroundColor: AppColors.primary,
+                                 foregroundColor: Colors.white,
+                                 padding: EdgeInsets.zero,
+                                 elevation: 0,
+                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))
+                              ),
+                              child: const Text('Đặt Sân', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            ),
+                          )
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 26,
-                        child: ElevatedButton(
-                          onPressed: () {
-                             Navigator.push(
-                               context,
-                               MaterialPageRoute(
-                                 builder: (context) => CourtSelectionScreen(
-                                   selectedCourt: court,
-                                   selectedDate: DateTime.now(),
-                                 ),
-                               ),
-                             );
-                          },
-                          style: ElevatedButton.styleFrom(
-                             backgroundColor: AppColors.primary,
-                             foregroundColor: Colors.white,
-                             padding: EdgeInsets.zero,
-                             elevation: 0,
-                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))
-                          ),
-                          child: const Text('Đặt Ngay', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        ),
-                      )
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
+        ),
+      ],
     );
+  }
+
+  String _getSportDisplayName(String type) {
+    switch (type) {
+      case 'badminton': return 'Cầu Lông';
+      case 'football': return 'Bóng Đá';
+      case 'tennis': return 'Tennis';
+      case 'pickleball': return 'Pickleball';
+      default: return type;
+    }
   }
 }
 

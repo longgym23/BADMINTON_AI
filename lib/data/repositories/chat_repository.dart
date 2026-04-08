@@ -12,9 +12,10 @@ class ChatRepository {
   ChatRepository({
     SupabaseClient? client,
     required SupabaseRepository firestoreRepository,
-    // giữ tham số cũ nếu cần để tránh lỗi compile tạm thời, nhưng ở đây ta bỏ luôn vì sẽ sửa main.dart
     dynamic firestore,
   }) : _client = client ?? Supabase.instance.client;
+
+  static const String _backendUrl = 'https://badminton-ai-fgsz.onrender.com';
 
   // Fetch lịch sử chat 1 lần (Cho Chatbot AI)
   Future<List<ChatMessageModel>> fetchChatHistory(String userId) async {
@@ -40,10 +41,8 @@ class ChatRepository {
 
   // Gửi tin nhắn mới
   Future<void> sendMessage(String userId, ChatMessageModel message) async {
-    // Convert to Supabase map
     var data = message.toSupabase();
     data['user_id'] = userId;
-
     await _client.from('chat_messages').insert(data);
   }
 
@@ -57,18 +56,41 @@ class ChatRepository {
     await _client.from('chat_messages').delete().eq('user_id', userId);
   }
 
-  // ─── RAG: Toàn bộ logic Retrieve + Augment + Generate đã được chuyển sang Backend ───
-  // Backend (server.js) quản lý:
-  //   1. Embed user query  →  vector 768 chiều (text-embedding-004)
-  //   2. Search Supabase pgvector (match_documents RPC)
-  //   3. Lấy lịch cá nhân của user từ Supabase
-  //   4. Build augmented prompt
-  //   5. Gọi Gemini sinh câu trả lời
-  // Flutter chỉ cần gửi: { prompt, user_id }
+  // ─── Helper: HTTP Headers ────────────────────────────────────────────────
+  Map<String, String> get _jsonHeaders => {
+        'Content-Type': 'application/json',
+        'Connection': 'keep-alive',
+      };
 
+  // ─── Helper: Gọi backend với retry 1 lần khi SocketException ────────────
+  // Render free tier có thể bị cold start (~30-60s) gây Connection reset.
+  // Tự động retry 1 lần sau delay để cho server warm up.
+  Future<http.Response> _postWithRetry(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    int maxRetries = 1,
+    Duration retryDelay = const Duration(seconds: 4),
+  }) async {
+    int attempt = 0;
+    while (true) {
+      try {
+        return await http
+            .post(url, headers: headers, body: body)
+            .timeout(const Duration(seconds: 90));
+      } on SocketException catch (e) {
+        if (attempt < maxRetries) {
+          attempt++;
+          print('ChatRepository: SocketException, retry $attempt/$maxRetries sau ${retryDelay.inSeconds}s — $e');
+          await Future.delayed(retryDelay);
+          continue;
+        }
+        rethrow;
+      }
+    }
+  }
 
-  // Gửi tin nhắn → Backend RAG Pipeline → Lưu câu trả lời AI
-  // Backend nhận user_id để tự lấy lịch cá nhân và thực hiện vector search
+  // ─── Gửi tin nhắn → Backend RAG Pipeline ────────────────────────────────
   Future<void> sendMessageWithRAG(
     String userId,
     String text, {
@@ -87,48 +109,63 @@ class ChatRepository {
     await sendMessage(userId, userMessage);
 
     // 2. Gọi Backend RAG API
-    //    Backend tự thực hiện: Embed → Vector Search → Augment → Gemini
     String answer = 'Xin lỗi, tôi chưa hiểu ý bạn.';
-    const String backendUrl = 'https://badminton-ai-fgsz.onrender.com/ask';
+    final askUrl = Uri.parse('$_backendUrl/ask');
 
     try {
       http.Response response;
 
       if (imagePath != null) {
-        // Gửi ảnh kèm user_id qua multipart — có timeout 120s
-        final request = http.MultipartRequest('POST', Uri.parse(backendUrl));
-        request.fields['prompt']  = text.isNotEmpty ? text : 'Phân tích ảnh này';
-        request.fields['user_id'] = userId;
-        request.files.add(await http.MultipartFile.fromPath('image', imagePath));
-        // Thêm timeout để tránh treo vĩnh viễn khi Render cold start
-        final streamedResponse = await request.send()
-            .timeout(const Duration(seconds: 120));
-        response = await http.Response.fromStream(streamedResponse)
+        // ── Gửi ảnh kèm user_id qua multipart ───────────────────────────
+        // Có retry tự động khi Render cold start gây Connection reset
+        int attempt = 0;
+        const maxRetries = 1;
+        http.StreamedResponse? streamedResponse;
+
+        while (true) {
+          try {
+            final request = http.MultipartRequest('POST', askUrl);
+            request.headers['Connection'] = 'keep-alive';
+            request.fields['prompt']  = text.isNotEmpty ? text : 'Phân tích ảnh này';
+            request.fields['user_id'] = userId;
+            request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+            streamedResponse = await request.send().timeout(const Duration(seconds: 120));
+            break; // Thành công
+          } on SocketException catch (e) {
+            if (attempt < maxRetries) {
+              attempt++;
+              print('ChatRepository [image]: SocketException, retry $attempt/$maxRetries — $e');
+              await Future.delayed(const Duration(seconds: 5));
+              continue;
+            }
+            rethrow;
+          }
+        }
+
+        response = await http.Response.fromStream(streamedResponse!)
             .timeout(const Duration(seconds: 30));
 
       } else if (audioPath != null) {
-        // Gửi audio kèm user_id qua multipart
-        final request = http.MultipartRequest('POST', Uri.parse('$backendUrl/audio'));
+        // ── Gửi audio ────────────────────────────────────────────────────
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$_backendUrl/ask/audio'),
+        );
+        request.headers['Connection'] = 'keep-alive';
         request.fields['prompt']  = text;
         request.fields['user_id'] = userId;
         request.files.add(await http.MultipartFile.fromPath('audio', audioPath));
-        final streamedResponse = await request.send()
-            .timeout(const Duration(seconds: 60));
+        final streamedResponse = await request.send().timeout(const Duration(seconds: 60));
         response = await http.Response.fromStream(streamedResponse)
             .timeout(const Duration(seconds: 30));
 
       } else {
-        // Gửi text + user_id → Backend thực hiện full RAG pipeline
-        response = await http
-            .post(
-              Uri.parse(backendUrl),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({
-                'prompt':  text,
-                'user_id': userId,
-              }),
-            )
-            .timeout(const Duration(seconds: 90));
+        // ── Gửi text + user_id → Full RAG pipeline với auto-retry ───────
+        response = await _postWithRetry(
+          askUrl,
+          headers: _jsonHeaders,
+          body: jsonEncode({'prompt': text, 'user_id': userId}),
+        );
       }
 
       if (response.statusCode == 200) {
@@ -139,20 +176,19 @@ class ChatRepository {
           final responseBody = jsonDecode(response.body);
           answer = responseBody['error'] ?? 'Máy chủ phản hồi lỗi. Vui lòng thử lại!';
         } catch (_) {
-          answer = 'Máy chủ phản hồi lỗi. Vui lòng thử lại!';
+          answer = 'Máy chủ phản hồi lỗi (${response.statusCode}). Vui lòng thử lại!';
         }
       }
+
     } on TimeoutException {
-      // Server Render free tier đang khởi động hoặc xử lý lâu
-      answer = 'Trợ lý AI đang khởi động, vui lòng gửi lại sau vài giây nhé!';
-      print('sendMessageWithRAG: Timeout');
+      answer = 'Trợ lý AI đang khởi động (có thể mất 30-60 giây lần đầu). Vui lòng gửi lại tin nhắn nhé!';
+      print('ChatRepository: TimeoutException');
     } on SocketException catch (e) {
-      // Mất kết nối hoặc server reset connection (Render cold start)
       answer = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại!';
-      print('sendMessageWithRAG SocketException: $e');
+      print('ChatRepository: SocketException sau retry: $e');
     } catch (e) {
       answer = 'Đã xảy ra lỗi, vui lòng thử lại sau!';
-      print('sendMessageWithRAG error: $e');
+      print('ChatRepository: Unexpected error: $e');
     }
 
     // 3. Lưu câu trả lời của AI vào Supabase
@@ -163,5 +199,23 @@ class ChatRepository {
       timestamp: DateTime.now(),
     );
     await sendMessage(userId, aiMessage);
+  }
+
+  // ─── Lấy lời khuyên thể thao từ backend ─────────────────────────────────
+  Future<Map<String, dynamic>?> getSportsTips(String sport) async {
+    try {
+      final response = await _postWithRetry(
+        Uri.parse('$_backendUrl/sports-tips'),
+        headers: _jsonHeaders,
+        body: jsonEncode({'sport': sport}),
+        retryDelay: const Duration(seconds: 3),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      print('ChatRepository getSportsTips error: $e');
+    }
+    return null;
   }
 }
