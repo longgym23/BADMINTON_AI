@@ -5,6 +5,9 @@ import 'package:badminton_ai/screens/user/booking/components/booking_history/cal
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:badminton_ai/providers/auth_provider.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 
 class AdminEventListScreen extends StatefulWidget {
   const AdminEventListScreen({super.key});
@@ -100,14 +103,21 @@ class _AdminEventListScreenState extends State<AdminEventListScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              setState(() {
-                MockEventData.globalEvents.removeWhere((e) => e.id == event.id);
-              });
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã xóa sự kiện!')),
-              );
+            onPressed: () async {
+              try {
+                await context.read<SupabaseRepository>().deleteEvent(event.id);
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Đã xóa sự kiện!')),
+                );
+              } catch (e) {
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Lỗi xóa: $e')),
+                );
+              }
             },
             child: const Text('Xóa', style: TextStyle(color: Colors.white)),
           ),
@@ -118,14 +128,9 @@ class _AdminEventListScreenState extends State<AdminEventListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Filter events by selected date range
-    final allEvents = MockEventData.globalEvents;
-    final filteredEvents = allEvents.where((e) {
-      if (_selectedDateRange == null) return true;
-      final start = _selectedDateRange!.start;
-      final end = _selectedDateRange!.end.add(const Duration(days: 1, milliseconds: -1));
-      return e.dateTime.isAfter(start) && e.dateTime.isBefore(end);
-    }).toList();
+    final auth = context.read<AppAuthProvider>();
+    final isCourtOwner = auth.userRole == 'court_owner';
+    final ownerId = isCourtOwner ? auth.userId : null;
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -204,15 +209,35 @@ class _AdminEventListScreenState extends State<AdminEventListScreen> {
           ),
           
           Expanded(
-            child: filteredEvents.isEmpty
-                ? const Center(
+            child: StreamBuilder<List<EventModel>>(
+              stream: context.read<SupabaseRepository>().getEventsStream(ownerId: ownerId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return const Center(child: Text('Lỗi tải dữ liệu.'));
+                }
+                
+                final allEvents = snapshot.data ?? [];
+                final filteredEvents = allEvents.where((e) {
+                  if (_selectedDateRange == null) return true;
+                  final start = _selectedDateRange!.start;
+                  final end = _selectedDateRange!.end.add(const Duration(days: 1, milliseconds: -1));
+                  return e.dateTime.isAfter(start) && e.dateTime.isBefore(end);
+                }).toList();
+
+                if (filteredEvents.isEmpty) {
+                  return const Center(
                     child: Text(
                       'Tạm thời chưa có sự kiện nào\ntrong khoảng thời gian này.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey, fontSize: 16),
                     ),
-                  )
-                : ListView.builder(
+                  );
+                }
+
+                return ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: filteredEvents.length,
                     itemBuilder: (context, index) {
@@ -329,7 +354,9 @@ class _AdminEventListScreenState extends State<AdminEventListScreen> {
                         ),
                       );
                     },
-                  ),
+                  );
+              },
+            ),
           ),
         ],
       ),

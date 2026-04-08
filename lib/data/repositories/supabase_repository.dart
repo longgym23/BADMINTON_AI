@@ -4,6 +4,7 @@ import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/notification_model.dart';
 import 'package:badminton_ai/data/models/user_model.dart';
+import 'package:badminton_ai/data/models/event_model.dart';
 
 class SupabaseRepository {
   final SupabaseClient _client;
@@ -14,14 +15,16 @@ class SupabaseRepository {
   // --- Court Location Functions (Admin & User) ---
 
   // Lấy stream các sân (Realtime)
-  Stream<List<CourtLocationModel>> getCourtLocationsStream() {
-    return _client
-        .from('courts')
-        .stream(primaryKey: ['id'])
-        .map(
-          (data) =>
-              data.map((e) => CourtLocationModel.fromSupabase(e)).toList(),
-        );
+  // Lấy stream các sân (Realtime)
+  Stream<List<CourtLocationModel>> getCourtLocationsStream({String? ownerId}) {
+    if (ownerId != null) {
+      return _client.from('courts').stream(primaryKey: ['id']).eq('owner_id', ownerId).map(
+        (data) => data.map((e) => CourtLocationModel.fromSupabase(e)).toList(),
+      );
+    }
+    return _client.from('courts').stream(primaryKey: ['id']).map(
+      (data) => data.map((e) => CourtLocationModel.fromSupabase(e)).toList(),
+    );
   }
 
   // Thêm sân mới
@@ -110,19 +113,92 @@ class SupabaseRepository {
         .map((data) => data.map((e) => BookingModel.fromSupabase(e)).toList());
   }
 
-  // Lấy TẤT CẢ booking trong ngày (cho Admin)
-  Stream<List<BookingModel>> getAllBookingsForDay(DateTime date) {
+  // Lấy TẤT CẢ booking trong ngày (cho Admin / Chủ sân)
+  Stream<List<BookingModel>> getAllBookingsForDay(DateTime date, {String? ownerId}) async* {
     String dateStr = date.toIso8601String().split('T')[0];
-    return _client
-        .from('bookings')
-        .stream(primaryKey: ['id'])
-        .eq('booking_date', dateStr)
-        .map((data) => data.map((e) => BookingModel.fromSupabase(e)).toList());
+    
+    if (ownerId != null) {
+      final userCourtsResp = await _client.from('courts').select('id').eq('owner_id', ownerId);
+      final List<String> courtIds = (userCourtsResp as List).map((c) => c['id'] as String).toList();
+      
+      if (courtIds.isEmpty) {
+        yield [];
+        return;
+      }
+      
+      yield* _client
+          .from('bookings')
+          .stream(primaryKey: ['id'])
+          .eq('booking_date', dateStr)
+          .map((data) => data
+              .map((e) => BookingModel.fromSupabase(e))
+              .where((b) => courtIds.contains(b.courtId))
+              .toList());
+    } else {
+      yield* _client
+          .from('bookings')
+          .stream(primaryKey: ['id'])
+          .eq('booking_date', dateStr)
+          .map((data) => data.map((e) => BookingModel.fromSupabase(e)).toList());
+    }
   }
 
   // Xóa/Hủy booking
   Future<void> deleteBooking(String bookingId) async {
     await _client.from('bookings').delete().eq('id', bookingId);
+  }
+
+  // Hủy booking và hoàn tiền vào Balance
+  Future<void> cancelBookingWithRefund(BookingModel booking) async {
+    try {
+      final now = DateTime.now();
+      final bookingDateTime = DateTime(
+        booking.date.year,
+        booking.date.month,
+        booking.date.day,
+        booking.timeSlot, // Giờ đặt sân
+      );
+
+      final diffHours = bookingDateTime.difference(now).inHours;
+
+      int refundAmount = 0;
+      if (diffHours >= 24) {
+        refundAmount = booking.price; // Hoàn 100%
+      } else if (diffHours >= 12) {
+        refundAmount = (booking.price * 0.5).toInt(); // Hoàn 50%
+      }
+
+      // 1. Cập nhật trạng thái booking -> cancelled
+      final updateRes = await _client
+          .from('bookings')
+          .update({'status': 'cancelled'})
+          .eq('id', booking.id!)
+          .select();
+      if (updateRes.isEmpty) {
+        throw Exception("Không thể cập nhật trạng thái hủy (Có thể do sai ID hoặc Quyền)");
+      }
+
+      // 2. Cập nhật số dư ví nếu có hoàn tiền
+      if (refundAmount > 0) {
+        final userResponse = await _client
+            .from('profiles')
+            .select('balance')
+            .eq('id', booking.userId)
+            .single();
+        final currentBalance = (userResponse['balance'] as num?)?.toInt() ?? 0;
+        final newBalance = currentBalance + refundAmount;
+        
+        await _client
+            .from('profiles')
+            .update({'balance': newBalance})
+            .eq('id', booking.userId);
+            
+        print('Refunded $refundAmount. New balance: $newBalance');
+      }
+    } catch (e) {
+      print("Lỗi cancelBookingWithRefund: $e");
+      throw e;
+    }
   }
 
   // --- Notification Functions ---
@@ -165,6 +241,66 @@ class SupabaseRepository {
     await _client.from('notifications').delete().eq('id', notificationId);
   }
 
+  // --- Event Management Functions ---
+
+  // --- Event Management Functions ---
+
+  Stream<List<EventModel>> getEventsStream({String? ownerId, String? courtId}) {
+    dynamic query = _client.from('events').stream(primaryKey: ['id']);
+    if (ownerId != null) {
+      query = query.eq('owner_id', ownerId);
+    }
+    if (courtId != null) {
+      query = query.eq('court_id', courtId);
+    }
+    return (query as Stream<List<Map<String, dynamic>>>).map(
+      (data) => data.map((e) => EventModel.fromSupabase(e)).toList(),
+    );
+  }
+
+  Future<void> createEvent(EventModel event, String ownerId) async {
+    var data = event.toSupabase();
+    data['owner_id'] = ownerId;
+    data.remove('id'); // Tự tạo ID tại DB hoặc truyền uuid
+    await _client.from('events').insert(data);
+  }
+
+  Future<void> updateEvent(EventModel event) async {
+    await _client.from('events').update(event.toSupabase()).eq('id', event.id);
+  }
+
+  Future<void> deleteEvent(String eventId) async {
+    await _client.from('events').delete().eq('id', eventId);
+  }
+
+  Future<void> joinEvent(String eventId, String userId, double priceDeduction) async {
+    // Tạm thời gọi tuần tự do Flutter chưa gọi RPC dễ dàng nếu không viết thủ tục
+    if (priceDeduction > 0) {
+      final profile = await _client.from('profiles').select('balance').eq('id', userId).single();
+      final currentBalance = profile['balance'] as int;
+      if (currentBalance < priceDeduction.toInt()) {
+        throw Exception("Số dư không đủ. Vui lòng nạp thêm!");
+      }
+      await _client.from('profiles').update({
+        'balance': currentBalance - priceDeduction.toInt()
+      }).eq('id', userId);
+    }
+
+    await _client.from('event_participants').insert({
+      'event_id': eventId,
+      'user_id': userId,
+    });
+
+    // Cập nhật số lượng tham gia (có thể xảy ra race condition, lý tưởng dùng RPC)
+    final ev = await _client.from('events').select('current_participants, max_participants').eq('id', eventId).single();
+    final cur = ev['current_participants'] as int;
+    final maxP = ev['max_participants'] as int;
+    if (cur >= maxP) {
+      throw Exception("Sự kiện đã đầy, không thể tham gia!");
+    }
+    await _client.from('events').update({'current_participants': cur + 1}).eq('id', eventId);
+  }
+
   // --- User Management Functions (Admin) ---
 
   // Lấy stream tất cả users (profiles)
@@ -177,7 +313,10 @@ class SupabaseRepository {
 
   // Cập nhật thông tin user (admin)
   Future<void> updateUser(UserModel user) async {
-    await _client.from('profiles').update(user.toSupabase()).eq('id', user.id);
+    final response = await _client.from('profiles').update(user.toSupabase()).eq('id', user.id).select();
+    if (response.isEmpty) {
+      throw Exception("Cập nhật thất bại. Vui lòng kiểm tra quyền RLS (Row Level Security) trên bảng profiles.");
+    }
   }
 
   // Xóa user (admin) - Lưu ý: Xóa user trong auth khó hơn, ở đây xóa profile
@@ -217,5 +356,25 @@ class SupabaseRepository {
       print("Lỗi uploadImage Supabase: $e");
       throw e;
     }
+  }
+
+  // --- Balance & Payment Helpers ---
+  Future<void> deductBalance(String userId, int amount) async {
+    if (amount <= 0) return;
+    final r = await _client.from('profiles').select('balance').eq('id', userId).single();
+    final currentBalance = (r['balance'] as num?)?.toInt() ?? 0;
+    final newBalance = (currentBalance - amount) < 0 ? 0 : currentBalance - amount;
+    await _client.from('profiles').update({'balance': newBalance}).eq('id', userId);
+  }
+
+  Future<void> addBalance(String userId, int amount) async {
+    if (amount <= 0) return;
+    final r = await _client.from('profiles').select('balance').eq('id', userId).single();
+    final newBalance = ((r['balance'] as num?)?.toInt() ?? 0) + amount;
+    await _client.from('profiles').update({'balance': newBalance}).eq('id', userId);
+  }
+
+  Future<void> markBookingsAsPaid(String transactionId) async {
+    await _client.from('bookings').update({'status': 'PAID'}).eq('transaction_id', transactionId);
   }
 }

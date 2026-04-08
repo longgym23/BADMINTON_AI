@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/screens/admin/location_picker_screen.dart';
 import 'package:flutter/material.dart';
@@ -473,6 +474,9 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                         return;
                       }
 
+                      final authProvider = context.read<AppAuthProvider>();
+                      final user = authProvider.userModel;
+                      final isOwner = user?.role == 'court_owner';
                       final newCourt = CourtLocationModel(
                         // Lấy ID cũ nếu là "sửa", rỗng nếu là "thêm mới"
                         // FirestoreRepository sẽ bỏ qua ID khi tạo mới
@@ -489,6 +493,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                             int.tryParse(_totalCourtsController.text) ?? 0,
                         sportType: _selectedSportType,
                         imageUrl: imageUrlToSave,
+                        ownerId: isOwner ? user?.id : court?.ownerId,
                       );
 
                       // final repo = context.read<FirestoreRepository>(); // Moved up
@@ -538,12 +543,15 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
   Widget build(BuildContext context) {
     // Dùng context.watch để lắng nghe thay đổi
     final firestoreRepo = context.watch<SupabaseRepository>();
+    final user = context.watch<AppAuthProvider>().userModel;
+    final isOwner = user?.role == 'court_owner';
+    final ownerId = isOwner ? user?.id : null;
 
     return Scaffold(
-      appBar: AppBar(title: Text('Quản Lý Các Sân')),
+      appBar: AppBar(title: Text(isOwner ? 'Sân Của Tôi' : 'Quản Lý Các Sân')),
       // Dùng StreamBuilder để tự động cập nhật khi có sân mới
       body: StreamBuilder<List<CourtLocationModel>>(
-        stream: firestoreRepo.getCourtLocationsStream(),
+        stream: firestoreRepo.getCourtLocationsStream(ownerId: ownerId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());

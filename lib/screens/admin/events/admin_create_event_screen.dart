@@ -3,6 +3,8 @@ import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:badminton_ai/providers/auth_provider.dart';
 
 class AdminCreateEventScreen extends StatefulWidget {
   const AdminCreateEventScreen({super.key});
@@ -30,7 +32,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch courts once for the dropdown
+    // Fetch courts once for the dropdown. Requires provider for SupabaseRepository or direct instantiaion.
     _courtsFuture = SupabaseRepository().getCourtLocationsStream().first;
   }
 
@@ -48,7 +50,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
     super.dispose();
   }
 
-  void _saveEvent() {
+  Future<void> _saveEvent() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedCourtId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -56,8 +58,13 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
         );
         return;
       }
+
+      final auth = context.read<AppAuthProvider>();
+      final ownerId = auth.userId;
+      if (ownerId == null) return;
+
       final newEvent = EventModel(
-        id: 'ev_${DateTime.now().millisecondsSinceEpoch}',
+        id: '', // Sẽ để DB tạo ra UUID
         eventCode: _eventCodeCtrl.text,
         title: _titleCtrl.text,
         description: _descriptionCtrl.text,
@@ -73,12 +80,19 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
         courtId: _selectedCourtId!,
       );
 
-      MockEventData.globalEvents.add(newEvent);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Thêm sự kiện thành công!')),
-      );
-      Navigator.pop(context);
+      try {
+        await context.read<SupabaseRepository>().createEvent(newEvent, ownerId);
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thêm sự kiện thành công!')),
+        );
+        Navigator.pop(context);
+      } catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi khi thêm: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 

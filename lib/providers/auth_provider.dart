@@ -29,6 +29,18 @@ class AppAuthProvider extends ChangeNotifier {
   AppAuthProvider({required AuthRepository authRepository})
     : _authRepository = authRepository;
 
+  void updateUserModel(UserModel updatedUser) {
+    _userModel = updatedUser;
+    notifyListeners();
+  }
+
+  Future<void> reloadUserModel() async {
+    if (_currentUser != null) {
+      _userModel = await _authRepository.getUserModel(_currentUser!.id);
+      notifyListeners();
+    }
+  }
+
   // Kiểm tra trạng thái đăng nhập
   void checkAuthState() {
     _authState = AuthState.loading;

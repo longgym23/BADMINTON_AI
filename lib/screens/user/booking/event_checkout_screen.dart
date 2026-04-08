@@ -1,6 +1,8 @@
 import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/viewmodels/checkout_viewmodel.dart';
+import 'package:badminton_ai/providers/auth_provider.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -23,13 +25,17 @@ class EventCheckoutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.read<AppAuthProvider>();
+    final balance = auth.userModel?.balance ?? 0;
+    final int amountToPayWithSepay = balance >= totalPrice ? 0 : totalPrice - balance;
+
     return ChangeNotifierProvider(
       create: (_) {
         final vm = CheckoutViewModel();
         vm.setCustomerName(customerName);
         vm.setCustomerPhone(customerPhone);
-        // We use event id as a prefix for transaction
-        vm.initializePayment(totalPrice, event.id);
+        // Ngưởi dùng dùng tiền trong ví, nếu thiểu thì QR sePay hiện khoản thiếu.
+        vm.initializePayment(amountToPayWithSepay, event.id);
         return vm;
       },
       child: EventCheckoutScreenView(
@@ -40,7 +46,6 @@ class EventCheckoutScreen extends StatelessWidget {
     );
   }
 }
-
 class EventCheckoutScreenView extends StatefulWidget {
   final EventModel event;
   final int quantity;
@@ -58,14 +63,75 @@ class EventCheckoutScreenView extends StatefulWidget {
 }
 
 class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, color: AppColors.success, size: 60),
+            const SizedBox(height: 16),
+            const Text(
+              'Xác nhận thành công!',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Bạn đã đặt ${widget.quantity} vé tham gia sự kiện:\n"${widget.event.title}"',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx); 
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Hoàn tất'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _onConfirmPayment() async {
     final vm = context.read<CheckoutViewModel>();
+    final auth = context.read<AppAuthProvider>();
+    final balance = auth.userModel?.balance ?? 0;
+    final int amountDeductedFromWallet = balance >= widget.totalPrice ? widget.totalPrice : balance;
+    final repo = context.read<SupabaseRepository>();
 
+    if (vm.finalAmount == 0) {
+      // Thanh toán hoàn toàn bằng ví
+      await vm.processZeroPayment();
+      try {
+        await repo.joinEvent(widget.event.id, auth.userId!, amountDeductedFromWallet.toDouble());
+        if (mounted) _showSuccessDialog();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        }
+      }
+      return;
+    }
+
+    // Nếu còn thiếu tiền, tiến hành tạo QR
     // Bắt đầu tạo pending state
     vm.setBookingCreated(true);
     // Bắt đầu đếm ngược
     vm.startCountdown(() => _onPaymentExpired(vm.transactionId));
-    // Sau khi tạo đơn (mock), hiển thị QR và tự động lắng nghe Realtime
+    // Sau khi tạo đơn, hiển thị QR và lắng nghe SePay
     _listenForPayment();
   }
 
@@ -88,47 +154,20 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
     final success = await vm.startListeningForPayment();
 
     if (success) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.check_circle, color: AppColors.success, size: 60),
-                const SizedBox(height: 16),
-                const Text(
-                  'Thanh toán thành công!',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Bạn đã đặt ${widget.quantity} vé tham gia sự kiện:\n"${widget.event.title}"',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(ctx); // Close dialog
-                      // Pop back twice to list screen
-                      Navigator.pop(context);
-                      Navigator.pop(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Hoàn tất'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+      final auth = context.read<AppAuthProvider>();
+      final balance = auth.userModel?.balance ?? 0;
+      final int amountDeductedFromWallet = balance >= widget.totalPrice ? widget.totalPrice : balance;
+      final repo = context.read<SupabaseRepository>();
+
+      try {
+        await repo.joinEvent(widget.event.id, auth.userId!, amountDeductedFromWallet.toDouble());
+        if (mounted) _showSuccessDialog();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi cập nhật CSDL: $e'), backgroundColor: AppColors.error),
+          );
+        }
       }
     } else {
       if (mounted && vm.errorMessage != null) {

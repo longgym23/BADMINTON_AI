@@ -11,6 +11,7 @@ class CourtLocationModel {
   final String? imageUrl;
   final double rating;
   final int totalReviews;
+  final String? ownerId;
 
   CourtLocationModel({
     required this.id,
@@ -24,6 +25,7 @@ class CourtLocationModel {
     this.imageUrl,
     this.rating = 0.0,
     this.totalReviews = 0,
+    this.ownerId,
   });
 
 
@@ -41,6 +43,7 @@ class CourtLocationModel {
       imageUrl: data['image_url'] as String?,
       rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
       totalReviews: (data['total_reviews'] as num?)?.toInt() ?? 0,
+      ownerId: data['owner_id'] as String?,
     );
   }
 
@@ -58,6 +61,7 @@ class CourtLocationModel {
       if (imageUrl != null) 'image_url': imageUrl,
       'rating': rating,
       'total_reviews': totalReviews,
+      if (ownerId != null) 'owner_id': ownerId,
     };
   }
 
@@ -74,6 +78,7 @@ class CourtLocationModel {
       if (imageUrl != null) 'imageUrl': imageUrl,
       'rating': rating,
       'totalReviews': totalReviews,
+      if (ownerId != null) 'ownerId': ownerId,
     };
   }
 

@@ -19,6 +19,7 @@ import 'package:badminton_ai/utils/notification_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -90,11 +91,17 @@ class ProfileTab extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header Section (Orange Gradient)
-            Container(
+      body: RefreshIndicator(
+        onRefresh: () async {
+            await context.read<AppAuthProvider>().reloadUserModel();
+        },
+        color: AppColors.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              // Header Section (Orange Gradient)
+              Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -247,6 +254,75 @@ class ProfileTab extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Ví Nội Bộ Card
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF43A047), Color(0xFF66BB6A)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.green.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4))
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle),
+                          child: const Icon(Icons.account_balance_wallet,
+                              color: Colors.white, size: 28),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Số dư Ví',
+                                  style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500)),
+                              const SizedBox(height: 4),
+                              Text(
+                                NumberFormat.simpleCurrency(
+                                        locale: 'vi_VN', decimalDigits: 0)
+                                    .format(user.balance),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                        OutlinedButton(
+                          onPressed: () {
+                            NotificationUtils.showComingSoon(context);
+                          },
+                          style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.white),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 0)),
+                          child: const Text('Nạp tiền',
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 13)),
+                        )
+                      ],
+                    ),
+                  ),
+
                   if (user.role == 'admin') ...[
                     const Text(
                       'QUẢN LÝ ADMIN',
@@ -337,6 +413,7 @@ class ProfileTab extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 
