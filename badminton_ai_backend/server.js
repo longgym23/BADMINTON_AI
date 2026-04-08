@@ -444,6 +444,6 @@ app.get('/', (req, res) => {
 });
 
 // Chạy server
-app.listen(port, () => {
-  console.log(`Server đang chạy tại http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server đang chạy tại http://0.0.0.0:${port}`);
 });
