@@ -43,14 +43,13 @@ if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_API_KEY_PLACEHOLDER') {
   console.error('Gemini API Key không được tìm thấy hoặc chưa được cấu hình trong biến môi trường!');
 }
 
-// Khởi tạo Gemini
 let genAI;
 let model;
 let visionModel;
 try {
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  visionModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 } catch (error) {
   console.error('Lỗi khởi tạo Gemini (kiểm tra API Key?):', error);
 }
