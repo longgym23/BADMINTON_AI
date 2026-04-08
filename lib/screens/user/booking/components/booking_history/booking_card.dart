@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
+import 'package:badminton_ai/providers/auth_provider.dart';
 
 /// Card hiển thị thông tin 1 booking (nhóm slot liên tiếp).
 class BookingCard extends StatelessWidget {
@@ -50,6 +52,79 @@ class BookingCard extends StatelessWidget {
     if (isCancelled) return (l.statusCancelled, AppColors.textGrey, AppColors.borderColor, Icons.cancel);
     if (isCompleted) return (l.statusCompleted, AppColors.success, AppColors.successBg, Icons.check_circle);
     return (l.statusUpcoming, AppColors.primary, AppColors.primaryBg, Icons.calendar_today);
+  }
+
+  Future<void> _onCancelBooking(BuildContext context) async {
+    final now = DateTime.now();
+    final bookingTime = DateTime(
+      group.base.date.year,
+      group.base.date.month,
+      group.base.date.day,
+      group.startSlot,
+    );
+
+    final diffHours = bookingTime.difference(now).inHours;
+    int expectedRefund = 0;
+    String refundMsg = "";
+    
+    if (diffHours >= 24) {
+      expectedRefund = group.price;
+      refundMsg = "Bạn huỷ trước 24h, hệ thống sẽ hoàn 100% (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(expectedRefund)}) vào Số Dư Ví trên App.";
+    } else if (diffHours >= 12) {
+      expectedRefund = (group.price * 0.5).toInt();
+      refundMsg = "Bạn huỷ trước dưới 24h và trên 12h, bạn chỉ được hoàn 50% (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(expectedRefund)}) vào Số Dư Ví.";
+    } else {
+      expectedRefund = 0;
+      refundMsg = "Bạn huỷ sân quá sát giờ chơi (< 12h), bạn sẽ không được hoàn cọc theo quy định.";
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Xác nhận Huỷ sân"),
+        content: Text("Bạn có chắc chắn muốn huỷ lịch đặt sân này?\n\n$refundMsg"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Không", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            child: const Text("Xác nhận Huỷ"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      // Hiển thị dialog đang tải
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      try {
+        for (var item in group.items) {
+          await repo.cancelBookingWithRefund(item);
+        }
+        if (context.mounted) {
+          await context.read<AppAuthProvider>().reloadUserModel();
+          Navigator.pop(context); // Tắt loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Đã huỷ sân thành công. Số dư ví đã được cập nhật!')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          Navigator.pop(context); // Tắt loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi khi huỷ sân: $e')),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -150,10 +225,18 @@ class BookingCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                TextButton(
-                  onPressed: () {},
-                  child: Text(l.detail, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-                ),
+                if (!isCancelled && !isCompleted)
+                  TextButton.icon(
+                    onPressed: () => _onCancelBooking(context),
+                    icon: const Icon(Icons.cancel_outlined, size: 16, color: AppColors.error),
+                    label: const Text('Huỷ sân', style: TextStyle(color: AppColors.error, fontSize: 14)),
+                  )
+                else if (isCancelled)
+                  TextButton.icon(
+                    onPressed: null, // Disabled
+                    icon: const Icon(Icons.cancel_outlined, size: 16, color: Colors.grey),
+                    label: const Text('Đã huỷ sân', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                  ),
                 const Spacer(),
                 if (!isCancelled)
                   OutlinedButton.icon(

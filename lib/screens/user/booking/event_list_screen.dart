@@ -1,3 +1,5 @@
+import 'package:provider/provider.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/screens/user/booking/event_detail_screen.dart';
@@ -11,7 +13,6 @@ class EventListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final events = MockEventData.getMockEventsForCourt(court.id);
     const bgColor = Color(0xFF0e7a46);
     const cardColor = Color(0xFF129057); // Slightly lighter green for cards
 
@@ -44,7 +45,7 @@ class EventListScreen extends StatelessWidget {
                   child: const Row(
                     children: [
                       Text(
-                        '03/04 - 09/04',
+                        'Hôm nay trở đi',
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                       ),
                       SizedBox(width: 8),
@@ -56,15 +57,31 @@ class EventListScreen extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: events.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: events.length,
-                    itemBuilder: (context, index) {
-                      return _buildEventCard(context, events[index], cardColor);
-                    },
-                  ),
+            child: StreamBuilder<List<EventModel>>(
+              stream: context.read<SupabaseRepository>().getEventsStream(courtId: court.id),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: Colors.white));
+                }
+                if (snapshot.hasError) {
+                  return const Center(child: Text('Lỗi tải dữ liệu.', style: TextStyle(color: Colors.white)));
+                }
+
+                final events = snapshot.data ?? [];
+                
+                if (events.isEmpty) {
+                  return _buildEmptyState();
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: events.length,
+                  itemBuilder: (context, index) {
+                    return _buildEventCard(context, events[index], cardColor);
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),

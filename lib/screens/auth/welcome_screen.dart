@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:badminton_ai/screens/auth/login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -12,7 +13,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  void _goToLogin() {
+  void _goToLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isFirstTime', false);
+
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 500),

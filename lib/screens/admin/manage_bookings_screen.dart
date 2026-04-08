@@ -1,5 +1,6 @@
 import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
+import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -186,6 +187,9 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
             child: StreamBuilder<List<BookingModel>>(
               stream: repo.getAllBookingsForDay(
                 _selectedDay,
+                ownerId: context.read<AppAuthProvider>().userRole == 'court_owner'
+                    ? context.read<AppAuthProvider>().userModel?.id
+                    : null,
               ), // <-- HÀM QUAN TRỌNG
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {

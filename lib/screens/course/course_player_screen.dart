@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/domain/entities/course.dart';
@@ -51,80 +52,86 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
 
   @override
   void dispose() {
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.course.title, style: const TextStyle(fontSize: 16)),
-        flexibleSpace: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
+    return YoutubePlayerBuilder(
+      player: YoutubePlayer(
+        controller: _controller,
+        showVideoProgressIndicator: true,
+        progressIndicatorColor: AppColors.primary,
+        onReady: () {
+          _isPlayerReady = true;
+        },
+      ),
+      builder: (context, player) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(widget.course.title, style: const TextStyle(fontSize: 16)),
+            flexibleSpace: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
               ),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          YoutubePlayer(
-            controller: _controller,
-            showVideoProgressIndicator: true,
-            progressIndicatorColor: AppColors.primary,
-            onReady: () {
-              _isPlayerReady = true;
-            },
+            ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.course.title,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              player,
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.access_time, size: 16, color: Colors.grey),
-                    const SizedBox(width: 4),
                     Text(
-                      'Thời lượng: ${widget.course.duration}',
-                      style: const TextStyle(color: Colors.grey),
+                      widget.course.title,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Thời lượng: ${widget.course.duration}',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Mô tả khóa học',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.course.description,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        height: 1.5,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Mô tả khóa học',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  widget.course.description,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

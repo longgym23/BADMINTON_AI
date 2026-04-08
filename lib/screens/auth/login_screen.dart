@@ -320,21 +320,27 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Quên mật khẩu
                         Align(
                           alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const ForgotPasswordScreen(),
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 10.0),   // ← Điều chỉnh số này để di chuyển xuống
+                            child: TextButton(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgotPasswordScreen(),
+                                ),
                               ),
-                            ),
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Quên mật khẩu?',
-                              style: TextStyle(color: AppColors.brandOrange, fontSize: 12),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text(
+                                'Quên mật khẩu?',
+                                style: TextStyle(
+                                  color: AppColors.brandOrange, 
+                                  fontSize: 12,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -373,49 +379,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-
                         // or sign in with
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Divider(color: Colors.grey.shade300),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                              child: Text(
-                                'hoặc đăng nhập với',
-                                style: TextStyle(
-                                  color: Colors.grey.shade500,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Divider(color: Colors.grey.shade300),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Social buttons
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _buildSocialBtn(
-                              onTap: _loginWithGoogle,
-                              child: Image.asset(
-                                'assets/images/google.png',
-                                width: 24,
-                                height: 24,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Chưa có tài khoản
                         Center(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -447,6 +411,42 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
+
+                        // Social buttons
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: isLoading ? null : _loginWithGoogle,
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              side: const BorderSide(color: Color(0xFF0D6331), width: 1.2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  'assets/images/google.png',
+                                  width: 26,
+                                  height: 26,
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Google',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Color(0xFF0D6331),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
                       ],
                     ),
                   ),
@@ -459,27 +459,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildSocialBtn({required Widget child, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 52,
-        height: 52,
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Center(child: child),
-      ),
-    );
-  }
 }

@@ -5,15 +5,16 @@ import 'package:badminton_ai/data/models/booking_model.dart';
 /// Các chế độ lọc lịch sử đặt sân
 enum FilterMode { all, dateRange, month, year }
 
-/// Nhóm các slot liên tiếp của cùng 1 sân thành 1 booking hiển thị
 class BookingGroup {
   final BookingModel base;
+  final List<BookingModel> items;
   int startSlot;
   int endSlot;
   int price;
 
   BookingGroup({
     required this.base,
+    required this.items,
     required this.startSlot,
     required this.endSlot,
     required this.price,
@@ -99,7 +100,7 @@ class BookingHistoryViewModel extends ChangeNotifier {
     final groups = <BookingGroup>[];
     for (final b in sorted) {
       if (groups.isEmpty) {
-        groups.add(BookingGroup(base: b, startSlot: b.timeSlot, endSlot: b.timeSlot + 1, price: b.price));
+        groups.add(BookingGroup(base: b, items: [b], startSlot: b.timeSlot, endSlot: b.timeSlot + 1, price: b.price));
         continue;
       }
       final last = groups.last;
@@ -109,8 +110,9 @@ class BookingHistoryViewModel extends ChangeNotifier {
           last.endSlot == b.timeSlot) {
         last.endSlot = b.timeSlot + 1;
         last.price += b.price;
+        last.items.add(b);
       } else {
-        groups.add(BookingGroup(base: b, startSlot: b.timeSlot, endSlot: b.timeSlot + 1, price: b.price));
+        groups.add(BookingGroup(base: b, items: [b], startSlot: b.timeSlot, endSlot: b.timeSlot + 1, price: b.price));
       }
     }
 

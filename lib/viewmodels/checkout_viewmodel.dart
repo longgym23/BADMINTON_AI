@@ -85,16 +85,45 @@ class CheckoutViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  int _appliedBalance = 0;
+  int get appliedBalance => _appliedBalance;
+
+  int _finalAmount = 0;
+  int get finalAmount => _finalAmount;
+
   String _qrUrl = '';
   String get qrUrl => _qrUrl;
 
   late String _transactionId;
   String get transactionId => _transactionId;
 
-  void initializePayment(int totalAmount, String courtId) {
-    // Không dùng dấu _ vì ngân hàng sẽ xóa ký tự đặc biệt trong nội dung CK
+  void initializePayment(int totalAmount, String courtId, {int walletBalance = 0}) {
+    if (walletBalance >= totalAmount) {
+      _appliedBalance = totalAmount;
+    } else {
+      _appliedBalance = walletBalance;
+    }
+    _finalAmount = totalAmount - _appliedBalance;
+
     _transactionId = '${courtId.substring(0, 5)}${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
-    _qrUrl = _sePayService.generateVietQRUrl(amount: totalAmount, bookingReference: _transactionId);
+    
+    // Chỉ tạo QR nếu khách còn cần trả tiền mặt/chuyển khoản
+    if (_finalAmount > 0) {
+      _qrUrl = _sePayService.generateVietQRUrl(amount: _finalAmount, bookingReference: _transactionId);
+    } else {
+      _qrUrl = ''; // Thanh toán toàn bộ bằng ví
+    }
+  }
+
+  /// Trực tiếp xác nhận thanh toán nếu số tiền phải trả = 0
+  Future<bool> processZeroPayment() async {
+    _isLoading = true;
+    notifyListeners();
+    // Giả lập thời gian chờ xử lý giao dịch
+    await Future.delayed(const Duration(milliseconds: 1500));
+    _isLoading = false;
+    notifyListeners();
+    return true;
   }
 
   Future<bool> startListeningForPayment() async {

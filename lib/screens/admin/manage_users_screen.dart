@@ -85,6 +85,10 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                         child: Text('Người dùng'),
                       ),
                       DropdownMenuItem(
+                        value: 'court_owner',
+                        child: Text('Chủ sân'),
+                      ),
+                      DropdownMenuItem(
                         value: 'admin',
                         child: Text('Quản trị viên'),
                       ),
@@ -109,8 +113,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             ElevatedButton(
               onPressed: () async {
                 if (_formKey.currentState!.validate()) {
+                  final messenger = ScaffoldMessenger.of(ctx);
                   try {
-                    final repo = context.read<SupabaseRepository>();
+                    final repo = ctx.read<SupabaseRepository>();
                     final updatedUser = user.copyWith(
                       displayName: _nameController.text.trim(),
                       phoneNumber: _phoneController.text.trim().isEmpty
@@ -119,15 +124,19 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                       role: _selectedRole,
                     );
                     await repo.updateUser(updatedUser);
+                    
+                    if (!ctx.mounted) return;
                     Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    
+                    messenger.showSnackBar(
                       const SnackBar(
                         content: Text('Cập nhật thông tin thành công'),
                         backgroundColor: Colors.green,
                       ),
                     );
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (!ctx.mounted) return;
+                    messenger.showSnackBar(
                       SnackBar(
                         content: Text('Lỗi: $e'),
                         backgroundColor: Colors.red,
@@ -171,19 +180,22 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(ctx);
                 try {
-                  final repo = context.read<SupabaseRepository>();
+                  final repo = ctx.read<SupabaseRepository>();
                   await repo.deleteUser(user.id);
+                  if (!ctx.mounted) return;
                   Navigator.of(ctx).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(
                       content: Text('Xóa người dùng thành công'),
                       backgroundColor: Colors.green,
                     ),
                   );
                 } catch (e) {
+                  if (!ctx.mounted) return;
                   Navigator.of(ctx).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     SnackBar(
                       content: Text('Lỗi: $e'),
                       backgroundColor: Colors.red,
@@ -389,19 +401,19 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                               decoration: BoxDecoration(
                                 color: user.role == 'admin'
                                     ? colors.secondary.withOpacity(0.2)
-                                    : colors.primary.withOpacity(0.2),
+                                    : (user.role == 'court_owner' ? Colors.orange.withOpacity(0.2) : colors.primary.withOpacity(0.2)),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 user.role == 'admin'
                                     ? 'Quản trị viên'
-                                    : 'Người dùng',
+                                    : (user.role == 'court_owner' ? 'Chủ sân' : 'Người dùng'),
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: user.role == 'admin'
                                       ? colors.secondary
-                                      : colors.primary,
+                                      : (user.role == 'court_owner' ? Colors.orange : colors.primary),
                                 ),
                               ),
                             ),

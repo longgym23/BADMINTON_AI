@@ -32,6 +32,44 @@ class EventModel {
     required this.currentParticipants,
     required this.courtId,
   });
+
+  factory EventModel.fromSupabase(Map<String, dynamic> data) {
+    return EventModel(
+      id: data['id'],
+      eventCode: data['event_code'] ?? '',
+      title: data['title'] ?? '',
+      description: data['description'] ?? '',
+      dateTime: DateTime.tryParse(data['date_time'].toString()) ?? DateTime.now(),
+      startTime: data['start_time'] ?? '',
+      endTime: data['end_time'] ?? '',
+      courtArea: data['court_area'] ?? '',
+      sportType: data['sport_type'] ?? '',
+      level: data['level'] ?? '',
+      price: (data['price'] as num?)?.toDouble() ?? 0.0,
+      maxParticipants: (data['max_participants'] as num?)?.toInt() ?? 0,
+      currentParticipants: (data['current_participants'] as num?)?.toInt() ?? 0,
+      courtId: data['court_id'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toSupabase() {
+    return {
+      if (id.isNotEmpty) 'id': id,
+      'event_code': eventCode,
+      'title': title,
+      'description': description,
+      'date_time': dateTime.toIso8601String(),
+      'start_time': startTime,
+      'end_time': endTime,
+      'court_area': courtArea,
+      'sport_type': sportType,
+      'level': level,
+      'price': price,
+      'max_participants': maxParticipants,
+      'current_participants': currentParticipants,
+      'court_id': courtId,
+    };
+  }
 }
 
 class MockEventData {

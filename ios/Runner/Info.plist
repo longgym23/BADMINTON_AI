@@ -57,9 +57,24 @@
 	<string>Ứng dụng cần truy cập camera để chụp ảnh và gửi cho chatbot.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Ứng dụng cần truy cập microphone để ghi âm và nhận diện giọng nói.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Ứng dụng cần quyền nhận diện giọng nói để bạn có thể chat bằng giọng.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Ứng dụng cần truy cập thư viện ảnh để chọn ảnh và gửi cho chatbot.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Ứng dụng cần quyền lưu ảnh vào thư viện.</string>
+
+	<!-- Supabase Deep Linking -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>io.supabase.kloo</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

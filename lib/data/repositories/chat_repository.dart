@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:badminton_ai/data/models/chat_message_model.dart';
-import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -56,54 +55,25 @@ class ChatRepository {
     await _client.from('chat_messages').delete().eq('user_id', userId);
   }
 
-  // RAG: Lấy ngữ cảnh hệ thống (Đã tối ưu Token triệt để - Hybrid Approach)
-  Future<String> getSystemContext(String userId) async {
-    try {
-      // 1. Chỉ lấy tối đa 2 lịch trình SẮP TỚI của user để trả lời nhắc hẹn (Giảm tải Token).
-      final nowStr = DateTime.now().toIso8601String();
-      final bookingsData = await _client
-          .from('bookings')
-          .select()
-          .eq('user_id', userId)
-          .gte('booking_date', nowStr)
-          .order('booking_date', ascending: true)
-          .limit(2);
+  // ─── RAG: Toàn bộ logic Retrieve + Augment + Generate đã được chuyển sang Backend ───
+  // Backend (server.js) quản lý:
+  //   1. Embed user query  →  vector 768 chiều (text-embedding-004)
+  //   2. Search Supabase pgvector (match_documents RPC)
+  //   3. Lấy lịch cá nhân của user từ Supabase
+  //   4. Build augmented prompt
+  //   5. Gọi Gemini sinh câu trả lời
+  // Flutter chỉ cần gửi: { prompt, user_id }
 
-      String context = "CTX_USER:\n";
-      if (bookingsData.isEmpty) {
-        context += "Lịch tới: Trống\n";
-      } else {
-        context += "Lịch tới: ";
-        for (var bData in bookingsData) {
-          final b = BookingModel.fromSupabase(bData);
-          context += "${b.date.day}/${b.date.month} lúc ${b.timeSlot}h tại ${b.courtName}. ";
-        }
-        context += "\n";
-      }
 
-      // 2. Định nghĩa Quy tắc (System Prompts) thay vì nhồi mảng Dữ liệu vào
-      context += """RULES:
-- Bạn là trợ lý ảo App đặt sân thể thao (Bóng đá, Cầu lông, Tennis, Pickleball). Giải đáp siêu ngắn gọn, thân thiện bằng tiếng Việt.
-- NẾU người dùng hỏi tìm sân, đặt sân hoặc gợi ý sân, HÃY TRẢ LỜI NGẮN và BẮT BUỘC chèn đoạn mã [ACTION_SEARCH:mon_the_thao] vào ngay cuối câu.
-- Từ khoá môn thể thao: 'football', 'badminton', 'tennis', 'pickleball'.
-- Ví dụ User: "Tôi muốn đá bóng" -> Bạn đáp: "Vâng, mời bạn tham khảo các sân Bóng Đá tốt nhất hệ thống: [ACTION_SEARCH:football]"
-""";
-
-      return context;
-    } catch (e) {
-      print("Lỗi getSystemContext: $e");
-      return "RULES:\nTrả lời ngắn.\nBắt buộc thêm mã [ACTION_SEARCH:mon_the_thao] cuối câu nếu user muốn tìm/đặt sân.";
-    }
-  }
-
-  // Gửi tin nhắn User + Context -> AI -> Lưu tin nhắn AI
+  // Gửi tin nhắn → Backend RAG Pipeline → Lưu câu trả lời AI
+  // Backend nhận user_id để tự lấy lịch cá nhân và thực hiện vector search
   Future<void> sendMessageWithRAG(
     String userId,
     String text, {
     String? imagePath,
     String? audioPath,
   }) async {
-    // 1. Lưu tin nhắn User
+    // 1. Lưu tin nhắn của User vào Supabase
     final userMessage = ChatMessageModel(
       id: '',
       text: text.isEmpty ? (imagePath != null ? '[Ảnh]' : '[Audio]') : text,
@@ -114,71 +84,63 @@ class ChatRepository {
     );
     await sendMessage(userId, userMessage);
 
-    // 2. Chuẩn bị Context + Prompt
-    String context = await getSystemContext(userId);
-    String promptToSend = text;
-    if (text.isNotEmpty) {
-      // Rút gọn Prompt Template để tiết kiệm token
-      promptToSend = "$context\nUSER_ASK: $text";
-    }
-
-    // 3. Gọi API AI
-    String answer = "Xin lỗi, tôi chưa hiểu ý bạn.";
+    // 2. Gọi Backend RAG API
+    //    Backend tự thực hiện: Embed → Vector Search → Augment → Gemini
+    String answer = 'Xin lỗi, tôi chưa hiểu ý bạn.';
     const String backendUrl = 'https://badminton-ai-fgsz.onrender.com/ask';
 
     try {
       http.Response response;
 
       if (imagePath != null) {
-        var request = http.MultipartRequest('POST', Uri.parse(backendUrl));
-        request.files.add(
-          await http.MultipartFile.fromPath('image', imagePath),
-        );
-        request.fields['prompt'] = text.isNotEmpty ? text : 'Phân tích ảnh này';
-        var streamedResponse = await request.send();
+        // Gửi ảnh kèm user_id qua multipart
+        final request = http.MultipartRequest('POST', Uri.parse(backendUrl));
+        request.fields['prompt']  = text.isNotEmpty ? text : 'Phân tích ảnh này';
+        request.fields['user_id'] = userId;
+        request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+        final streamedResponse = await request.send();
         response = await http.Response.fromStream(streamedResponse);
+
       } else if (audioPath != null) {
-        var request = http.MultipartRequest(
-          'POST',
-          Uri.parse('$backendUrl/audio'),
-        );
-        request.files.add(
-          await http.MultipartFile.fromPath('audio', audioPath),
-        );
-        if (text.isNotEmpty) {
-          request.fields['prompt'] = promptToSend;
-        }
-        var streamedResponse = await request.send();
+        // Gửi audio kèm user_id qua multipart
+        final request = http.MultipartRequest('POST', Uri.parse('$backendUrl/audio'));
+        request.fields['prompt']  = text;
+        request.fields['user_id'] = userId;
+        request.files.add(await http.MultipartFile.fromPath('audio', audioPath));
+        final streamedResponse = await request.send();
         response = await http.Response.fromStream(streamedResponse);
+
       } else {
+        // Gửi text + user_id → Backend thực hiện full RAG pipeline
         response = await http
             .post(
               Uri.parse(backendUrl),
               headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({'prompt': promptToSend}),
+              body: jsonEncode({
+                'prompt':  text,
+                'user_id': userId,  // Backend dùng để lấy lịch cá nhân
+              }),
             )
             .timeout(const Duration(seconds: 90));
       }
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
-        answer = responseBody['answer'] ?? "Xin lỗi, tôi chưa hiểu ý bạn.";
+        answer = responseBody['answer'] ?? 'Xin lỗi, tôi chưa hiểu ý bạn.';
       } else {
         try {
           final responseBody = jsonDecode(response.body);
-          answer =
-              "Lỗi: " +
-              (responseBody['error'] ?? 'Lỗi server (${response.statusCode})');
-        } catch (e) {
+          answer = 'Lỗi: ' + (responseBody['error'] ?? 'Lỗi server (${response.statusCode})');
+        } catch (_) {
           answer = 'Lỗi server (${response.statusCode})';
         }
       }
     } catch (e) {
-      answer = "Lỗi hệ thống/mạng: $e";
-      print("Lỗi sendMessageWithRAG: $e");
+      answer = 'Lỗi hệ thống/mạng: $e';
+      print('Lỗi sendMessageWithRAG: $e');
     }
 
-    // 4. Lưu tin nhắn AI
+    // 3. Lưu câu trả lời của AI vào Supabase
     final aiMessage = ChatMessageModel(
       id: '',
       text: answer,

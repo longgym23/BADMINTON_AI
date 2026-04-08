@@ -11,7 +11,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 class CourtDetailSheet extends StatefulWidget {
   final CourtLocationModel court;
-  const CourtDetailSheet({super.key, required this.court});
+  final VoidCallback? onClose;
+  const CourtDetailSheet({super.key, required this.court, this.onClose});
 
   @override
   State<CourtDetailSheet> createState() => _CourtDetailSheetState();
@@ -87,7 +88,13 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
   }
 
   void _bookCourt() {
-    Navigator.pop(context);
+    if (widget.onClose != null) {
+      widget.onClose!();
+    } else {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -106,8 +113,10 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
     final court = widget.court;
     return DraggableScrollableSheet(
       initialChildSize: 0.55,
-      minChildSize: 0.4,
+      minChildSize: 0.0,
       maxChildSize: 0.95,
+      snap: true,
+      snapSizes: const [0.55],
       builder: (context, scrollController) {
         return Container(
           clipBehavior: Clip.antiAlias, // Cắt bỏ các phần nhô ra để bo góc ảnh
@@ -210,7 +219,15 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               // Back
               _ActionCircleButton(
                 icon: Icons.arrow_back_ios_new_rounded,
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  if (widget.onClose != null) {
+                    widget.onClose!();
+                  } else {
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    }
+                  }
+                },
               ),
               const Spacer(),
               // Directions
@@ -370,7 +387,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
   Widget _buildBookButton() {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
         child: SizedBox(
           width: double.infinity,
           child: ElevatedButton(

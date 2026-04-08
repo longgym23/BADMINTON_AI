@@ -34,11 +34,13 @@ class CheckoutScreen extends StatelessWidget {
         final vm = CheckoutViewModel();
         // Prefill user data if available
         final user = context.read<AppAuthProvider>().userModel;
+        int walletBal = 0;
         if (user != null) {
           vm.setCustomerName(user.displayName ?? '');
           vm.setCustomerPhone(user.phoneNumber ?? '');
+          walletBal = user.balance;
         }
-        vm.initializePayment(totalPrice, selectedCourt.id);
+        vm.initializePayment(totalPrice, selectedCourt.id, walletBalance: walletBal);
         return vm;
       },
       child: CheckoutScreenView(
@@ -237,10 +239,25 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
 
       if (isCreated) {
         vm.setBookingCreated(true);
-        // Bắt đầu đếm ngược 5 phút - hết giờ thì tự huỷ booking
-        vm.startCountdown(() => _onPaymentExpired(vm.transactionId));
-        // Sau khi tạo đơn, hiển thị QR và tự động lắng nghe Realtime
-        _listenForPayment();
+        // Trừ tiền trong ví nếu có
+        final authProvider = context.read<AppAuthProvider>();
+        final userId = authProvider.userModel?.id;
+        final repo = context.read<SupabaseRepository>();
+        
+        if (vm.appliedBalance > 0 && userId != null) {
+          await repo.deductBalance(userId, vm.appliedBalance);
+          authProvider.updateUserModel(authProvider.userModel!.copyWith(
+              balance: authProvider.userModel!.balance - vm.appliedBalance));
+        }
+
+        if (vm.finalAmount > 0) {
+          // Bắt đầu đếm ngược 5 phút
+          vm.startCountdown(() => _onPaymentExpired(vm.transactionId, vm.appliedBalance, userId));
+          _listenForPayment();
+        } else {
+          // Zero payment logic
+          _processZeroPayment(vm.transactionId);
+        }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -249,16 +266,52 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
         }
       }
     } else {
-      // Nếu lỡ bấm lại nút (mặc dù đã ẩn nút), thì gọi lại lắng nghe
-      _listenForPayment();
+      if (vm.finalAmount > 0) {
+        _listenForPayment();
+      }
+    }
+  }
+
+  void _processZeroPayment(String transactionId) async {
+    final vm = context.read<CheckoutViewModel>();
+    final repo = context.read<SupabaseRepository>();
+    
+    // Đánh dấu Paid trong db
+    await repo.markBookingsAsPaid(transactionId);
+    
+    final success = await vm.processZeroPayment();
+
+    if (success && mounted) {
+      await _sendSuccessNotifications();
+      if (mounted) {
+        final l = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.paymentSuccess),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.pop(context);
+        Navigator.pop(context);
+      }
     }
   }
 
   /// Gọi khi hết 5 phút chưa thanh toán: xóa booking PENDING rồi về Home
-  Future<void> _onPaymentExpired(String transactionId) async {
+  Future<void> _onPaymentExpired(String transactionId, int refundedBalance, String? userId) async {
     try {
       final repo = context.read<SupabaseRepository>();
       await repo.deletePendingBookingsByTransactionId(transactionId);
+      
+      // Hoàn lại tiền ví nếu đã trừ
+      if (refundedBalance > 0 && userId != null) {
+        await repo.addBalance(userId, refundedBalance);
+        final authProvider = context.read<AppAuthProvider>();
+        if (authProvider.userModel != null) {
+          authProvider.updateUserModel(authProvider.userModel!.copyWith(
+              balance: authProvider.userModel!.balance + refundedBalance));
+        }
+      }
     } catch (e) {
       debugPrint('Lỗi xóa booking hết hạn: $e');
     }
@@ -386,6 +439,12 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                  _buildInfoRow(l.totalHours, _displayTotalHours(widget.totalHours)),
                  const SizedBox(height: 8),
                  _buildInfoRow(l.totalPrice, NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(widget.totalPrice), isTotal: true),
+                 if (vm.appliedBalance > 0) ...[
+                   const SizedBox(height: 8),
+                   _buildInfoRow('Trừ Số Dư Ví', '- ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(vm.appliedBalance)}', color: Colors.green),
+                   const SizedBox(height: 8),
+                   _buildInfoRow('Cần thanh toán', NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(vm.finalAmount), isTotal: true, color: Colors.red),
+                 ],
                ],
             ),
             const SizedBox(height: 24),
@@ -605,12 +664,12 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {bool isTotal = false}) {
+  Widget _buildInfoRow(String label, String value, {bool isTotal = false, Color? color}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 80,
+          width: 100,
           child: Text(
             label,
             style: const TextStyle(color: AppColors.textGrey, fontSize: 14),
@@ -619,8 +678,9 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
         Expanded(
           child: Text(
             value,
+            textAlign: TextAlign.end,
             style: TextStyle(
-              color: isTotal ? const Color(0xFFFF9800) : AppColors.textBlack,
+              color: color ?? (isTotal ? const Color(0xFFFF9800) : AppColors.textBlack),
               fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
               fontSize: isTotal ? 16 : 14,
             ),

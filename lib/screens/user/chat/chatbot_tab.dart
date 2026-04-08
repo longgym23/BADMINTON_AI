@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
@@ -53,10 +54,21 @@ class _ChatbotTabState extends State<ChatbotTab> {
   }
 
   Future<void> _initializeSpeech() async {
-    await _speechToText.initialize(
-      onError: (e) => debugPrint('STT Error: $e'),
-      onStatus: (s) => debugPrint('STT Status: $s'),
-    );
+    final micStatus = await Permission.microphone.request();
+    // Yêu cầu thêm quyền nhận diện giọng nói (Speech) bắt buộc cho iOS và một số máy Android
+    final speechStatus = await Permission.speech.request();
+
+    if (micStatus.isGranted || speechStatus.isGranted) {
+      bool available = await _speechToText.initialize(
+        onError: (e) => debugPrint('STT Error: $e'),
+        onStatus: (s) => debugPrint('STT Status: $s'),
+      );
+      if (!available) {
+        debugPrint("Speech recognition not available on this device.");
+      }
+    } else {
+      debugPrint("Microphone/Speech permission NOT granted.");
+    }
   }
 
   @override
@@ -357,10 +369,14 @@ class _ChatbotTabState extends State<ChatbotTab> {
       }
     } else {
       if (!_speechToText.isAvailable) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Không hỗ trợ giọng nói')));
-        return;
+        // Try to initialize again just in case
+        await _initializeSpeech();
+        if (!_speechToText.isAvailable) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Không hỗ trợ nhận diện giọng nói. Quý khách lưu ý: Tính năng này thường không hoạt động trên Emulator giả lập.')));
+          return;
+        }
       }
       setState(() {
         _isListening = true;

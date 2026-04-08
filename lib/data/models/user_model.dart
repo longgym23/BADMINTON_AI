@@ -6,6 +6,7 @@ class UserModel {
   final String role;
   final String? photoUrl;
   final String? fcmToken;
+  final int balance;
 
   UserModel({
     required this.id,
@@ -15,6 +16,7 @@ class UserModel {
     this.role = 'user',
     this.photoUrl,
     this.fcmToken,
+    this.balance = 0,
   });
 
   UserModel copyWith({
@@ -25,6 +27,7 @@ class UserModel {
     String? role,
     String? photoUrl,
     String? fcmToken,
+    int? balance,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -34,6 +37,7 @@ class UserModel {
       role: role ?? this.role,
       photoUrl: photoUrl ?? this.photoUrl,
       fcmToken: fcmToken ?? this.fcmToken,
+      balance: balance ?? this.balance,
     );
   }
 
@@ -46,6 +50,7 @@ class UserModel {
       role: data['role'] ?? 'user',
       photoUrl: data['avatar_url'],
       fcmToken: data['fcm_token'],
+      balance: (data['balance'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -55,8 +60,9 @@ class UserModel {
       'display_name': displayName,
       'phone_number': phoneNumber,
       'role': role,
-      'fcm_token': fcmToken,
-      'avatar_url': photoUrl,
+      if (fcmToken != null) 'fcm_token': fcmToken,
+      if (photoUrl != null) 'avatar_url': photoUrl,
+      'balance': balance,
     };
   }
 
