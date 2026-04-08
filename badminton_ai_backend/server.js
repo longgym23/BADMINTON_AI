@@ -50,16 +50,15 @@ let visionModel;
 try {
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  visionModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 } catch (error) {
   console.error('Lỗi khởi tạo Gemini (kiểm tra API Key?):', error);
 }
 
 // Định nghĩa System Prompt - Tối ưu Token với RAG thực sự
 const systemPrompt =
-  `Bạn là trợ lý ảo cho ứng dụng đặt sân cầu lông 'KLOO'.
-Nhiệm vụ của bạn là trả lời các câu hỏi của người dùng một cách thân thiện,
-ngắn gọn và hữu ích. Các chủ đề chính bao gồm:
+  `Bạn là trợ lý ảo cho ứng dụng đặt sân thể thao 'KLOO'. Hỗ trợ các môn: cầu lông, bóng đá, tennis, pickleball.
+Nhiệm vụ của bạn là trả lời các câu hỏi của người dùng một cách thân thiện, ngắn gọn và hữu ích.
 1. Cách đặt sân: Người dùng chọn ngày, chọn sân, sau đó chọn giờ và sân con trên biểu đồ.
 2. Cách hủy sân: Người dùng vào Tab "Tài khoản" -> "Lịch sử đặt sân" và nhấn nút hủy.
 3. Giá cả: Giá được hiển thị khi chọn sân.
@@ -68,7 +67,7 @@ ngắn gọn và hữu ích. Các chủ đề chính bao gồm:
 6. Lịch đặt: Xem trong tab "Tài khoản" -> "Lịch sử đặt sân".
 7. Lời khuyên thể thao: Gợi ý các môn thể thao và đồ dùng phù hợp.
 8. Hướng dẫn sử dụng đồ dùng: Cung cấp thông tin về cách sử dụng vợt, giày, và các đồ dùng thể thao.
-QUAN TRỌNG: 
+QUAN TRỌNG:
 - Trả lời bằng văn bản thuần túy, KHÔNG sử dụng markdown formatting như dấu *, **, #, hoặc các ký hiệu định dạng khác.
 - Khi người dùng muốn tìm/đặt sân, chèn mã [ACTION_SEARCH:mon_the_thao] vào cuối câu.
 - Khi người dùng muốn xem lịch đặt, chèn mã [ACTION_VIEW_SCHEDULE] vào cuối câu.
@@ -152,10 +151,6 @@ app.post('/ask', upload.single('image'), async (req, res) => {
   // Nếu có ảnh, xử lý với Vision API
   if (imageFile) {
     const userPromptImg = req.body.prompt || 'Phân tích ảnh này và trả lời câu hỏi liên quan đến ứng dụng đặt sân cầu lông.';
-
-    if (!imageFile) {
-      return res.status(400).json({ error: 'Không có ảnh được gửi lên.' });
-    }
 
     if (!visionModel) {
       cleanupFile(imageFile.path);
@@ -291,7 +286,7 @@ app.post('/forgot-password', async (req, res) => {
         <tr>
           <td style="background:linear-gradient(135deg,#FF6B00,#FFB347);padding:36px;text-align:center;">
             <div style="font-size:32px;font-weight:800;color:#ffffff;letter-spacing:-1px;">🏸 KLOO</div>
-            <div style="color:rgba(255,255,255,0.85);font-size:14px;margin-top:6px;">Đặt sân cầu lông dễ dàng</div>
+            <div style="color:rgba(255,255,255,0.85);font-size:14px;margin-top:6px;">Đặt sân thể thao dễ dàng</div>
           </td>
         </tr>
         <tr>
@@ -435,10 +430,6 @@ app.post('/ask/audio', upload.single('audio'), async (req, res) => {
   if (!audioFile) {
     return res.status(400).json({ error: 'Không có audio được gửi lên.' });
   }
-
-  // Lưu ý: Gemini có thể xử lý audio, nhưng cần model phù hợp
-  // Ở đây tôi sẽ trả về thông báo yêu cầu chuyển audio thành text trước
-  // Hoặc bạn có thể tích hợp speech-to-text service như Google Speech-to-Text API
 
   cleanupFile(audioFile.path);
 
