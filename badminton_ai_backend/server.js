@@ -48,8 +48,8 @@ let model;
 let visionModel;
 try {
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-  visionModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 } catch (error) {
   console.error('Lỗi khởi tạo Gemini (kiểm tra API Key?):', error);
 }

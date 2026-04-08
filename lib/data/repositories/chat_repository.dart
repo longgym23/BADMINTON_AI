@@ -86,7 +86,9 @@ class ChatRepository {
         request.files.add(
           await http.MultipartFile.fromPath('image', imagePath),
         );
-        request.fields['prompt'] = text.isNotEmpty ? text : 'Phân tích ảnh này và cho biết đây là sân gì, tình trạng sân, hoặc đồ dùng thể thao gì, cách sử dụng';
+        request.fields['prompt'] = text.isNotEmpty
+            ? text
+            : 'Phân tích ảnh này và cho biết đây là sân gì, tình trạng sân, hoặc đồ dùng thể thao gì, cách sử dụng';
         request.fields['user_id'] = userId;
         var streamedResponse = await request.send();
         response = await http.Response.fromStream(streamedResponse);
