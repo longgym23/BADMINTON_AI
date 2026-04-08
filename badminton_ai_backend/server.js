@@ -1,9 +1,9 @@
 // ============================================================
-// KLOO Badminton AI Backend — RAG (Retrieval-Augmented Generation)
+// KLOO Badminton AI Backend
 // Architecture:
-//   User Query → Embed Query → Vector Search (Supabase pgvector)
-//               → Augmented Prompt → Gemini → Answer
-// Version: 3.1.0 — Updated to gemini-2.5-flash-lite
+//   User Query → Query Supabase (courts, events, bookings, profiles)
+//               → Static Knowledge → Gemini → Answer
+// Version: 3.2.0 — Direct database query (no vector search needed)
 // ============================================================
 
 require('dotenv').config();
@@ -51,13 +51,12 @@ if (!GEMINI_API_KEY) {
   console.error('❌ GEMINI_API_KEY chưa được cấu hình!');
 }
 
-let genAI, chatModel, visionModel, embeddingModel;
+let genAI, chatModel, visionModel;
 try {
-  genAI          = new GoogleGenerativeAI(GEMINI_API_KEY);
-  chatModel      = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  visionModel    = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-  console.log('✅ Gemini models initialized (chat + vision + embedding) — gemini-2.5-flash-lite');
+  genAI       = new GoogleGenerativeAI(GEMINI_API_KEY);
+  chatModel   = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  console.log('✅ Gemini models initialized (chat + vision) — gemini-2.5-flash-lite');
 } catch (err) {
   console.error('❌ Lỗi khởi tạo Gemini:', err.message);
 }
@@ -139,30 +138,87 @@ const SPORTS_TIPS = {
   },
 };
 
-// ─── RAG: Step 1 — Generate Embedding ────────────────────────────────────────
-async function generateEmbedding(text) {
-  if (!embeddingModel) throw new Error('Embedding model chưa sẵn sàng');
-  const result = await embeddingModel.embedContent(text);
-  return result.embedding.values;
-}
+// ─── Database Query Helper ───────────────────────────────────────────────────
+async function retrieveFromDatabase(query, userId) {
+  const results = [];
 
-// ─── RAG: Step 2 — Retrieve Relevant Knowledge Chunks ────────────────────────
-async function retrieveRelevantChunks(queryEmbedding, matchCount = 5, matchThreshold = 0.50) {
   try {
-    const { data, error } = await supabaseAdmin.rpc('match_documents', {
-      query_embedding: queryEmbedding,
-      match_threshold: matchThreshold,
-      match_count:     matchCount,
-    });
-    if (error) {
-      console.error('❌ Supabase RPC match_documents error:', error.message);
-      return [];
+    // Query courts - always fetch all active courts
+    const { data: courts } = await supabaseAdmin
+      .from('courts')
+      .select('id, name, address, price_per_hour, sport_type, image_url, description, sub_courts, status')
+      .eq('status', 'active')
+      .limit(15);
+    
+    if (courts && courts.length > 0) {
+      courts.forEach(c => {
+        results.push({
+          content: `Sân ${c.name}: Địa chỉ ${c.address}, Giá ${c.price_per_hour}đ/giờ, Loại sân ${c.sport_type || 'đa năng'}, Số sân con ${c.sub_courts || 1}, Mô tả: ${c.description || 'Chưa có'}`,
+          category: 'court_info',
+          metadata: { court_id: c.id, name: c.name, sport_type: c.sport_type }
+        });
+      });
     }
-    return data || [];
+
+    // Query events - always fetch upcoming events
+    const { data: events } = await supabaseAdmin
+      .from('events')
+      .select('id, title, description, date_time, sport_type, price, max_participants, current_participants')
+      .gte('date_time', new Date().toISOString())
+      .limit(10);
+    
+    if (events && events.length > 0) {
+      events.forEach(e => {
+        const slotsLeft = (e.max_participants || 0) - (e.current_participants || 0);
+        results.push({
+          content: `Sự kiện "${e.title}": Ngày ${new Date(e.date_time).toLocaleDateString('vi-VN')}, Loại ${e.sport_type || 'thể thao'}, Phí ${e.price || 0}đ, Còn ${slotsLeft} chỗ, Mô tả: ${e.description || 'Chưa có'}`,
+          category: 'event_info',
+          metadata: { event_id: e.id, title: e.title, date: e.date_time }
+        });
+      });
+    }
+
+    // Query user bookings if logged in
+    if (userId) {
+      const { data: bookings } = await supabaseAdmin
+        .from('bookings')
+        .select('id, court_name, booking_date, time_slot, price, status')
+        .eq('user_id', userId)
+        .gte('booking_date', new Date().toISOString().split('T')[0])
+        .order('booking_date', { ascending: true })
+        .limit(5);
+      
+      if (bookings && bookings.length > 0) {
+        bookings.forEach(b => {
+          results.push({
+            content: `Lịch đặt sân: ${b.court_name} ngày ${b.booking_date} lúc ${b.time_slot}h, Giá ${b.price}đ, Trạng thái: ${b.status}`,
+            category: 'booking_info',
+            metadata: { booking_id: b.id, date: b.booking_date }
+          });
+        });
+      }
+      
+      // Query profile
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('id, display_name, email, phone_number, balance, avatar_url')
+        .eq('id', userId)
+        .single();
+      
+      if (profile) {
+        results.push({
+          content: `Thông tin tài khoản: Tên hiển thị ${profile.display_name || 'Chưa cập nhật'}, Email ${profile.email || 'Chưa có'}, Số dư ví ${profile.balance || 0}đ`,
+          category: 'user_info',
+          metadata: { user_id: profile.id }
+        });
+      }
+    }
+
   } catch (e) {
-    console.error('❌ Lỗi retrieveRelevantChunks:', e.message);
-    return [];
+    console.error('❌ Database query error:', e.message);
   }
+
+  return results;
 }
 
 // ─── RAG: Step 3 — Personalized User Context ─────────────────────────────────
@@ -191,30 +247,30 @@ async function getUserContext(userId) {
   }
 }
 
-// ─── RAG: Step 4 — Build Augmented Prompt ────────────────────────────────────
+// ─── Build Augmented Prompt ────────────────────────────────────────────────────
 function buildAugmentedPrompt(retrievedChunks, userContext, userQuestion) {
   let knowledgeSection = '';
   if (retrievedChunks.length > 0) {
     knowledgeSection = retrievedChunks
       .map((chunk, i) =>
-        `[${i + 1}] [${chunk.category}] (Độ liên quan: ${(chunk.similarity * 100).toFixed(0)}%)\n${chunk.content}`
+        `[${i + 1}] [${chunk.category}]\n${chunk.content}`
       )
       .join('\n\n');
   } else {
-    knowledgeSection = 'Không tìm thấy thông tin liên quan trong cơ sở dữ liệu nội bộ.';
+    knowledgeSection = 'Không có dữ liệu cụ thể từ database.';
   }
 
   return `Bạn là trợ lý ảo KLOO - ứng dụng đặt sân thể thao chuyên nghiệp (cầu lông, bóng đá, tennis, pickleball).
 Bạn thân thiện, nhiệt tình và chỉ hỗ trợ các chủ đề liên quan đến thể thao và dịch vụ KLOO.
 
-[THÔNG TIN ĐƯỢC TRUY XUẤT TỪ CƠ SỞ DỮ LIỆU]
+[DỮ LIỆU TỪ DATABASE]
 ${knowledgeSection}
 
 [LỊCH CÁ NHÂN CỦA NGƯỜI DÙNG]
 ${userContext}
 
 [NGUYÊN TẮC TRẢ LỜI BẮT BUỘC]
-1. Ưu tiên dùng thông tin trong phần THÔNG TIN ĐƯỢC TRUY XUẤT để trả lời chính xác.
+1. Dùng thông tin từ phần DỮ LIỆU TỪ DATABASE để trả lời chính xác.
 2. Nếu câu hỏi KHÔNG liên quan đến: sân thể thao, KLOO, đặt sân, sự kiện, thanh toán, tập luyện thể thao, hoặc lời khuyên về 4 môn (cầu lông, bóng đá, tennis, pickleball) → từ chối lịch sự: "Xin lỗi, tôi chỉ hỗ trợ về sân thể thao và dịch vụ của KLOO. Bạn có câu hỏi nào về đặt sân hoặc các môn thể thao không?"
 3. Nếu người dùng muốn TÌM SÂN hoặc GỢI Ý SÂN, thêm đúng 1 đoạn mã [ACTION_SEARCH:sport_type] ở cuối câu trả lời. Giá trị sport_type CHỈ được chọn trong: football, badminton, tennis, pickleball.
 4. Không được bịa thông tin không có trong ngữ cảnh.
@@ -256,15 +312,15 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
   res.json({
     status: 'running',
-    version: '3.1.0',
-    mode: 'Retrieval-Augmented Generation (RAG)',
+    version: '3.2.0',
+    mode: 'Database Query + Static Knowledge',
     models: {
       chat:      'gemini-2.5-flash-lite',
       vision:    'gemini-2.5-flash-lite',
-      embedding: 'text-embedding-004 (768 dims)',
     },
   });
 });
+
 
 // ─── GET /courts — Lấy danh sách sân theo loại môn thể thao ─────────────────
 // Query: ?sport_type=badminton&limit=8
@@ -679,46 +735,35 @@ QUAN TRỌNG: KHÔNG dùng markdown, dấu *, **, #. Chỉ viết tiếng Việt
   if (!userPrompt || userPrompt.length === 0) {
     return res.status(400).json({ error: 'Câu hỏi không hợp lệ.' });
   }
-  if (!chatModel || !embeddingModel) {
+  if (!chatModel) {
     return res.status(500).json({ error: 'AI model chưa sẵn sàng.' });
   }
 
-  console.log(`\n📩 [RAG] Query: "${userPrompt.substring(0, 80)}${userPrompt.length > 80 ? '...' : ''}"`);
+  console.log(`\n📩 [Query] "${userPrompt.substring(0, 80)}${userPrompt.length > 80 ? '...' : ''}"`);
   console.log(`   User ID: ${userId || 'anonymous'}`);
 
   try {
-    // ── RAG Step 1: Embed câu hỏi của user ──────────────────────────────
-    const queryEmbedding = await generateEmbedding(userPrompt);
-    console.log('  ✅ Step 1/4: Query embedded (768 dims)');
-
-    // ── RAG Step 2: Tìm kiếm ngữ nghĩa trong knowledge base ─────────────
-    const retrievedChunks = await retrieveRelevantChunks(queryEmbedding, 5, 0.50);
-    console.log(
-      `  ✅ Step 2/4: Retrieved ${retrievedChunks.length} chunks: ` +
-      retrievedChunks.map(c => `[${c.category} ${(c.similarity * 100).toFixed(0)}%]`).join(', ')
-    );
+    // ── Step 1: Truy vấn trực tiếp từ database ─────────────────────────────
+    const retrievedChunks = await retrieveFromDatabase(userPrompt, userId);
+    console.log(`  ✅ Step 1/4: Retrieved ${retrievedChunks.length} chunks from database`);
 
     // ── Guardrail: Câu hỏi ngoài phạm vi ─────────────────────────────────
     if (retrievedChunks.length === 0) {
-      console.log('  ⚠️  0 chunks retrieved → Câu hỏi ngoài phạm vi, từ chối ngay.');
-      return res.json({
-        answer:
-          'Xin lỗi, tôi chỉ hỗ trợ các câu hỏi về sân thể thao và dịch vụ của KLOO. ' +
-          'Bạn có thể hỏi tôi về cách đặt sân, giá sân, lịch sự kiện, lời khuyên tập luyện, hoặc chính sách hoàn tiền nhé!',
-      });
+      // Vẫn cho phép trả lời với static knowledge
+      console.log('  ⚠️  No database results, using static knowledge');
     }
 
-    // ── RAG Step 3: Lấy context cá nhân của user ─────────────────────────
+    // ── Step 2: Lấy context cá nhân của user ─────────────────────────
     const userContext = await getUserContext(userId);
-    console.log(`  ✅ Step 3/4: User context fetched`);
+    console.log(`  ✅ Step 2/4: User context fetched`);
 
-    // ── RAG Step 4: Xây dựng augmented prompt ────────────────────────────
+    // ── Step 3: Xây dựng augmented prompt ───────────────────────────
     const augmentedPrompt = buildAugmentedPrompt(retrievedChunks, userContext, userPrompt);
-    console.log(`  ✅ Step 4/4: Augmented prompt built (${augmentedPrompt.length} chars)`);
+    console.log(`  ✅ Step 3/4: Augmented prompt built (${augmentedPrompt.length} chars)`);
 
-    // ── Step 5: Gemini sinh câu trả lời ──────────────────────────────────
+    // ── Step 4: Gemini sinh câu trả lời ─────────────────────────────────
     const chat = chatModel.startChat({
-      generationConfig: { maxOutputTokens: 400 },
+      generationConfig: { maxOutputTokens: 500 },
     });
     const result = await chat.sendMessage(augmentedPrompt);
     let answer   = result.response.text();
@@ -728,7 +773,7 @@ QUAN TRỌNG: KHÔNG dùng markdown, dấu *, **, #. Chỉ viết tiếng Việt
     res.json({ answer });
 
   } catch (error) {
-    console.error('❌ RAG pipeline error:', error.message);
+    console.error('❌ Chat pipeline error:', error.message);
     res.status(500).json({ error: 'Đã xảy ra lỗi khi xử lý yêu cầu. Vui lòng thử lại!' });
   }
 });
@@ -904,9 +949,8 @@ app.post('/reset-password', async (req, res) => {
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 app.listen(port, () => {
-  console.log(`\n🚀 KLOO Backend (RAG v3.1) đang chạy tại http://localhost:${port}`);
+  console.log(`\n🚀 KLOO Backend (v3.2) đang chạy tại http://localhost:${port}`);
   console.log(`   Chat/Vision model: gemini-2.5-flash-lite`);
-  console.log(`   Embedding model: text-embedding-004 (768 dims)`);
-  console.log(`   Vector DB: Supabase pgvector`);
-  console.log(`   Endpoints: /ask, /courts, /sports-tips, /admin/seed-knowledge\n`);
+  console.log(`   Mode: Database Query + Static Knowledge`);
+  console.log(`   Endpoints: /ask, /courts, /sports-tips\n`);
 });
