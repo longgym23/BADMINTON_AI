@@ -252,10 +252,15 @@ class _ChatbotTabState extends State<ChatbotTab> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          _Chip('Sân cầu lông gần đây'),
-          _Chip('Tìm sân bóng đá gần đây'),
-          _Chip('Sân Pickleball tốt nhất'),
-          _Chip('Tìm sân cầu lông trống'),
+          _Chip('Tìm sân cầu lông'),
+          _Chip('Tìm sân bóng đá'),
+          _Chip('Tìm sân Pickleball'),
+          _Chip('Tìm sân tennis'),
+          _Chip('Cách hủy sân'),
+          _Chip('Xem lịch đặt'),
+          _Chip('Xem chi tiêu'),
+          _Chip('Mua vợt cầu lông'),
+          _Chip('Cách chọn giày'),
         ],
       ),
     );
@@ -466,7 +471,16 @@ class _MessageBubble extends StatelessWidget {
     final actionMatch = RegExp(r'\[ACTION_SEARCH:([^\]]+)\]').firstMatch(message.text);
     final String? searchSportType = !isUser && actionMatch != null ? actionMatch.group(1) : null;
     
-    final cleanText = message.text.replaceAll(RegExp(r'\[ACTION_SEARCH:[^\]]+\]'), '').trim();
+    final viewSchedule = !isUser && message.text.contains('[ACTION_VIEW_SCHEDULE]');
+    final viewExpense = !isUser && message.text.contains('[ACTION_VIEW_EXPENSE]');
+    final cancelBooking = !isUser && message.text.contains('[ACTION_CANCEL_BOOKING]');
+    
+    final cleanText = message.text
+        .replaceAll(RegExp(r'\[ACTION_SEARCH:[^\]]+\]'), '')
+        .replaceAll(RegExp(r'\[ACTION_VIEW_SCHEDULE\]'), '')
+        .replaceAll(RegExp(r'\[ACTION_VIEW_EXPENSE\]'), '')
+        .replaceAll(RegExp(r'\[ACTION_CANCEL_BOOKING\]'), '')
+        .trim();
 
     // Check for "Success Card" trigger
     bool isSuccessCard =
@@ -563,6 +577,34 @@ class _MessageBubble extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 8, left: 40),
               child: _CourtListCarousel(sportType: searchSportType),
+            ),
+          
+          // Thêm nút hành động cho các action
+          if (!isUser && (viewSchedule || viewExpense || cancelBooking))
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 40),
+              child: Row(
+                children: [
+                  if (viewSchedule)
+                    _ActionButton(
+                      icon: Icons.calendar_today,
+                      label: 'Xem lịch',
+                      onTap: () => Navigator.pushNamed(context, '/history'),
+                    ),
+                  if (viewExpense)
+                    _ActionButton(
+                      icon: Icons.account_balance_wallet,
+                      label: 'Xem chi tiêu',
+                      onTap: () => Navigator.pushNamed(context, '/history'),
+                    ),
+                  if (cancelBooking)
+                    _ActionButton(
+                      icon: Icons.cancel,
+                      label: 'Hủy sân',
+                      onTap: () => Navigator.pushNamed(context, '/history'),
+                    ),
+                ],
+              ),
             ),
         ],
       ),
@@ -806,6 +848,52 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.primaryBg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: AppColors.primary),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

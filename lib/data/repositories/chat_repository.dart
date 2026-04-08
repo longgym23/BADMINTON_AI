@@ -56,46 +56,6 @@ class ChatRepository {
     await _client.from('chat_messages').delete().eq('user_id', userId);
   }
 
-  // RAG: Lấy ngữ cảnh hệ thống (Đã tối ưu Token triệt để - Hybrid Approach)
-  Future<String> getSystemContext(String userId) async {
-    try {
-      // 1. Chỉ lấy tối đa 2 lịch trình SẮP TỚI của user để trả lời nhắc hẹn (Giảm tải Token).
-      final nowStr = DateTime.now().toIso8601String();
-      final bookingsData = await _client
-          .from('bookings')
-          .select()
-          .eq('user_id', userId)
-          .gte('booking_date', nowStr)
-          .order('booking_date', ascending: true)
-          .limit(2);
-
-      String context = "CTX_USER:\n";
-      if (bookingsData.isEmpty) {
-        context += "Lịch tới: Trống\n";
-      } else {
-        context += "Lịch tới: ";
-        for (var bData in bookingsData) {
-          final b = BookingModel.fromSupabase(bData);
-          context += "${b.date.day}/${b.date.month} lúc ${b.timeSlot}h tại ${b.courtName}. ";
-        }
-        context += "\n";
-      }
-
-      // 2. Định nghĩa Quy tắc (System Prompts) thay vì nhồi mảng Dữ liệu vào
-      context += """RULES:
-- Bạn là trợ lý ảo App đặt sân thể thao (Bóng đá, Cầu lông, Tennis, Pickleball). Giải đáp siêu ngắn gọn, thân thiện bằng tiếng Việt.
-- NẾU người dùng hỏi tìm sân, đặt sân hoặc gợi ý sân, HÃY TRẢ LỜI NGẮN và BẮT BUỘC chèn đoạn mã [ACTION_SEARCH:mon_the_thao] vào ngay cuối câu.
-- Từ khoá môn thể thao: 'football', 'badminton', 'tennis', 'pickleball'.
-- Ví dụ User: "Tôi muốn đá bóng" -> Bạn đáp: "Vâng, mời bạn tham khảo các sân Bóng Đá tốt nhất hệ thống: [ACTION_SEARCH:football]"
-""";
-
-      return context;
-    } catch (e) {
-      print("Lỗi getSystemContext: $e");
-      return "RULES:\nTrả lời ngắn.\nBắt buộc thêm mã [ACTION_SEARCH:mon_the_thao] cuối câu nếu user muốn tìm/đặt sân.";
-    }
-  }
-
   // Gửi tin nhắn User + Context -> AI -> Lưu tin nhắn AI
   Future<void> sendMessageWithRAG(
     String userId,
@@ -114,15 +74,7 @@ class ChatRepository {
     );
     await sendMessage(userId, userMessage);
 
-    // 2. Chuẩn bị Context + Prompt
-    String context = await getSystemContext(userId);
-    String promptToSend = text;
-    if (text.isNotEmpty) {
-      // Rút gọn Prompt Template để tiết kiệm token
-      promptToSend = "$context\nUSER_ASK: $text";
-    }
-
-    // 3. Gọi API AI
+    // 2. Gọi API AI (RAG được xử lý ở backend)
     String answer = "Xin lỗi, tôi chưa hiểu ý bạn.";
     const String backendUrl = 'https://badminton-ai-fgsz.onrender.com/ask';
 
@@ -134,7 +86,8 @@ class ChatRepository {
         request.files.add(
           await http.MultipartFile.fromPath('image', imagePath),
         );
-        request.fields['prompt'] = text.isNotEmpty ? text : 'Phân tích ảnh này';
+        request.fields['prompt'] = text.isNotEmpty ? text : 'Phân tích ảnh này và cho biết đây là sân gì, tình trạng sân, hoặc đồ dùng thể thao gì, cách sử dụng';
+        request.fields['user_id'] = userId;
         var streamedResponse = await request.send();
         response = await http.Response.fromStream(streamedResponse);
       } else if (audioPath != null) {
@@ -146,8 +99,9 @@ class ChatRepository {
           await http.MultipartFile.fromPath('audio', audioPath),
         );
         if (text.isNotEmpty) {
-          request.fields['prompt'] = promptToSend;
+          request.fields['prompt'] = text;
         }
+        request.fields['user_id'] = userId;
         var streamedResponse = await request.send();
         response = await http.Response.fromStream(streamedResponse);
       } else {
@@ -155,7 +109,7 @@ class ChatRepository {
             .post(
               Uri.parse(backendUrl),
               headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({'prompt': promptToSend}),
+              body: jsonEncode({'prompt': text, 'user_id': userId}),
             )
             .timeout(const Duration(seconds: 90));
       }

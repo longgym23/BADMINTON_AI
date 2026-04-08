@@ -50,25 +50,30 @@ let visionModel;
 try {
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  visionModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }); // Model hỗ trợ vision
+  visionModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 } catch (error) {
   console.error('Lỗi khởi tạo Gemini (kiểm tra API Key?):', error);
 }
 
-// Định nghĩa System Prompt
+// Định nghĩa System Prompt - Tối ưu Token với RAG thực sự
 const systemPrompt =
   `Bạn là trợ lý ảo cho ứng dụng đặt sân cầu lông 'KLOO'.
 Nhiệm vụ của bạn là trả lời các câu hỏi của người dùng một cách thân thiện,
 ngắn gọn và hữu ích. Các chủ đề chính bao gồm:
-1. Cách đặt sân: Người dùng chọn ngày, chọn sân, sau đó chọn giờ
-   và sân con trên biểu đồ.
-2. Cách hủy sân: Người dùng vào Tab "Tài khoản" -> "Lịch sử đặt sân"
-   và nhấn nút hủy.
+1. Cách đặt sân: Người dùng chọn ngày, chọn sân, sau đó chọn giờ và sân con trên biểu đồ.
+2. Cách hủy sân: Người dùng vào Tab "Tài khoản" -> "Lịch sử đặt sân" và nhấn nút hủy.
 3. Giá cả: Giá được hiển thị khi chọn sân.
-4. Admin: Admin có thể quản lý sân và lịch đặt.
-Chỉ trả lời các câu hỏi liên quan đến việc sử dụng ứng dụng. Từ chối
-trả lời các câu hỏi không liên quan (ví dụ: chính trị, thời tiết).
-QUAN TRỌNG: Trả lời bằng văn bản thuần túy, KHÔNG sử dụng markdown formatting như dấu *, **, #, hoặc các ký hiệu định dạng khác.`;
+4. Nội quy sân: Sân phải đặt trước tối thiểu 2 tiếng. Hủy trước 2 tiếng được hoàn tiền 100%, hủy trong vòng 2 tiếng không hoàn tiền.
+5. Thống kê chi tiêu: Người dùng có thể xem trong tab "Tài khoản" -> "Lịch sử chi tiêu".
+6. Lịch đặt: Xem trong tab "Tài khoản" -> "Lịch sử đặt sân".
+7. Lời khuyên thể thao: Gợi ý các môn thể thao và đồ dùng phù hợp.
+8. Hướng dẫn sử dụng đồ dùng: Cung cấp thông tin về cách sử dụng vợt, giày, và các đồ dùng thể thao.
+QUAN TRỌNG: 
+- Trả lời bằng văn bản thuần túy, KHÔNG sử dụng markdown formatting như dấu *, **, #, hoặc các ký hiệu định dạng khác.
+- Khi người dùng muốn tìm/đặt sân, chèn mã [ACTION_SEARCH:mon_the_thao] vào cuối câu.
+- Khi người dùng muốn xem lịch đặt, chèn mã [ACTION_VIEW_SCHEDULE] vào cuối câu.
+- Khi người dùng muốn xem chi tiêu, chèn mã [ACTION_VIEW_EXPENSE] vào cuối câu.
+- Khi người dùng muốn hủy sân, chèn mã [ACTION_CANCEL_BOOKING] vào cuối câu.`;
 
 // Khởi tạo Express app
 const app = express();
@@ -100,15 +105,53 @@ const removeMarkdown = (text) => {
     .trim();
 };
 
-// Định nghĩa Endpoint '/ask' - xử lý cả text và ảnh
+// Hàm RAG: Lấy ngữ cảnh người dùng từ Supabase để tiết kiệm token
+async function getUserContext(userId) {
+  if (!userId || !supabaseAdmin) return '';
+  
+  try {
+    const now = new Date().toISOString();
+    
+    // Lấy 2 lịch đặt sắp tới
+    const { data: bookings } = await supabaseAdmin
+      .from('bookings')
+      .select('booking_date, time_slot, court_name, status')
+      .eq('user_id', userId)
+      .gte('booking_date', now.split('T')[0])
+      .order('booking_date', { ascending: true })
+      .limit(2);
+    
+    let context = 'USER_CONTEXT:\n';
+    if (!bookings || bookings.length === 0) {
+      context += '- Lịch đặt sắp tới: Không có\n';
+    } else {
+      context += '- Lịch đặt sắp tới: ';
+      bookings.forEach(b => {
+        context += `${b.booking_date} lúc ${b.time_slot}h tại ${b.court_name} (${b.status}). `;
+      });
+      context += '\n';
+    }
+    
+    return context;
+  } catch (e) {
+    console.error('RAG Error:', e);
+    return '';
+  }
+}
+
+// Định nghĩa Endpoint '/ask' - xử lý cả text và ảnh với RAG
 app.post('/ask', upload.single('image'), async (req, res) => {
   const imageFile = req.file;
+  const userId = req.body.user_id || '';
   const userPrompt = req.body.prompt || (imageFile ? 'Phân tích ảnh này và trả lời câu hỏi liên quan đến ứng dụng đặt sân cầu lông.' : '');
+
+  // Lấy ngữ cảnh người dùng qua RAG
+  const userContext = await getUserContext(userId);
+  const fullPrompt = `${systemPrompt}\n\n${userContext}\n\nUSER_ASK: ${userPrompt}`;
 
   // Nếu có ảnh, xử lý với Vision API
   if (imageFile) {
-    const userPrompt = req.body.prompt || 'Phân tích ảnh này và trả lời câu hỏi liên quan đến ứng dụng đặt sân cầu lông.';
-    const imageFile = req.file;
+    const userPromptImg = req.body.prompt || 'Phân tích ảnh này và trả lời câu hỏi liên quan đến ứng dụng đặt sân cầu lông.';
 
     if (!imageFile) {
       return res.status(400).json({ error: 'Không có ảnh được gửi lên.' });
@@ -125,10 +168,10 @@ app.post('/ask', upload.single('image'), async (req, res) => {
       const base64Image = imageData.toString('base64');
       const mimeType = imageFile.mimetype || 'image/jpeg';
 
-      // Gửi ảnh và prompt lên Gemini Vision
+      // Gửi ảnh và prompt lên Gemini Vision với RAG
       const result = await visionModel.generateContent([
         {
-          text: `${systemPrompt}\n\n${userPrompt}`,
+          text: `${systemPrompt}\n\n${userContext}\n\nUSER_ASK: ${userPromptImg}`,
         },
         {
           inlineData: {
@@ -176,13 +219,12 @@ app.post('/ask', upload.single('image'), async (req, res) => {
 
   try {
     const chat = model.startChat({
-      history: [{ role: 'user', parts: [{ text: systemPrompt }] }],
       generationConfig: {
-        maxOutputTokens: 250,
+        maxOutputTokens: 300,
       },
     });
 
-    const result = await chat.sendMessage(userPrompt);
+    const result = await chat.sendMessage(fullPrompt);
     const response = result.response;
 
     if (!response) {
