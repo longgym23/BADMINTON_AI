@@ -37,13 +37,15 @@ class _HomeScreenState extends State<HomeScreen> {
         child: const HomeTab(),
       ), // 0: Trang chủ (Wrapped with Filter BLoC)
       const MapTab(), // 1: Bản đồ
-      const ChatbotTab(), // 2: Chatbot (Nút giữa)
+      // Fix màn đen: truyền onBack để quay về tab 0 thay vì Navigator.pop
+      ChatbotTab(onBack: () => setState(() => _currentIndex = 0)), // 2: Chatbot
       const FriendsMainScreen(), // 3: Cộng đồng & Bạn bè
       const ProfileTab(), // 4: Tài khoản
     ];
 
     return Scaffold(
       extendBody: true, // Allow body to stretch behind the navigation bar
+      resizeToAvoidBottomInset: false, // Cho phép bàn phím đè lên BottomNavBar thay vì đẩy nó lên
       body: Stack(
         children: [
           IndexedStack(index: _currentIndex, children: _tabs),

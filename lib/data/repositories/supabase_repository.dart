@@ -75,10 +75,30 @@ class SupabaseRepository {
           (data) => data
               .where((e) =>
                   e['booking_date'] == dateStr &&
-                  // Chỉ hiển thị slot là "đã đặt" khi đã thanh toán thực sự
-                  // PENDING_PAYMENT = chưa thanh toán → không được chiếm chỗ
-                  e['status'] != 'PENDING_PAYMENT' &&
-                  e['status'] != 'cancelled')
+                  // Chỉ loại bỏ cancelled. PENDING_PAYMENT sẽ chiếm chỗ tạm thời để tránh đặt trùng,
+                  // nhưng cần bỏ qua các pending đã hết hạn (timeout client-side nếu DB chưa có expires_at).
+                  e['status'] != 'cancelled' &&
+                  (() {
+                    final status = e['status'];
+                    if (status != 'PENDING_PAYMENT') return true;
+
+                    // Ưu tiên dùng expires_at nếu DB có.
+                    final expiresAtRaw = e['expires_at'];
+                    if (expiresAtRaw != null) {
+                      final expiresAt = DateTime.tryParse(expiresAtRaw.toString());
+                      if (expiresAt == null) return true;
+                      return DateTime.now().isBefore(expiresAt);
+                    }
+
+                    // Fallback: dùng created_at + 5 phút.
+                    final createdAtRaw = e['created_at'];
+                    final createdAt = createdAtRaw != null
+                        ? DateTime.tryParse(createdAtRaw.toString())
+                        : null;
+                    if (createdAt == null) return true;
+                    return DateTime.now().difference(createdAt) <
+                        const Duration(minutes: 5);
+                  })())
               .map((e) => BookingModel.fromSupabase(e))
               .toList(),
         );
@@ -111,6 +131,52 @@ class SupabaseRepository {
         .eq('user_id', userId)
         .order('booking_date', ascending: false) // Sắp xếp giảm dần
         .map((data) => data.map((e) => BookingModel.fromSupabase(e)).toList());
+  }
+
+  // Lấy danh sách booking trong 1 khoảng thời gian (dùng cho thống kê biểu đồ)
+  Future<List<BookingModel>> getBookingsForDateRange(DateTime start, DateTime end, {String? ownerId, String? courtId}) async {
+    String startStr = start.toIso8601String().split('T')[0];
+    String endStr = end.toIso8601String().split('T')[0];
+    
+    try {
+      var query = _client
+            .from('bookings')
+            .select()
+            .gte('booking_date', startStr)
+            .lte('booking_date', endStr);
+
+      if (courtId != null) {
+        query = query.eq('court_id', courtId);
+      } else if (ownerId != null) {
+        final userCourtsResp = await _client.from('courts').select('id').eq('owner_id', ownerId);
+        final List<String> courtIds = (userCourtsResp as List).map((c) => c['id'] as String).toList();
+        
+        if (courtIds.isEmpty) return [];
+        query = query.inFilter('court_id', courtIds);
+      }
+      
+      final data = await query;
+      return data.map((e) => BookingModel.fromSupabase(e)).toList();
+
+    } catch (e) {
+      print("Lỗi lấy dữ liệu thống kê: $e");
+      return [];
+    }
+  }
+
+  // Lấy danh sách Sân cho Dropdown (Chủ sân chỉ thấy sân của họ, Admin thấy all)
+  Future<List<Map<String, dynamic>>> getSimpleCourtsList({String? ownerId}) async {
+    try {
+      var query = _client.from('courts').select('id, name');
+      if (ownerId != null) {
+        query = query.eq('owner_id', ownerId);
+      }
+      final data = await query;
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      print("Lỗi lấy danh sách field courts: $e");
+      return [];
+    }
   }
 
   // Lấy TẤT CẢ booking trong ngày (cho Admin / Chủ sân)
@@ -376,5 +442,42 @@ class SupabaseRepository {
 
   Future<void> markBookingsAsPaid(String transactionId) async {
     await _client.from('bookings').update({'status': 'PAID'}).eq('transaction_id', transactionId);
+  }
+
+  // --- Atomic hold / reserve helpers (RPC) ---
+
+  Future<Map<String, dynamic>> reserveBookingSlots({
+    required String courtId,
+    required String courtName,
+    required DateTime bookingDate,
+    required String transactionId,
+    required List<Map<String, dynamic>> slots,
+    int holdMinutes = 5,
+  }) async {
+    final resp = await _client.rpc(
+      'reserve_booking_slots',
+      params: {
+        'p_court_id': courtId,
+        'p_court_name': courtName,
+        'p_booking_date': bookingDate.toIso8601String().split('T')[0],
+        'p_transaction_id': transactionId,
+        'p_slots': slots,
+        'p_hold_minutes': holdMinutes,
+      },
+    );
+    if (resp is Map<String, dynamic>) return resp;
+    // supabase can return PostgrestMap, but dart sees it as Map<dynamic,dynamic>
+    if (resp is Map) return Map<String, dynamic>.from(resp);
+    throw Exception('RPC reserve_booking_slots trả về dữ liệu không hợp lệ.');
+  }
+
+  Future<int> releaseBookingTransaction(String transactionId) async {
+    final resp = await _client.rpc(
+      'release_booking_transaction',
+      params: {'p_transaction_id': transactionId},
+    );
+    if (resp is int) return resp;
+    if (resp is num) return resp.toInt();
+    return 0;
   }
 }

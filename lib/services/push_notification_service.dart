@@ -70,4 +70,28 @@ class PushNotificationService {
       }
     }
   }
+
+  // Tắt thông báo (xóa token ở local VÀ trên Supabase để backend không push nữa)
+  Future<void> deleteToken() async {
+    try {
+      // 1. Xóa trên Firebase local
+      await _fcm.deleteToken();
+      
+      // 2. Xóa trên Supabase db
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        await Supabase.instance.client
+            .from('profiles')
+            .update({'fcm_token': null})
+            .eq('id', user.id);
+        if (kDebugMode) {
+          print('Deleted FCM token from Supabase for user ${user.id} (Notifications Disabled)');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+         print('Error deleting FCM token: $e');
+      }
+    }
+  }
 }

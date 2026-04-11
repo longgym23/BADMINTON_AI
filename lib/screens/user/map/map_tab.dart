@@ -41,11 +41,15 @@ class _MapTabContentState extends State<_MapTabContent> {
   // Custom Markers
   final Map<String, BitmapDescriptor> _customIcons = {};
   bool _iconsLoaded = false;
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _loadCustomMarkers();
+    _searchFocusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   // --- Cấu hình Icons ---
@@ -144,6 +148,7 @@ class _MapTabContentState extends State<_MapTabContent> {
 
   @override
   void dispose() {
+    _searchFocusNode.dispose();
     _searchController.dispose();
     _mapController?.dispose();
     super.dispose();
@@ -204,6 +209,7 @@ class _MapTabContentState extends State<_MapTabContent> {
         }
 
         return Scaffold(
+          resizeToAvoidBottomInset: false, // Bàn phím sẽ trượt đè lên thay vì đẩy các thành phần bottom (BottomSheet, Fab, Map) lên giữa màn hình
           body: Stack(
             children: [
               GoogleMap(
@@ -213,101 +219,146 @@ class _MapTabContentState extends State<_MapTabContent> {
                 myLocationEnabled: true,
                 myLocationButtonEnabled: false,
                 zoomControlsEnabled: false,
-                onTap: (_) => vm.closeBottomCard(),
+                onTap: (_) {
+                  FocusScope.of(context).unfocus();
+                  vm.closeBottomCard();
+                },
               ),
 
-              // Search & Filter
-              Positioned(
-                top: 0, left: 0, right: 0,
-                child: SafeArea(
+              // Filter Chips (Render trước, đặt cố định phía dưới Search Bar)
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 76.0), // Canh tương đối dưới Search Bar
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        children: [
+                          _buildFilterChip(vm, 'Cầu lông', SportType.badminton, Colors.green),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(vm, 'Pickleball', SportType.pickleball, Colors.blue),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(vm, 'Bóng đá', SportType.football, Colors.orange),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(vm, 'Tennis', SportType.tennis, Colors.purple),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Search Bar & Dropdown Results (Render sau, đè lên Filter Chips)
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.topCenter,
                   child: Column(
+                    mainAxisSize: MainAxisSize.min, // Rất quan trọng để Map bên dưới không bị block touch
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: Card(
                           elevation: 4,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              TextField(
-                                controller: _searchController,
-                                decoration: InputDecoration(
-                                  hintText: "Tìm kiếm sân quanh đây...",
-                                  prefixIcon: Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: Image.asset('assets/images/logo1.png', width: 24, height: 24),
-                                  ),
-                                  suffixIcon: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (_searchController.text.isNotEmpty)
-                                        IconButton(
-                                          icon: const Icon(Icons.close),
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            vm.setSearchQuery('');
-                                            vm.closeBottomCard();
-                                            FocusScope.of(context).unfocus();
-                                          },
-                                        ),
-                                      const Padding(
-                                        padding: EdgeInsets.only(right: 16.0),
-                                        child: Icon(Icons.search, color: Colors.black87),
-                                      ),
-                                    ],
-                                  ),
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                ),
-                                onChanged: vm.setSearchQuery,
+                          child: TextField(
+                            controller: _searchController,
+                            focusNode: _searchFocusNode,
+                            decoration: InputDecoration(
+                              hintText: "Tìm kiếm sân quanh đây...",
+                              prefixIcon: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Image.asset('assets/images/logo1.png', width: 24, height: 24),
                               ),
-                              if (vm.searchResults.isNotEmpty)
-                                Container(
-                                  constraints: const BoxConstraints(maxHeight: 200),
-                                  child: ListView.separated(
-                                    shrinkWrap: true,
-                                    padding: EdgeInsets.zero,
-                                    itemCount: vm.searchResults.length,
-                                    separatorBuilder: (_, __) => const Divider(height: 1),
-                                    itemBuilder: (context, index) {
-                                      final court = vm.searchResults[index];
-                                      return ListTile(
-                                        leading: const Icon(Icons.location_on, color: Colors.red),
-                                        title: Text(court.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                        subtitle: Text(court.address, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                        onTap: () {
-                                          _searchController.clear();
-                                          vm.setSearchQuery('');
-                                          vm.selectCourt(court);
-                                          _mapController?.animateCamera(
-                                            CameraUpdate.newLatLngZoom(LatLng(court.latitude, court.longitude), 16.0),
-                                          );
-                                          FocusScope.of(context).unfocus();
-                                        },
-                                      );
-                                    },
+                              suffixIcon: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (_searchController.text.isNotEmpty)
+                                    IconButton(
+                                      icon: const Icon(Icons.close),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        vm.setSearchQuery('');
+                                        vm.closeBottomCard();
+                                        _searchFocusNode.unfocus();
+                                        FocusScope.of(context).unfocus();
+                                      },
+                                    ),
+                                  const Padding(
+                                    padding: EdgeInsets.only(right: 16.0),
+                                    child: Icon(Icons.search, color: Colors.black87),
                                   ),
-                                ),
-                            ],
+                                ],
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            ),
+                            onChanged: vm.setSearchQuery,
+                            onTap: () {
+                              if (vm.searchQuery.isEmpty) vm.setSearchQuery(''); // trigger update để bật search result list nếu có history
+                            },
                           ),
                         ),
                       ),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Row(
-                          children: [
-                            _buildFilterChip(vm, 'Cầu lông', SportType.badminton, Colors.green),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(vm, 'Pickleball', SportType.pickleball, Colors.blue),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(vm, 'Bóng đá', SportType.football, Colors.orange),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(vm, 'Tennis', SportType.tennis, Colors.purple),
-                          ],
+                      if (_searchFocusNode.hasFocus && vm.searchResults.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                          child: Card(
+                            elevation: 8,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            child: Container(
+                              constraints: const BoxConstraints(maxHeight: 280),
+                              child: ListView.separated(
+                                shrinkWrap: true,
+                                padding: EdgeInsets.zero,
+                                itemCount: vm.searchResults.length,
+                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final court = vm.searchResults[index];
+                                  final isHistory = vm.searchQuery.trim().isEmpty;
+
+                                  String? inferredSport = court.sportType?.toLowerCase();
+                                  if (inferredSport == null || inferredSport.isEmpty) {
+                                    final nameLower = court.name.toLowerCase();
+                                    if (nameLower.contains('pickle')) inferredSport = 'pickleball';
+                                    else if (nameLower.contains('bóng đá') || nameLower.contains('football')) inferredSport = 'football';
+                                    else if (nameLower.contains('tennis')) inferredSport = 'tennis';
+                                    else inferredSport = 'badminton';
+                                  }
+                                  SportType sType = SportType.badminton;
+                                  if (inferredSport.contains('pickle')) sType = SportType.pickleball;
+                                  else if (inferredSport.contains('foot') || inferredSport.contains('bóng')) sType = SportType.football;
+                                  else if (inferredSport.contains('tennis')) sType = SportType.tennis;
+
+                                  return ListTile(
+                                    leading: Icon(
+                                      isHistory ? Icons.history : Icons.location_on, 
+                                      color: isHistory ? Colors.grey : Colors.red
+                                    ),
+                                    title: Text(court.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    subtitle: Text(court.address, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+                                    trailing: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: _getAvatarForSport(sType, true, AppColors.primary),
+                                    ),
+                                    onTap: () {
+                                      _searchController.text = court.name;
+                                      vm.setSearchQuery(court.name);
+                                      vm.selectCourt(court);
+                                      _mapController?.animateCamera(
+                                        CameraUpdate.newLatLngZoom(LatLng(court.latitude, court.longitude), 16.0),
+                                      );
+                                      _searchFocusNode.unfocus();
+                                      FocusScope.of(context).unfocus();
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),

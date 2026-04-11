@@ -5,6 +5,7 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key});
@@ -12,11 +13,8 @@ class FavoritesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         title: const Text('Sân yêu thích'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textBlack,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
@@ -63,7 +61,6 @@ class FavoritesScreen extends StatelessWidget {
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
                       builder: (_) => CourtDetailSheet(court: court),
                     );
                   },
@@ -198,7 +195,6 @@ class FavoritesScreen extends StatelessWidget {
                                         size: 16),
                                     label: const Text('Bỏ lưu'),
                                     style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.red,
                                       side: const BorderSide(color: Colors.red),
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 12, vertical: 8),
@@ -226,8 +222,6 @@ class FavoritesScreen extends StatelessWidget {
                                           size: 16),
                                       label: const Text('Đặt sân'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.primary,
-                                        foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 10),
                                         elevation: 0,

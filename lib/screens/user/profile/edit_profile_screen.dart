@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -137,11 +138,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = authProvider.userModel;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         title: const Text('Chỉnh sửa thông tin cá nhân',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: AppColors.primary,
         centerTitle: true,
         elevation: 0,
         leading: IconButton(
@@ -225,7 +224,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 onPressed: authProvider.isUpdatingProfile ? null : _saveChanges,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: AppColors.primary,
                 ),
                 child: authProvider.isUpdatingProfile
                     ? const SizedBox(

@@ -7,13 +7,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
+import 'package:badminton_ai/services/groq_stt_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class ChatbotTab extends StatefulWidget {
-  const ChatbotTab({super.key});
+  /// Callback để quay lại trang chủ (tab 0) thay vì Navigator.pop
+  /// vì ChatbotTab là 1 tab trong IndexedStack, không phải route
+  final VoidCallback? onBack;
+  const ChatbotTab({super.key, this.onBack});
 
   @override
   State<ChatbotTab> createState() => _ChatbotTabState();
@@ -24,9 +31,15 @@ class _ChatbotTabState extends State<ChatbotTab> {
   final _scrollController = ScrollController();
   final _imagePicker = ImagePicker();
   final _speechToText = stt.SpeechToText();
+  final _audioRecorder = AudioRecorder(); // Groq fallback: ghi âm
 
   bool _isListening = false;
+  bool _mounted = true; // Fix: tránh setState sau dispose
   String _recognizedText = '';
+  String? _pendingImagePath; // Fix: image preview kiểu ChatGPT
+  bool _useGroqFallback = false; // true = dùng Groq Whisper thay native STT
+  bool _isTranscribing = false; // true = đang gửi audio lên Groq
+  String? _recordingPath; // Đường dẫn file audio đang ghi
 
   @override
   void initState() {
@@ -43,7 +56,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
   }
 
   void _scrollToBottom() {
-    if (_scrollController.hasClients) {
+    if (_mounted && _scrollController.hasClients) {
       _scrollController.animateTo(
         0,
         duration: const Duration(milliseconds: 300),
@@ -53,21 +66,66 @@ class _ChatbotTabState extends State<ChatbotTab> {
   }
 
   Future<void> _initializeSpeech() async {
-    await _speechToText.initialize(
-      onError: (e) => debugPrint('STT Error: $e'),
-      onStatus: (s) => debugPrint('STT Status: $s'),
+    try {
+      final available = await _speechToText.initialize(
+        onError: (_) {},
+        onStatus: (status) {
+          if (!_useGroqFallback && (status == 'done' || status == 'notListening')) {
+            if (_mounted && _isListening && _recognizedText.isNotEmpty) {
+              setState(() => _isListening = false);
+              _sendMessage(_recognizedText);
+            } else if (_mounted && _isListening) {
+              setState(() => _isListening = false);
+            }
+          }
+        },
+      );
+
+      if (!available) {
+        _useGroqFallback = true;
+        return;
+      }
+
+      // Kiểm tra locale mặc định của engine nhận dạng giọng nói
+      final sttSystemLocale = await _speechToText.systemLocale();
+      final sttLang = sttSystemLocale?.localeId ?? '';
+
+      if (sttLang.startsWith('zh') || sttLang.startsWith('cmn')) {
+        _useGroqFallback = true;
+        return;
+      }
+
+      final locales = await _speechToText.locales();
+      final hasVietnamese = locales.any((l) => l.localeId.startsWith('vi'));
+      if (!hasVietnamese) {
+        _useGroqFallback = true;
+      }
+    } catch (_) {
+      _useGroqFallback = true;
+    }
+  }
+
+  /// Kiểm tra text có chứa ký tự CJK (Trung/Nhật/Hàn) không.
+  bool _containsCJK(String text) {
+    return text.runes.any((r) =>
+      (r >= 0x4E00 && r <= 0x9FFF) ||
+      (r >= 0x3400 && r <= 0x4DBF) ||
+      (r >= 0x3000 && r <= 0x303F)
     );
   }
 
   @override
   void dispose() {
+    _mounted = false;
+    _speechToText.cancel(); // Fix: cancel thay vì stop để tránh callback sau dispose
+    _audioRecorder.dispose(); // Cleanup recorder
     _textController.dispose();
     _scrollController.dispose();
-    _speechToText.stop();
     super.dispose();
   }
 
   void _sendMessage([String? text, String? imagePath]) {
+    if (!_mounted) return;
     final auth = context.read<AppAuthProvider>();
     if (auth.authState != AuthState.authenticated) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -75,26 +133,30 @@ class _ChatbotTabState extends State<ChatbotTab> {
       );
       return;
     }
-
+    // Ưu tiên pending image nếu có
+    final finalImage = imagePath ?? _pendingImagePath;
     final messageText = text ?? _textController.text.trim();
-    if (messageText.isEmpty && imagePath == null) return;
+    if (messageText.isEmpty && finalImage == null) return;
 
+    if (_mounted) {
+      setState(() {
+        _pendingImagePath = null; // Xóa preview sau khi gửi
+        _recognizedText = '';
+      });
+    }
     _textController.clear();
-    _recognizedText = '';
     FocusScope.of(context).unfocus();
 
     context.read<ChatBloc>().add(
-      ChatMessageSent(text: messageText, imagePath: imagePath),
+      ChatMessageSent(text: messageText, imagePath: finalImage),
     );
-
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -131,26 +193,26 @@ class _ChatbotTabState extends State<ChatbotTab> {
           ],
         ),
         centerTitle: true,
-        backgroundColor: AppColors.surface,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textBlack),
-          onPressed: () => Navigator.pop(context),
+          // Fix màn đen: dùng onBack callback thay Navigator.pop
+          // vì tab này nằm trong IndexedStack, Navigator.pop sẽ pop HomeScreen
+          onPressed: () {
+            if (widget.onBack != null) {
+              widget.onBack!();
+            } else {
+              Navigator.maybePop(context);
+            }
+          },
         ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: Icon(Icons.more_vert, color: AppColors.textBlack),
-          ),
-        ],
       ),
       body: Column(
         children: [
           Expanded(child: _buildMessageList()),
-          if (_isListening) _buildVoiceIndicator(),
-          _buildSuggestionChips(),
+          if (!_isListening && !_isTranscribing) _buildSuggestionChips(),
+          if (_pendingImagePath != null) _buildImagePreview(),
           _buildInputArea(),
-          const SizedBox(height: 100),
         ],
       ),
     );
@@ -227,25 +289,6 @@ class _ChatbotTabState extends State<ChatbotTab> {
     );
   }
 
-  Widget _buildVoiceIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: AppColors.errorBg,
-      child: Row(
-        children: [
-          const Icon(Icons.mic, color: AppColors.error, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _recognizedText,
-              style: const TextStyle(color: AppColors.error),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSuggestionChips() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -271,7 +314,6 @@ class _ChatbotTabState extends State<ChatbotTab> {
       padding: const EdgeInsets.only(right: 8),
       child: ActionChip(
         label: Text(label),
-        backgroundColor: AppColors.surface,
         side: const BorderSide(color: AppColors.borderColor),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         onPressed: () => _sendMessage(label),
@@ -279,7 +321,105 @@ class _ChatbotTabState extends State<ChatbotTab> {
     );
   }
 
+  /// Input area kiểu ChatGPT: chuyển đổi giữa mode gõ text và mode ghi âm
   Widget _buildInputArea() {
+    // === ĐANG GHI ÂM hoặc ĐANG TRANSCRIBE → hiện Recording Bar ===
+    if (_isListening || _isTranscribing) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          border: const Border(top: BorderSide(color: AppColors.borderColor)),
+        ),
+        child: Row(
+          children: [
+            // Nút Stop (■)
+            GestureDetector(
+              onTap: _isTranscribing ? null : _toggleEntryVoice,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: _isTranscribing
+                      ? Colors.grey.shade300
+                      : Colors.black87,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: _isTranscribing
+                    ? const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.stop_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Waveform animation
+            Expanded(
+              child: Container(
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: _isTranscribing
+                    ? const Center(
+                        child: Text(
+                          'Đang nhận dạng...',
+                          style: TextStyle(
+                            color: AppColors.textGrey,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Waveform dots animation
+                          ...List.generate(20, (i) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 1.5),
+                              child: _WaveformBar(index: i),
+                            );
+                          }),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Nút Send (↑)
+            GestureDetector(
+              onTap: _isTranscribing ? null : _toggleEntryVoice,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: _isTranscribing
+                      ? Colors.grey.shade300
+                      : AppColors.brandOrange,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.arrow_upward_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // === MODE BÌNH THƯỜNG → Input text + mic + send ===
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
@@ -318,31 +458,30 @@ class _ChatbotTabState extends State<ChatbotTab> {
             ),
           ),
           const SizedBox(width: 8),
-          InkWell(
+          GestureDetector(
             onTap: _toggleEntryVoice,
             child: Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: _isListening ? AppColors.errorBg : Colors.transparent,
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                _isListening ? Icons.stop : Icons.mic,
-                color: _isListening ? AppColors.error : AppColors.brandOrange,
+              child: const Icon(
+                Icons.mic_none_rounded,
+                color: AppColors.brandOrange,
                 size: 24,
               ),
             ),
           ),
           const SizedBox(width: 4),
-          InkWell(
+          GestureDetector(
             onTap: () => _sendMessage(),
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: const BoxDecoration(
-                color: AppColors.primary,
+                color: AppColors.brandOrange,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.send, color: AppColors.surface, size: 20),
+              child: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 20),
             ),
           ),
         ],
@@ -354,39 +493,124 @@ class _ChatbotTabState extends State<ChatbotTab> {
 
   Future<void> _toggleEntryVoice() async {
     if (_isListening) {
-      await _speechToText.stop();
-      setState(() => _isListening = false);
-      if (_recognizedText.isNotEmpty) {
-        _sendMessage(_recognizedText);
-        _recognizedText = '';
+      // === DỪNG GHI ÂM / NHẬN DẠNG ===
+      if (_useGroqFallback) {
+        await _audioRecorder.stop();
+        if (!_mounted) return;
+
+        if (_recordingPath != null) {
+          setState(() {
+            _isListening = false;
+            _isTranscribing = true;
+          });
+
+          final text = await GroqSttService.transcribe(_recordingPath!);
+
+          if (!_mounted) return;
+          setState(() => _isTranscribing = false);
+
+          if (text != null && text.isNotEmpty) {
+            _sendMessage(text);
+          }
+
+          // Xóa file tạm
+          try {
+            final f = File(_recordingPath!);
+            if (await f.exists()) await f.delete();
+          } catch (_) {}
+          _recordingPath = null;
+        } else {
+          setState(() => _isListening = false);
+        }
+      } else {
+        await _speechToText.stop();
+        if (!_mounted) return;
+        setState(() => _isListening = false);
+        if (_recognizedText.isNotEmpty) {
+          final text = _recognizedText;
+          _recognizedText = '';
+          _sendMessage(text);
+        }
       }
     } else {
-      if (!_speechToText.isAvailable) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Không hỗ trợ giọng nói')));
-        return;
-      }
-      setState(() {
-        _isListening = true;
-        _recognizedText = '';
-      });
-      _speechToText.listen(
-        onResult: (res) {
+      // === BẮT ĐẦU GHI ÂM / NHẬN DẠNG ===
+      if (_useGroqFallback) {
+        final hasPermission = await _audioRecorder.hasPermission();
+        if (!hasPermission || !_mounted) return;
+
+        final dir = await getTemporaryDirectory();
+        final filePath = '${dir.path}/groq_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+
+        try {
+          await _audioRecorder.start(
+            const RecordConfig(
+              encoder: AudioEncoder.wav,
+              sampleRate: 16000,
+              numChannels: 1,
+            ),
+            path: filePath,
+          );
+          if (!_mounted) return;
           setState(() {
-            _recognizedText = res.recognizedWords;
-            _textController.text = res.recognizedWords;
+            _isListening = true;
+            _recognizedText = '';
+            _textController.clear();
+            _recordingPath = filePath;
           });
-        },
-        listenFor: const Duration(seconds: 30),
-      );
+        } catch (_) {}
+      } else {
+        // Native mode
+        if (!_speechToText.isAvailable) {
+          if (!await _speechToText.initialize()) return;
+        }
+        if (!_mounted) return;
+        setState(() {
+          _isListening = true;
+          _recognizedText = '';
+          _textController.clear();
+        });
+        _speechToText.listen(
+          onResult: (res) {
+            if (!_mounted) return;
+
+            // CJK auto-detect → chuyển Groq im lặng + auto-retry
+            if (res.recognizedWords.isNotEmpty && _containsCJK(res.recognizedWords)) {
+              _speechToText.stop();
+              setState(() {
+                _isListening = false;
+                _useGroqFallback = true;
+                _recognizedText = '';
+                _textController.clear();
+              });
+              // Auto-retry với Groq ngay lập tức
+              Future.microtask(() => _toggleEntryVoice());
+              return;
+            }
+
+            setState(() {
+              _recognizedText = res.recognizedWords;
+              _textController.text = res.recognizedWords;
+            });
+            if (res.finalResult && res.recognizedWords.isNotEmpty) {
+              _speechToText.stop();
+              setState(() => _isListening = false);
+              final text = res.recognizedWords;
+              _recognizedText = '';
+              _textController.clear();
+              _sendMessage(text);
+            }
+          },
+          listenFor: const Duration(seconds: 30),
+          pauseFor: const Duration(seconds: 3),
+          localeId: 'vi_VN',
+        );
+      }
     }
   }
 
   void _showAttachmentSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
       builder: (_) => Wrap(
         children: [
           ListTile(
@@ -416,43 +640,55 @@ class _ChatbotTabState extends State<ChatbotTab> {
         source: source,
         imageQuality: 85,
       );
-      if (file != null) _showImageDescDialog(file.path);
+      if (file != null && _mounted) {
+        // Fix: Set pending image để hiện preview kiểu ChatGPT, không show dialog
+        setState(() => _pendingImagePath = file.path);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Lỗi ảnh: $e')));
+      if (_mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi ảnh: $e')));
+      }
     }
   }
 
-  Future<void> _showImageDescDialog(String path) async {
-    final ctl = TextEditingController();
-    await showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.file(File(path), height: 150, fit: BoxFit.cover),
-            TextField(
-              controller: ctl,
-              decoration: const InputDecoration(
-                hintText: 'Mô tả (tùy chọn)...',
+  /// Preview ảnh kiểu ChatGPT: thumbnail nhỏ phía trên input bar với nút X
+  Widget _buildImagePreview() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      color: AppColors.surface,
+      child: Row(
+        children: [
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(
+                  File(_pendingImagePath!),
+                  width: 72,
+                  height: 72,
+                  fit: BoxFit.cover,
+                ),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
+              Positioned(
+                top: -4,
+                right: -4,
+                child: GestureDetector(
+                  onTap: () => setState(() => _pendingImagePath = null),
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: const BoxDecoration(
+                      color: Colors.black87,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, size: 14, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _sendMessage(ctl.text.trim(), path);
-            },
-            child: const Text('Gửi'),
-          ),
+          const SizedBox(width: 12),
+          const Text('Ảnh đã chọn', style: TextStyle(color: AppColors.textGrey, fontSize: 13)),
         ],
       ),
     );
@@ -463,18 +699,49 @@ class _MessageBubble extends StatelessWidget {
   final ChatMessageModel message;
   const _MessageBubble({required this.message});
 
+  Map<String, dynamic>? _action() {
+    final md = message.metadata;
+    if (md == null) return null;
+    final a = md['action'];
+    return a is Map<String, dynamic> ? a : null;
+  }
+
+  List<dynamic> _citations() {
+    final md = message.metadata;
+    if (md == null) return const [];
+    final c = md['citations'];
+    return c is List ? c : const [];
+  }
+
   @override
   Widget build(BuildContext context) {
     bool isUser = message.isUser;
 
-    // Lọc mã ACTION
-    final actionMatch = RegExp(r'\[ACTION_SEARCH:([^\]]+)\]').firstMatch(message.text);
-    final String? searchSportType = !isUser && actionMatch != null ? actionMatch.group(1) : null;
-    
-    final viewSchedule = !isUser && message.text.contains('[ACTION_VIEW_SCHEDULE]');
-    final viewExpense = !isUser && message.text.contains('[ACTION_VIEW_EXPENSE]');
-    final cancelBooking = !isUser && message.text.contains('[ACTION_CANCEL_BOOKING]');
-    
+    // Prefer structured action from metadata (RAG v2).
+    final action = !isUser ? _action() : null;
+    final actionType = action?['type']?.toString();
+    final actionSport = action?['sport']?.toString();
+
+    // Backward compatibility: fallback to legacy tags inside text.
+    final actionMatch =
+        RegExp(r'\[ACTION_SEARCH:([^\]]+)\]').firstMatch(message.text);
+    final String? legacySearchSportType =
+        !isUser && actionMatch != null ? actionMatch.group(1) : null;
+
+    final String? searchSportType = actionType == 'search_courts'
+        ? (actionSport ?? legacySearchSportType)
+        : legacySearchSportType;
+
+    final viewSchedule = !isUser &&
+        (actionType == 'view_schedule' ||
+            message.text.contains('[ACTION_VIEW_SCHEDULE]'));
+    final viewExpense = !isUser &&
+        (actionType == 'view_expense' ||
+            message.text.contains('[ACTION_VIEW_EXPENSE]'));
+    final cancelBooking = !isUser &&
+        (actionType == 'cancel_booking' ||
+            message.text.contains('[ACTION_CANCEL_BOOKING]'));
+
     final cleanText = message.text
         .replaceAll(RegExp(r'\[ACTION_SEARCH:[^\]]+\]'), '')
         .replaceAll(RegExp(r'\[ACTION_VIEW_SCHEDULE\]'), '')
@@ -549,10 +816,15 @@ class _MessageBubble extends StatelessWidget {
                           padding: const EdgeInsets.only(bottom: 8),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              File(message.imagePath!),
-                              height: 150,
-                              fit: BoxFit.cover,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxHeight: 100,
+                                maxWidth: 160,
+                              ),
+                              child: Image.file(
+                                File(message.imagePath!),
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
                         ),
@@ -562,6 +834,22 @@ class _MessageBubble extends StatelessWidget {
                           style: TextStyle(
                             color: isUser ? AppColors.surface : AppColors.textBlack,
                             fontSize: 15,
+                          ),
+                        ),
+
+                      if (!isUser && _citations().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: InkWell(
+                            onTap: () => _showCitationsDialog(context, _citations()),
+                            child: const Text(
+                              'Xem nguồn (RAG)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
                     ],
@@ -680,6 +968,44 @@ class _MessageBubble extends StatelessWidget {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showCitationsDialog(BuildContext context, List<dynamic> citations) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nguồn tham khảo'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: citations.length,
+            separatorBuilder: (_, __) => const Divider(height: 12),
+            itemBuilder: (context, index) {
+              final c = citations[index];
+              final m = c is Map ? c : const {};
+              final id = m['id']?.toString() ?? 'S${index + 1}';
+              final title = m['title']?.toString() ?? (m['source']?.toString() ?? 'KB');
+              final excerpt = m['excerpt']?.toString() ?? '';
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$id • $title', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  if (excerpt.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(excerpt, style: const TextStyle(fontSize: 13)),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đóng')),
         ],
       ),
     );
@@ -832,8 +1158,6 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
                              );
                           },
                           style: ElevatedButton.styleFrom(
-                             backgroundColor: AppColors.primary,
-                             foregroundColor: Colors.white,
                              padding: EdgeInsets.zero,
                              elevation: 0,
                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))
@@ -899,3 +1223,56 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
+/// Thanh sóng waveform animation cho recording bar kiểu ChatGPT
+class _WaveformBar extends StatefulWidget {
+  final int index;
+  const _WaveformBar({required this.index});
+
+  @override
+  State<_WaveformBar> createState() => _WaveformBarState();
+}
+
+class _WaveformBarState extends State<_WaveformBar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    // Mỗi bar có thời gian animation khác nhau → hiệu ứng sóng
+    final duration = 300 + (widget.index * 37) % 400;
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: duration),
+    )..repeat(reverse: true);
+
+    // Chiều cao random cho mỗi bar
+    final minH = 4.0 + (widget.index % 3) * 2;
+    final maxH = 10.0 + (widget.index * 7) % 16;
+    _animation = Tween<double>(begin: minH, end: maxH).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (_, __) => Container(
+        width: 3,
+        height: _animation.value,
+        decoration: BoxDecoration(
+          color: AppColors.brandOrange,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    );
+  }
+}

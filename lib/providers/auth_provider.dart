@@ -174,6 +174,10 @@ class AppAuthProvider extends ChangeNotifier {
     return false;
   }
 
+  Future<bool> updatePassword(String newPassword) async {
+    return await _authRepository.updatePassword(newPassword);
+  }
+
   Future<bool> updateUserAvatar(File image) async {
     if (_currentUser == null) return false;
 

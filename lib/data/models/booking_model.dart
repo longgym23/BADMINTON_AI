@@ -11,6 +11,8 @@ class BookingModel {
   final int price;
   final String status;
   final String? transactionId; // <-- THÊM DÒNG NÀY ĐỂ GỘP HOÁ ĐƠN
+  final DateTime? createdAt; // dùng để timeout PENDING_PAYMENT ở client
+  final DateTime? expiresAt; // optional: nếu DB có field này
 
   BookingModel({
     this.id,
@@ -24,6 +26,8 @@ class BookingModel {
     required this.price,
     required this.status, // <-- THÊM DÒNG NÀY
     this.transactionId,
+    this.createdAt,
+    this.expiresAt,
   });
 
 
@@ -45,6 +49,8 @@ class BookingModel {
       price: (data['price'] as num?)?.toInt() ?? 0,
       status: data['status'] ?? 'confirmed',
       transactionId: data['transaction_id'],
+      createdAt: data['created_at'] != null ? DateTime.parse(data['created_at']) : null,
+      expiresAt: data['expires_at'] != null ? DateTime.parse(data['expires_at']) : null,
     );
   }
 
@@ -78,6 +84,8 @@ class BookingModel {
     int? price,
     String? status,
     String? transactionId,
+    DateTime? createdAt,
+    DateTime? expiresAt,
   }) {
     return BookingModel(
       id: id ?? this.id,
@@ -91,6 +99,8 @@ class BookingModel {
       price: price ?? this.price,
       status: status ?? this.status,
       transactionId: transactionId ?? this.transactionId,
+      createdAt: createdAt ?? this.createdAt,
+      expiresAt: expiresAt ?? this.expiresAt,
     );
   }
 }

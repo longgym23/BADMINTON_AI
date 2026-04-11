@@ -66,6 +66,19 @@ class AuthRepository {
     }
   }
 
+  // Đổi mật khẩu
+  Future<bool> updatePassword(String newPassword) async {
+    try {
+      await _client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+      return true;
+    } catch (e) {
+      print("Error updatePassword: $e");
+      return false;
+    }
+  }
+
   // Đăng nhập
   Future<UserModel?> signInWithEmailAndPassword(
     String email,

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class ManageBookingsScreen extends StatefulWidget {
   const ManageBookingsScreen({super.key});
@@ -31,7 +32,6 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          backgroundColor: Colors.white,
           title: Text(
             "Xác nhận hủy sân",
             style: TextStyle(
@@ -61,8 +61,6 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[700],
-                foregroundColor: Colors.white,
               ),
               child: const Text("Hủy sân"),
               onPressed: () async {
@@ -72,7 +70,6 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text("Admin đã hủy sân thành công"),
-                      backgroundColor: Colors.green,
                     ),
                   );
                 } catch (e) {
@@ -80,7 +77,6 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text("Hủy sân thất bại: $e"),
-                      backgroundColor: Colors.red,
                     ),
                   );
                 }
@@ -103,10 +99,8 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
     final dateFormatter = DateFormat('dd/MM/yyyy', 'vi_VN');
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         title: Text('Quản lý Lịch đặt'),
-        backgroundColor: colors.primary,
-        foregroundColor: Colors.white,
       ),
       body: Column(
         children: [
@@ -234,8 +228,6 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
                           horizontal: 16,
                         ),
                         leading: CircleAvatar(
-                          backgroundColor: colors.primary.withOpacity(0.8),
-                          foregroundColor: Colors.white,
                           child: Text(
                             "Sân\n${booking.courtNumber}",
                             textAlign: TextAlign.center,

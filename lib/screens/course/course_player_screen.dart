@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:badminton_ai/domain/entities/course.dart';
 import 'package:badminton_ai/providers/course_provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class CoursePlayerScreen extends StatefulWidget {
   final Course course;
@@ -31,10 +32,7 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
 
     _controller = YoutubePlayerController(
       initialVideoId: videoId.isEmpty ? 's9X_Pj4r9i0' : videoId,
-      flags: const YoutubePlayerFlags(
-        autoPlay: true,
-        mute: false,
-      ),
+      flags: const YoutubePlayerFlags(autoPlay: true, mute: false),
     )..addListener(listener);
   }
 
@@ -70,16 +68,10 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
       ),
       builder: (context, player) {
         return Scaffold(
-          appBar: AppBar(
-            title: Text(widget.course.title, style: const TextStyle(fontSize: 16)),
-            flexibleSpace: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
+          appBar: CustomGradientAppBar(
+            title: Text(
+              widget.course.title,
+              style: const TextStyle(fontSize: 16),
             ),
           ),
           body: Column(
@@ -101,7 +93,11 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                        const Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Thời lượng: ${widget.course.duration}',
@@ -120,10 +116,7 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
                     const SizedBox(height: 8),
                     Text(
                       widget.course.description,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        height: 1.5,
-                      ),
+                      style: const TextStyle(fontSize: 15, height: 1.5),
                     ),
                   ],
                 ),

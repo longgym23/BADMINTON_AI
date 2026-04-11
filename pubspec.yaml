@@ -59,6 +59,8 @@ dependencies:
   # --- Media & Voice ---
   image_picker: ^1.1.2 # Chọn ảnh và chụp ảnh
   speech_to_text: ^7.0.0 # Chuyển giọng nói thành text
+  record: ^6.0.0 # Ghi âm microphone thành file audio (fallback Groq Whisper)
+  path_provider: ^2.1.4 # Lấy thư mục tạm để lưu file audio
   # --- URL Launcher ---
   url_launcher: ^6.3.0 # Mở URL và ứng dụng bên ngoài (Google Maps, etc.)
   mobile_scanner: ^7.1.4

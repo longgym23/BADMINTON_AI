@@ -6,6 +6,8 @@ import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:badminton_ai/widgets/app_toast.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class EventCheckoutScreen extends StatelessWidget {
   final EventModel event;
@@ -93,8 +95,6 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
                 ),
                 child: const Text('Hoàn tất'),
               ),
@@ -120,7 +120,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
         if (mounted) _showSuccessDialog();
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+          AppToast.show(context, 'Lỗi: $e', type: ToastType.error);
         }
       }
       return;
@@ -137,13 +137,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
 
   void _onPaymentExpired(String transactionId) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⏰ Hết thời gian thanh toán. Chỗ của bạn đã bị hủy.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
-      );
+      AppToast.show(context, '⏰ Hết thời gian thanh toán. Chỗ của bạn đã bị hủy.', type: ToastType.error);
       Navigator.pop(context);
     }
   }
@@ -164,19 +158,12 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
         if (mounted) _showSuccessDialog();
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Lỗi cập nhật CSDL: $e'), backgroundColor: AppColors.error),
-          );
+          AppToast.show(context, 'Lỗi cập nhật CSDL: $e', type: ToastType.error);
         }
       }
     } else {
       if (mounted && vm.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(vm.errorMessage!),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppToast.show(context, vm.errorMessage!, type: ToastType.error);
       }
     }
   }
@@ -184,17 +171,14 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<CheckoutViewModel>();
-    final bgColor = const Color(0xFF0e7a46);
+    final bgColor = AppColors.background;
 
     return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         title: const Text(
           'Thanh toán Sự kiện',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: bgColor,
-        foregroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
       ),
@@ -338,8 +322,6 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                 child: ElevatedButton(
                   onPressed: vm.isLoading ? null : _onConfirmPayment,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF1C40F),
-                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),

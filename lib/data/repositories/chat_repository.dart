@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:badminton_ai/data/models/chat_message_model.dart';
-import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -76,6 +75,8 @@ class ChatRepository {
 
     // 2. Gọi API AI (RAG được xử lý ở backend)
     String answer = "Xin lỗi, tôi chưa hiểu ý bạn.";
+    Map<String, dynamic>? aiMetadata;
+    String aiType = 'text';
     const String backendUrl = 'https://badminton-ai-fgsz.onrender.com/ask';
 
     try {
@@ -119,6 +120,14 @@ class ChatRepository {
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
         answer = responseBody['answer'] ?? "Xin lỗi, tôi chưa hiểu ý bạn.";
+        if (responseBody is Map<String, dynamic>) {
+          aiMetadata = {
+            if (responseBody['action'] != null) 'action': responseBody['action'],
+            if (responseBody['citations'] != null) 'citations': responseBody['citations'],
+            if (responseBody['used_sources'] != null) 'used_sources': responseBody['used_sources'],
+          };
+          aiType = (responseBody['type'] as String?) ?? 'text';
+        }
       } else {
         try {
           final responseBody = jsonDecode(response.body);
@@ -140,6 +149,8 @@ class ChatRepository {
       text: answer,
       isUser: false,
       timestamp: DateTime.now(),
+      type: aiType,
+      metadata: aiMetadata,
     );
     await sendMessage(userId, aiMessage);
   }

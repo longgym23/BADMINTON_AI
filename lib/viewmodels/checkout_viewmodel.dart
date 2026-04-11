@@ -19,6 +19,15 @@ class CheckoutViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// True khi user đã bấm Xác nhận và QR được hiển thị
+  bool _isQrVisible = false;
+  bool get isQrVisible => _isQrVisible;
+
+  void setQrVisible(bool value) {
+    _isQrVisible = value;
+    notifyListeners();
+  }
+
   // ─── Countdown Timer (5 phút = 300 giây) ────────────────────────────────
   static const int _kTimeoutSeconds = 5 * 60;
   Timer? _countdownTimer;
@@ -97,7 +106,12 @@ class CheckoutViewModel extends ChangeNotifier {
   late String _transactionId;
   String get transactionId => _transactionId;
 
-  void initializePayment(int totalAmount, String courtId, {int walletBalance = 0}) {
+  void initializePayment(
+    int totalAmount,
+    String courtId, {
+    int walletBalance = 0,
+    String? transactionId,
+  }) {
     if (walletBalance >= totalAmount) {
       _appliedBalance = totalAmount;
     } else {
@@ -105,7 +119,9 @@ class CheckoutViewModel extends ChangeNotifier {
     }
     _finalAmount = totalAmount - _appliedBalance;
 
-    _transactionId = '${courtId.substring(0, 5)}${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+    _transactionId =
+        transactionId ??
+        '${courtId.substring(0, 5)}${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
     
     // Chỉ tạo QR nếu khách còn cần trả tiền mặt/chuyển khoản
     if (_finalAmount > 0) {

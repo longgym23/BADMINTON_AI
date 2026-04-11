@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class LocationPickerScreen extends StatefulWidget {
   final LatLng? initialLocation;
@@ -158,10 +159,8 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         title: const Text('Chọn vị trí trên bản đồ'),
-        backgroundColor: colors.primary,
-        foregroundColor: Colors.white,
       ),
       body: Stack(
         children: [
@@ -251,7 +250,6 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             bottom: 100,
             child: FloatingActionButton(
               mini: true,
-              backgroundColor: Colors.white,
               onPressed: _getCurrentLocation,
               child: Icon(Icons.my_location, color: colors.primary),
             ),
@@ -296,8 +294,6 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                         });
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.secondary,
-                        foregroundColor: colors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       child: const Text(

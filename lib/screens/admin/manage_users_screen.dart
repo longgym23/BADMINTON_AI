@@ -1,3 +1,4 @@
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 import 'package:badminton_ai/data/models/user_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:flutter/material.dart';
@@ -217,10 +218,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     final firestoreRepo = context.watch<SupabaseRepository>();
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         title: const Text('Quản lý Người dùng'),
-        backgroundColor: colors.primary,
-        foregroundColor: Colors.white,
+        
       ),
       body: Column(
         children: [

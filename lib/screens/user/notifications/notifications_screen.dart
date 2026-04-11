@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -18,8 +19,7 @@ class NotificationsScreen extends StatelessWidget {
     final notificationProvider = context.watch<NotificationProvider>();
 
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Light grey background like the design
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         title: const Text(
           'Thông báo',
           style: TextStyle(
@@ -28,16 +28,6 @@ class NotificationsScreen extends StatelessWidget {
             fontSize: 20,
           ),
         ),
-        flexibleSpace: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              ),
-        backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -175,6 +165,32 @@ class _NotificationCard extends StatelessWidget {
     final isPayment =
         notification.type == 'payment_success'; // Assuming 'payment_success'
 
+    // Trích xuất dữ liệu từ chuỗi message (Vì database không sinh ra metadata chi tiết)
+    String address = notification.courtAddress ?? 'Không xác định';
+    String priceText = notification.price != null ? NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(notification.price) : '0 đ';
+    String dateText = '${DateFormat('dd/MM/yyyy').format(notification.bookingDate ?? DateTime.now())} • ${notification.timeSlot ?? 0}:00 - ${(notification.timeSlot ?? 0) + 1}:00';
+    String courtString = 'Sân ${notification.courtNumber ?? "1"}';
+    String displayMsg = notification.message;
+
+    if (isBooking || notification.title.contains('Thành công')) {
+      final msg = notification.message;
+      final addressMatch = RegExp(r'\((.*?)\) - Sân').firstMatch(msg);
+      if (addressMatch != null) {
+        address = addressMatch.group(1)!;
+        // Xóa phần địa chỉ sân "(XXX)" trong message để tránh trùng lặp
+        displayMsg = msg.replaceFirst(' ($address)', '');
+      }
+
+      final priceMatch = RegExp(r'với giá (.+)').firstMatch(msg);
+      if (priceMatch != null) priceText = priceMatch.group(1)!;
+
+      final dateMatch = RegExp(r'vào (\d{2}/\d{2}/\d{4}) từ (.*?) với giá').firstMatch(msg);
+      if (dateMatch != null) dateText = '${dateMatch.group(1)} • ${dateMatch.group(2)!.trim()}';
+      
+      final courtMatch = RegExp(r'- Sân (\d+) vào').firstMatch(msg);
+      if (courtMatch != null) courtString = 'Sân ${courtMatch.group(1)}';
+    }
+
     // Determine Icon and Color
     IconData iconData = Icons.notifications;
     Color iconColor = Colors.blue;
@@ -279,7 +295,7 @@ class _NotificationCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        notification.message,
+                        displayMsg,
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 14,
@@ -300,13 +316,13 @@ class _NotificationCard extends StatelessWidget {
                             children: [
                               _buildDetailRow(
                                 Icons.location_on,
-                                notification.courtAddress ?? 'Không xác định',
+                                address,
                               ),
                               const SizedBox(height: 8),
                               _buildDetailRow(
                                 Icons.calendar_today,
-                                '${DateFormat('dd/MM/yyyy').format(notification.bookingDate ?? DateTime.now())} • ${notification.timeSlot ?? 0}:00 - ${(notification.timeSlot ?? 0) + 1}:00',
-                              ), // Fallback time logic
+                                dateText,
+                              ),
                               const SizedBox(height: 8),
                               Row(
                                 children: [
@@ -317,7 +333,7 @@ class _NotificationCard extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'Sân ${notification.courtNumber ?? "1"}',
+                                    courtString,
                                     style: const TextStyle(
                                       color: Colors.black87,
                                       fontWeight: FontWeight.w500,
@@ -326,12 +342,7 @@ class _NotificationCard extends StatelessWidget {
                                   ),
                                   const Spacer(),
                                   Text(
-                                    notification.price != null
-                                        ? NumberFormat.simpleCurrency(
-                                            locale: 'vi_VN',
-                                            decimalDigits: 0,
-                                          ).format(notification.price)
-                                        : '0 đ',
+                                    priceText,
                                     style: const TextStyle(
                                       color: Colors.blue,
                                       fontWeight: FontWeight.bold,
@@ -349,12 +360,11 @@ class _NotificationCard extends StatelessWidget {
                           width: double.infinity,
                           child: TextButton.icon(
                             onPressed: () {
-                              if (notification.courtAddress != null) {
-                                _launchMaps(notification.courtAddress!);
+                              if (address != 'Không xác định') {
+                                _launchMaps(address);
                               }
                             },
                             style: TextButton.styleFrom(
-                              backgroundColor: Colors.blue[50],
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),

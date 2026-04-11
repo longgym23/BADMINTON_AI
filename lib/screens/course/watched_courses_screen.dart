@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:badminton_ai/providers/course_provider.dart';
 import 'package:badminton_ai/domain/entities/course.dart';
 import 'package:badminton_ai/screens/course/course_player_screen.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class WatchedCoursesScreen extends StatefulWidget {
   const WatchedCoursesScreen({super.key});
@@ -23,7 +24,7 @@ class _WatchedCoursesScreenState extends State<WatchedCoursesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         title: const Text('Đã xem gần đây'),
       ),
       body: Consumer<CourseProvider>(

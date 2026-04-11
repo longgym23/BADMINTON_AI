@@ -5,6 +5,7 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class AdminCreateEventScreen extends StatefulWidget {
   const AdminCreateEventScreen({super.key});
@@ -99,11 +100,8 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         title: const Text('Thêm sự kiện mới'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -207,8 +205,6 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                 child: ElevatedButton(
                   onPressed: _saveEvent,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
                   ),
                   child: const Text('LƯU SỰ KIỆN', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),

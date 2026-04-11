@@ -1,3 +1,4 @@
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:badminton_ai/data/models/court_location_model.dart';
@@ -548,7 +549,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
     final ownerId = isOwner ? user?.id : null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(isOwner ? 'Sân Của Tôi' : 'Quản Lý Các Sân')),
+      appBar: CustomGradientAppBar(title: Text(isOwner ? 'Sân Của Tôi' : 'Quản Lý Các Sân')),
       // Dùng StreamBuilder để tự động cập nhật khi có sân mới
       body: StreamBuilder<List<CourtLocationModel>>(
         stream: firestoreRepo.getCourtLocationsStream(ownerId: ownerId),

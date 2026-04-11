@@ -4,6 +4,7 @@ import 'package:badminton_ai/viewmodels/booking_history_viewmodel.dart';
 import 'package:badminton_ai/screens/user/booking/components/booking_history/calendar_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:badminton_ai/widgets/custom_date_range_picker_dialog.dart';
 
 /// Popup filter button that opens date-range / month / year pickers.
 class FilterRow extends StatelessWidget {
@@ -15,65 +16,11 @@ class FilterRow extends StatelessWidget {
   // ─── Date Range Picker ─────────────────────────────────────────────────
 
   Future<void> _pickDateRange(BuildContext context) async {
-    DateTime? tempStart = vm.selectedDateRange?.start;
-    DateTime? tempEnd = vm.selectedDateRange?.end;
-    DateTime focusedDay = tempStart ?? DateTime.now();
-
-    final result = await showDialog<DateTimeRange>(
+    final result = await showCustomDateRangePicker(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) {
-          return AlertDialog(
-            shape: BookingCalendarTheme.dialogShape,
-            backgroundColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-            content: SizedBox(
-              width: BookingCalendarTheme.dialogWidth,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TableCalendar(
-                    focusedDay: focusedDay,
-                    firstDay: DateTime(2020),
-                    lastDay: DateTime(2030),
-                    rangeStartDay: tempStart,
-                    rangeEndDay: tempEnd,
-                    rangeSelectionMode: RangeSelectionMode.enforced,
-                    onRangeSelected: (start, end, focused) {
-                      setState(() {
-                        tempStart = start;
-                        tempEnd = end;
-                        focusedDay = focused;
-                      });
-                    },
-                    locale: 'vi_VN',
-                    headerStyle: BookingCalendarTheme.headerStyle(
-                      formatter: (date, locale) => 'Tháng ${date.month}, ${date.year}',
-                    ),
-                    calendarStyle: BookingCalendarTheme.calendarStyle,
-                    daysOfWeekStyle: BookingCalendarTheme.daysOfWeekStyle,
-                    availableGestures: AvailableGestures.horizontalSwipe,
-                    startingDayOfWeek: StartingDayOfWeek.monday,
-                  ),
-                  const SizedBox(height: 16),
-                  _DialogActions(
-                    onCancel: () => Navigator.pop(ctx),
-                    onConfirm: () {
-                      if (tempStart != null) {
-                        Navigator.pop(ctx, DateTimeRange(start: tempStart!, end: tempEnd ?? tempStart!));
-                      } else {
-                        Navigator.pop(ctx);
-                      }
-                    },
-                    cancelLabel: l.cancel,
-                    confirmLabel: l.confirm,
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+      initialDateRange: vm.selectedDateRange,
+      cancelLabel: l.cancel,
+      confirmLabel: l.confirm,
     );
 
     if (result != null) {

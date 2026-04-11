@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class HighlightsTab extends StatelessWidget {
   const HighlightsTab({super.key});
@@ -6,7 +7,7 @@ class HighlightsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         title: const Text('Nổi bật'),
         automaticallyImplyLeading: false,
       ),

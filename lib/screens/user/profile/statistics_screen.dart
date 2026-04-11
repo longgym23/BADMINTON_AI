@@ -8,6 +8,7 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/viewmodels/statistics_viewmodel.dart';
 import 'package:badminton_ai/screens/user/profile/components/statistics_filter_row.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class StatisticsScreen extends StatelessWidget {
   const StatisticsScreen({super.key});
@@ -18,7 +19,7 @@ class StatisticsScreen extends StatelessWidget {
 
     if (userId == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(AppLocalizations.of(context).statistics)),
+        appBar: CustomGradientAppBar(title: Text(AppLocalizations.of(context).statistics)),
         body: Center(child: Text(AppLocalizations.of(context).pleaseLogin)),
       );
     }
@@ -43,7 +44,6 @@ class _StatisticsView extends StatelessWidget {
     final currencyFmt = NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: _buildAppBar(l),
       body: vm.isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -79,24 +79,12 @@ class _StatisticsView extends StatelessWidget {
     );
   }
 
-  AppBar _buildAppBar(AppLocalizations l) {
-    return AppBar(
+  PreferredSizeWidget _buildAppBar(AppLocalizations l) {
+    return CustomGradientAppBar(
       title: Text(l.statistics,
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
       centerTitle: true,
-      backgroundColor: Colors.transparent,
-      foregroundColor: Colors.white,
       elevation: 0,
-      scrolledUnderElevation: 0,
-      flexibleSpace: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-      ),
       leading: Builder(
         builder: (context) => IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),

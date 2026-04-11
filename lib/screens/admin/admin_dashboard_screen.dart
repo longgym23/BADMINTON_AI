@@ -9,178 +9,1090 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:badminton_ai/widgets/custom_date_range_picker_dialog.dart';
+import 'package:badminton_ai/screens/user/booking/components/booking_history/calendar_theme.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
+  const AdminDashboardScreen({Key? key}) : super(key: key);
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  bool _isLoading = true;
+  List<BookingModel> _last7DaysBookings = [];
+  int _todayRevenue = 0;
+  int _todayBookings = 0;
+
+  int _filterMode = 3; // 0: DateRange, 1: Month, 2: Year, 3: 7 Days
+  DateTimeRange? _selectedDateRange;
+  int? _selectedMonth;
+  int? _selectedYear;
+
+  List<Map<String, dynamic>> _courtsList = [];
+  String? _selectedCourtId;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCourts().then((_) => _fetchDashboardData());
+  }
+
+  Future<void> _fetchCourts() async {
+    final user = context.read<AppAuthProvider>().userModel;
+    if (user == null) return;
+    final isOwner = user.role == 'court_owner';
+    final repo = context.read<SupabaseRepository>();
+    final courts = await repo.getSimpleCourtsList(
+      ownerId: isOwner ? user.id : null,
+    );
+    if (mounted) setState(() => _courtsList = courts);
+  }
+
+  Future<void> _fetchDashboardData() async {
+    setState(() => _isLoading = true);
+    final user = context.read<AppAuthProvider>().userModel;
+    if (user == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    final isOwner = user.role == 'court_owner';
+    final filterOwnerId = isOwner ? user.id : null;
+    final repo = context.read<SupabaseRepository>();
+
+    DateTime start, end;
+    final now = DateTime.now();
+
+    if (_filterMode == 0 && _selectedDateRange != null) {
+      start = _selectedDateRange!.start;
+      end = _selectedDateRange!.end;
+    } else if (_filterMode == 1 &&
+        _selectedMonth != null &&
+        _selectedYear != null) {
+      start = DateTime(_selectedYear!, _selectedMonth!, 1);
+      end = DateTime(_selectedYear!, _selectedMonth! + 1, 0);
+    } else if (_filterMode == 2 && _selectedYear != null) {
+      start = DateTime(_selectedYear!, 1, 1);
+      end = DateTime(_selectedYear!, 12, 31);
+    } else {
+      end = now;
+      start = end.subtract(const Duration(days: 6));
+    }
+
+    try {
+      final bookings = await repo.getBookingsForDateRange(
+        start,
+        end,
+        ownerId: filterOwnerId,
+        courtId: _selectedCourtId,
+      );
+
+      final validStates = ['PAID', 'confirmed', 'completed'];
+
+      final validList = bookings.where((b) {
+        final isValidStatus =
+            validStates.contains(b.status.toUpperCase()) ||
+            validStates.contains(b.status.toLowerCase());
+        return isValidStatus;
+      }).toList();
+
+      int rev = 0;
+      for (var b in validList) {
+        rev += b.price;
+      }
+
+      setState(() {
+        _last7DaysBookings = bookings;
+        _todayBookings = validList.length;
+        _todayRevenue = rev;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print("Lỗi fetch dashboard: $e");
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AppAuthProvider>().userModel;
     final isOwner = user?.role == 'court_owner';
     final isAdmin = user?.role == 'admin';
 
-    // Xác định title
-    String title = 'Trang Quản Trị';
-    if (isOwner) title = 'Quản lý Chủ Sân';
-    else if (isAdmin) title = 'Super Admin';
-
+    String title = isOwner
+    ? 'Quản lý Chủ Sân'
+    : isAdmin
+        ? 'Super Admin'
+        : 'Trang Quản Trị';
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+      appBar: CustomGradientAppBar(
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchDashboardData,
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              context.read<AppAuthProvider>().signOut();
-            },
+            onPressed: () => context.read<AppAuthProvider>().signOut(),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Welcome Section
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Theme.of(context).colorScheme.secondary,
-                  child: const Icon(Icons.shield, color: Colors.white, size: 30),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Xin chào, ${user?.displayName ?? user?.email}',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textBlack),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isOwner ? 'Vai trò: Chủ Sân' : 'Vai trò: Quản trị viên Max',
-                        style: const TextStyle(fontSize: 14, color: AppColors.textGrey),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildWelcomeHeader(user, isOwner),
+                  const SizedBox(height: 16),
+                  _buildRevenueCard(),
+                  const SizedBox(height: 16),
 
-            // Revenue Section
-            _buildRevenueSection(context, user?.id, isOwner),
-            
-            const SizedBox(height: 24),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('CÔNG CỤ QUẢN LÝ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textGrey)),
+                  _buildFilterControls(),
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    'THỐNG KÊ DOANH THU',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textGrey,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildBarChart(),
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    'TỶ LỆ TRẠNG THÁI',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textGrey,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPieChart(),
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    'CÔNG CỤ QUẢN LÝ',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textGrey,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildToolGrid(isOwner, isAdmin),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildWelcomeHeader(user, bool isOwner) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 28,
+          backgroundImage: isOwner ? AssetImage('assets/images/personnel.gif') : AssetImage('assets/images/admin.gif'),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Xin chào, ${user?.displayName ?? user?.email ?? 'Quản trị viên'}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textBlack,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                isOwner ? 'Vai trò: Chủ Sân' : 'Vai trò: Super Admin',
+                style: const TextStyle(fontSize: 14, color: AppColors.textGrey),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRevenueCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primaryDark, AppColors.primary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'TỔNG DOANH THU',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: _glassDecoration(),
+                child: Row(
+                  children: [
+                    const Icon(Icons.people, color: Colors.white, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_todayBookings lượt',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            NumberFormat.simpleCurrency(
+              locale: 'vi_VN',
+              decimalDigits: 0,
+            ).format(_todayRevenue),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Tiện ích làm background mờ (Glassmorphism)
+  BoxDecoration _glassDecoration() {
+    return BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.2),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: Colors.white.withValues(alpha: 0.3),
+        width: 1.5,
+      ),
+    );
+  }
+
+  Widget _buildBarChart() {
+    if (_last7DaysBookings.isEmpty)
+      return _emptyCard('Chưa có dữ liệu giao dịch');
+
+    final validStates = ['PAID', 'confirmed', 'completed'];
+    Map<int, double> groupedRevenue = {};
+    int totalBars = 0;
+
+    DateTime start, end;
+    final now = DateTime.now();
+    if (_filterMode == 0 && _selectedDateRange != null) {
+      start = _selectedDateRange!.start;
+      end = _selectedDateRange!.end;
+    } else if (_filterMode == 1 &&
+        _selectedMonth != null &&
+        _selectedYear != null) {
+      start = DateTime(_selectedYear!, _selectedMonth!, 1);
+      end = DateTime(_selectedYear!, _selectedMonth! + 1, 0);
+    } else if (_filterMode == 2 && _selectedYear != null) {
+      start = DateTime(_selectedYear!, 1, 1);
+      end = DateTime(_selectedYear!, 12, 31);
+    } else {
+      end = now;
+      start = end.subtract(const Duration(days: 6));
+    }
+
+    if (_filterMode == 2) {
+      totalBars = 12;
+      for (int i = 1; i <= 12; i++) groupedRevenue[i] = 0;
+      for (var b in _last7DaysBookings) {
+        if (validStates.contains(b.status.toUpperCase()) ||
+            validStates.contains(b.status.toLowerCase())) {
+          groupedRevenue[b.date.month] =
+              (groupedRevenue[b.date.month] ?? 0) + b.price;
+        }
+      }
+    } else {
+      totalBars = end.difference(start).inDays + 1;
+      if (totalBars < 1) totalBars = 1;
+      for (int i = 0; i < totalBars; i++) groupedRevenue[i] = 0;
+
+      for (var b in _last7DaysBookings) {
+        if (validStates.contains(b.status.toUpperCase()) ||
+            validStates.contains(b.status.toLowerCase())) {
+          final diff = b.date.difference(start).inDays;
+          if (diff >= 0 && diff < totalBars) {
+            groupedRevenue[diff] = (groupedRevenue[diff] ?? 0) + b.price;
+          }
+        }
+      }
+    }
+
+    double maxRevenueLimit = 100000000;
+    double barW = (220 / totalBars).clamp(4.0, 24.0);
+
+    List<BarChartGroupData> barGroups = [];
+    for (int i = 0; i < totalBars; i++) {
+      final key = _filterMode == 2 ? i + 1 : i;
+      barGroups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: groupedRevenue[key] ?? 0,
+              color: AppColors.brandOrange,
+              width: barW,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(4),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      height: 280,
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.borderColor, width: 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: maxRevenueLimit,
+          barTouchData: BarTouchData(
+            enabled: false,
+          ), // Đơn giản hóa, không hiện tooltip
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  if (_filterMode == 2) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        'T${value.toInt() + 1}',
+                        style: const TextStyle(
+                          color: AppColors.textGrey,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  }
+                  final int total = end.difference(start).inDays + 1;
+                  if (total > 15 &&
+                      value.toInt() % 7 != 0 &&
+                      value.toInt() != total - 1 &&
+                      value.toInt() != 0)
+                    return const SizedBox();
+
+                  final d = start.add(Duration(days: value.toInt()));
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      '${d.day}/${d.month}',
+                      style: const TextStyle(
+                        color: AppColors.textGrey,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                },
+                reservedSize: 32,
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 32,
+                interval: 20000000,
+                getTitlesWidget: (value, meta) {
+                  if (value % 20000000 != 0) return const SizedBox();
+                  String title = (value / 1000000).toInt().toString();
+                  return Center(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: AppColors.textGrey,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: 20000000, // Khoảng cách lưới 20tr
+            getDrawingHorizontalLine: (val) => FlLine(
+              color: AppColors.textGrey.withOpacity(0.1),
+              strokeWidth: 1,
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          barGroups: barGroups,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPieChart() {
+    if (_last7DaysBookings.isEmpty) return _emptyCard('Chưa có dữ liệu');
+
+    int paid = 0;
+    int pending = 0;
+    int cancelled = 0;
+
+    for (var b in _last7DaysBookings) {
+      final s = b.status.toUpperCase();
+      if (s == 'PAID' || s == 'CONFIRMED' || s == 'COMPLETED')
+        paid++;
+      else if (s == 'CANCELLED')
+        cancelled++;
+      else
+        pending++;
+    }
+
+    final total = paid + pending + cancelled;
+    if (total == 0) return _emptyCard('Chưa có booking nào');
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 200,
+            child: PieChart(
+              PieChartData(
+                sectionsSpace: 4,
+                centerSpaceRadius: 50,
+                sections: [
+                  if (paid > 0)
+                    PieChartSectionData(
+                      color: Colors.green,
+                      value: paid.toDouble(),
+                      title: '${((paid / total) * 100).toStringAsFixed(1)}%',
+                      radius: 50,
+                      titleStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  if (pending > 0)
+                    PieChartSectionData(
+                      color: Colors.orange,
+                      value: pending.toDouble(),
+                      title: '${((pending / total) * 100).toStringAsFixed(1)}%',
+                      radius: 50,
+                      titleStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  if (cancelled > 0)
+                    PieChartSectionData(
+                      color: Colors.redAccent,
+                      value: cancelled.toDouble(),
+                      title:
+                          '${((cancelled / total) * 100).toStringAsFixed(1)}%',
+                      radius: 50,
+                      titleStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _indicator(Colors.green, 'Thành công ($paid)'),
+              _indicator(Colors.orange, 'Đang chờ ($pending)'),
+              _indicator(Colors.redAccent, 'Đã hủy ($cancelled)'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _indicator(Color color, String text) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppColors.textBlack,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildToolGrid(bool isOwner, bool isAdmin) {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.1,
+      children: [
+        _buildGridAction(
+          title: isOwner ? 'Lịch Đặt Của Tôi' : 'Quản Lý Lịch Đặt',
+          icon: Icons.calendar_month_rounded,
+          color: Colors.blue,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ManageBookingsScreen()),
+          ),
+        ),
+        _buildGridAction(
+          title: isOwner ? 'Sự Kiện Sân' : 'Quản Lý Sự Kiện',
+          icon: Icons.event,
+          color: Colors.orange,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminEventListScreen()),
+          ),
+        ),
+        _buildGridAction(
+          title: isOwner ? 'Danh Sách Sân' : 'Quản Lý Địa Điểm',
+          icon: Icons.sports_tennis_rounded,
+          color: Colors.green,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ManageCourtsScreen()),
+          ),
+        ),
+        if (isAdmin)
+          _buildGridAction(
+            title: 'Người Dùng & Phân Quyền',
+            icon: Icons.people_alt_rounded,
+            color: Colors.redAccent,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ManageUsersScreen()),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildGridAction({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 30),
             ),
             const SizedBox(height: 12),
-
-            // Các nút chức năng Chung
-            _buildActionCard(
-              context, 
-              title: isOwner ? 'Lịch Đặt Sân Của Tôi' : 'Tất Cả Lịch Đặt', 
-              icon: Icons.calendar_month_rounded, 
-              color: Colors.blue, 
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ManageBookingsScreen()))
-            ),
-            _buildActionCard(
-              context, 
-              title: isOwner ? 'Sự Kiện Sân Của Tôi' : 'Quản Lý Sự Kiện Toàn Cục', 
-              icon: Icons.event, 
-              color: Colors.orange, 
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminEventListScreen()))
-            ),
-            _buildActionCard(
-              context, 
-              title: isOwner ? 'Xem Danh Sách Sân Của Tôi' : 'Quản Lý Tất Cả Địa Điểm', 
-              icon: Icons.sports_tennis_rounded, 
-              color: Colors.green, 
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ManageCourtsScreen()))
-            ),
-
-            // Các nút dành riêng cho Admin
-            if (isAdmin)
-              _buildActionCard(
-                context, 
-                title: 'Quản Lý Người Dùng & Phân Quyền', 
-                icon: Icons.people_alt_rounded, 
-                color: Colors.redAccent, 
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageUsersScreen()))
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: AppColors.textBlack,
+                ),
               ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildRevenueSection(BuildContext context, String? userId, bool isOwner) {
-    if (userId == null) return const SizedBox();
-    
-    // Lấy stream theo ownerId nếu là court_owner, null nếu là admin
-    final repo = context.read<SupabaseRepository>();
-    final filterOwnerId = isOwner ? userId : null;
-
-    return StreamBuilder<List<BookingModel>>(
-      stream: repo.getAllBookingsForDay(DateTime.now(), ownerId: filterOwnerId),
-      builder: (context, snapshot) {
-        int todayRevenue = 0;
-        int todayBookings = 0;
-
-        if (snapshot.hasData && snapshot.data != null) {
-          final bookings = snapshot.data!;
-          // Lọc các booking được xác nhận / đã thanh toán
-          final validStates = ['PAID', 'confirmed', 'completed'];
-          final validBookings = bookings.where((b) => validStates.contains(b.status.toUpperCase()) || validStates.contains(b.status.toLowerCase())).toList();
-          
-          todayBookings = validBookings.length;
-          todayRevenue = validBookings.fold(0, (sum, b) => sum + b.price);
-        }
-
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight]),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: AppColors.brandOrange.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))],
+  Widget _emptyCard(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Center(
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: AppColors.textGrey,
+            fontStyle: FontStyle.italic,
           ),
-          child: Column(
-            children: [
-              const Text('HÔM NAY', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              if (snapshot.connectionState == ConnectionState.waiting)
-                const CircularProgressIndicator(color: Colors.white)
-              else
-                Text(
-                  NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(todayRevenue),
-                  style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
-                ),
-              const SizedBox(height: 8),
-              Text('${snapshot.connectionState == ConnectionState.waiting ? "..." : todayBookings} Lượt khách đặt', style: const TextStyle(color: Colors.white, fontSize: 14)),
-            ],
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _buildActionCard(BuildContext context, {required String title, required IconData icon, required Color color, required VoidCallback onTap}) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.15),
-          child: Icon(icon, color: color),
+  // Tiện ích Dropdown Lọc + Nút lọc thời gian
+  Widget _buildFilterControls() {
+    final timeFilterWidget = Theme(
+      data: Theme.of(context).copyWith(
+        highlightColor: Colors.transparent,
+        splashColor: Colors.transparent,
+      ),
+      child: PopupMenuButton<int>(
+        color: AppColors.brandOrange,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textBlack)),
-        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-        onTap: onTap,
+        elevation: 4,
+        offset: const Offset(0, 45),
+        onSelected: (value) {
+          if (value == 0)
+            _pickDateRange(context);
+          else if (value == 1)
+            _pickMonth(context);
+          else if (value == 2)
+            _pickYear(context);
+          else {
+            setState(() => _filterMode = 3);
+            _fetchDashboardData();
+          }
+        },
+        itemBuilder: (context) => [
+          _buildMenuItem(0, 'Chọn khoảng ngày'),
+          _buildMenuItem(1, 'Lọc theo tháng'),
+          _buildMenuItem(2, 'Lọc theo năm'),
+          _buildMenuItem(3, '7 ngày gần đây'),
+        ],
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: AppColors.brandOrange),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.calendar_month,
+                color: AppColors.brandOrange,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _getFilterLabel(),
+                style: const TextStyle(
+                  color: AppColors.textBlack,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppColors.brandOrange,
+                size: 18,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Nếu không có danh sách sân => chỉ hiện nút lọc thời gian
+    if (_courtsList.isEmpty) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: timeFilterWidget,
+      );
+    }
+
+    // Có danh sách sân => hiện cả 2 cùng 1 hàng
+    return Row(
+      children: [
+        // Dropdown chọn sân (chiếm phần lớn chiều ngang)
+        Expanded(
+          child: Container(
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.borderColor),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: _selectedCourtId,
+                hint: const Text(
+                  'Tất cả các sân',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textBlack,
+                  fontWeight: FontWeight.w500,
+                ),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text(
+                      'Tất cả các sân',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  ..._courtsList.map(
+                    (c) => DropdownMenuItem<String>(
+                      value: c['id'],
+                      child: Text(
+                        c['name'],
+                        style: const TextStyle(fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+                onChanged: (val) {
+                  setState(() => _selectedCourtId = val);
+                  _fetchDashboardData();
+                },
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        // Nút lọc thời gian
+        timeFilterWidget,
+      ],
+    );
+  }
+
+  String _getFilterLabel() {
+    if (_filterMode == 0 && _selectedDateRange != null) {
+      return '${DateFormat('dd/MM').format(_selectedDateRange!.start)} - ${DateFormat('dd/MM/yyyy').format(_selectedDateRange!.end)}';
+    } else if (_filterMode == 1 && _selectedMonth != null) {
+      return 'Tháng $_selectedMonth/$_selectedYear';
+    } else if (_filterMode == 2 && _selectedYear != null) {
+      return 'Năm $_selectedYear';
+    }
+    return '7 ngày gần đây';
+  }
+
+  PopupMenuItem<int> _buildMenuItem(int value, String text) {
+    return PopupMenuItem<int>(
+      value: value,
+      height: 40,
+      padding: EdgeInsets.zero,
+      child: Center(
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Color.fromARGB(255, 248, 255, 252),
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDateRange(BuildContext context) async {
+    final result = await showCustomDateRangePicker(
+      context: context,
+      initialDateRange: _selectedDateRange,
+      cancelLabel: 'Huỷ',
+      confirmLabel: 'Chọn',
+    );
+    if (result != null) {
+      setState(() {
+        _filterMode = 0;
+        _selectedDateRange = result;
+      });
+      _fetchDashboardData();
+    }
+  }
+
+  Future<void> _pickMonth(BuildContext context) async {
+    final now = DateTime.now();
+    int tempMonth = _selectedMonth ?? now.month;
+    int tempYear = _selectedYear ?? now.year;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateDialog) => AlertDialog(
+          shape: BookingCalendarTheme.dialogShape,
+          content: SizedBox(
+            width: BookingCalendarTheme.dialogWidth,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                BookingCalendarTheme.yearNavigator(
+                  label: '$tempYear',
+                  onPrevious: () => setStateDialog(() => tempYear--),
+                  onNext: () => setStateDialog(() => tempYear++),
+                ),
+                const SizedBox(height: 8),
+                GridView.count(
+                  crossAxisCount: 4,
+                  shrinkWrap: true,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 1.4,
+                  children: List.generate(12, (i) {
+                    final m = i + 1;
+                    final selected = m == tempMonth;
+                    return GestureDetector(
+                      onTap: () => setStateDialog(() => tempMonth = m),
+                      child: Container(
+                        decoration: BookingCalendarTheme.gridItemDecoration(
+                          selected: selected,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'T$m',
+                          style: BookingCalendarTheme.gridItemTextStyle(
+                            selected: selected,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text(
+                    'Huỷ',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    setState(() {
+                      _filterMode = 1;
+                      _selectedMonth = tempMonth;
+                      _selectedYear = tempYear;
+                    });
+                    _fetchDashboardData();
+                  },
+                  child: const Text(
+                    'Chọn',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickYear(BuildContext context) async {
+    final now = DateTime.now();
+    int tempYear = _selectedYear ?? now.year;
+    int startYear = (tempYear ~/ 12) * 12;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateDialog) => AlertDialog(
+          shape: BookingCalendarTheme.dialogShape,
+          content: SizedBox(
+            width: BookingCalendarTheme.dialogWidth,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                BookingCalendarTheme.yearNavigator(
+                  label: '$startYear - ${startYear + 11}',
+                  onPrevious: () => setStateDialog(() => startYear -= 12),
+                  onNext: () => setStateDialog(() => startYear += 12),
+                ),
+                const SizedBox(height: 8),
+                GridView.count(
+                  crossAxisCount: 3,
+                  shrinkWrap: true,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 1.6,
+                  children: List.generate(12, (i) {
+                    final year = startYear + i;
+                    final selected = year == tempYear;
+                    return GestureDetector(
+                      onTap: () => setStateDialog(() => tempYear = year),
+                      child: Container(
+                        decoration: BookingCalendarTheme.gridItemDecoration(
+                          selected: selected,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$year',
+                          style: BookingCalendarTheme.gridItemTextStyle(
+                            selected: selected,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text(
+                    'Huỷ',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    setState(() {
+                      _filterMode = 2;
+                      _selectedYear = tempYear;
+                    });
+                    _fetchDashboardData();
+                  },
+                  child: const Text(
+                    'Chọn',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

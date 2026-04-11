@@ -1,6 +1,7 @@
 import 'package:badminton_ai/data/models/notification_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class NotificationProvider extends ChangeNotifier {
   final SupabaseRepository _repository;
@@ -30,12 +31,13 @@ class NotificationProvider extends ChangeNotifier {
     final endTime = timeSlot + durationHours;
     final timeStr = '$timeSlot:00 - $endTime:00 (${durationHours}h)';
 
+    final priceStr = NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(price);
     final notification = NotificationModel(
       userId: userId,
       type: 'booking_success',
       title: 'Đặt sân thành công!',
       message:
-          'Bạn đã đặt sân $courtName - Sân $courtNumber vào $dateStr từ $timeStr',
+          'Bạn đã đặt sân $courtName ($courtAddress) - Sân $courtNumber vào $dateStr từ $timeStr với giá $priceStr',
       createdAt: DateTime.now(),
       isRead: false,
       bookingId: bookingId,

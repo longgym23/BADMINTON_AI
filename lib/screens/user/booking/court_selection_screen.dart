@@ -1,5 +1,7 @@
 import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
+import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/booking_provider.dart';
 import 'package:badminton_ai/screens/user/booking/checkout_screen.dart';
 
@@ -8,6 +10,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:badminton_ai/widgets/app_toast.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class CourtSelectionScreen extends StatefulWidget {
   final CourtLocationModel selectedCourt;
@@ -86,24 +90,99 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
 
   void _onNext() {
     if (_selectedSlots.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Vui lòng chọn ít nhất một slot")),
-      );
+      AppToast.show(context, "Vui lòng chọn ít nhất một slot", type: ToastType.error);
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CheckoutScreen(
-          selectedCourt: widget.selectedCourt,
-          selectedDate: _currentDate,
-          selectedSlots: _selectedSlots.toList(),
-          totalHours: _getTotalHours(),
-          totalPrice: _getTotalPrice(),
+    _reserveAndGoCheckout();
+  }
+
+  Future<void> _reserveAndGoCheckout() async {
+    final auth = context.read<AppAuthProvider>();
+    if (auth.authState != AuthState.authenticated) {
+      AppToast.show(context, 'Vui lòng đăng nhập để đặt sân', type: ToastType.error);
+      return;
+    }
+
+    final repo = context.read<SupabaseRepository>();
+    final totalPrice = _getTotalPrice();
+
+    // Generate transaction id (must be stable across reserve + payment reference).
+    final transactionId =
+        '${widget.selectedCourt.id.substring(0, 5)}${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+
+    // Build slots payload for RPC
+    final slots = _selectedSlots
+        .map(
+          (s) => {
+            'court_number': s.courtNumber,
+            'time_slot': s.timeSlot.toInt(),
+            'price': widget.selectedCourt.pricePerHour.round(),
+          },
+        )
+        .toList();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(color: AppColors.primary),
+            SizedBox(width: 20),
+            Expanded(child: Text('Đang giữ chỗ...')),
+          ],
         ),
       ),
     );
+
+    try {
+      final result = await repo.reserveBookingSlots(
+        courtId: widget.selectedCourt.id,
+        courtName: widget.selectedCourt.name,
+        bookingDate: _currentDate,
+        transactionId: transactionId,
+        slots: slots,
+        holdMinutes: 5,
+      );
+
+      if (mounted) Navigator.pop(context); // close loading
+
+      final success = result['success'] == true;
+      if (!success) {
+        final conflicts = result['conflicts'];
+        final msg = conflicts is List && conflicts.isNotEmpty
+                  ? 'Một số khung giờ vừa được người khác giữ/đặt. Vui lòng chọn lại.'
+                  : 'Không thể giữ chỗ. Vui lòng thử lại.';
+        AppToast.show(context, msg, type: ToastType.error);
+        _fetchBookingsForCurrentDate();
+        return;
+      }
+
+      DateTime? expiresAt;
+      final expiresRaw = result['expires_at'];
+      if (expiresRaw != null) {
+        expiresAt = DateTime.tryParse(expiresRaw.toString());
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CheckoutScreen(
+            selectedCourt: widget.selectedCourt,
+            selectedDate: _currentDate,
+            selectedSlots: _selectedSlots.toList(),
+            totalHours: _getTotalHours(),
+            totalPrice: totalPrice,
+            reservedTransactionId: transactionId,
+            reservedExpiresAt: expiresAt,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      AppToast.show(context, 'Lỗi giữ chỗ: $e', type: ToastType.error);
+    }
   }
 
   void _selectDate() async {
@@ -116,7 +195,6 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
-              backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -211,8 +289,6 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                           onPressed: () =>
                               Navigator.pop(context, tempSelectedDate),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -258,8 +334,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
     final bookingProvider = context.watch<BookingProvider>();
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
@@ -273,19 +348,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
           ),
         ),
         centerTitle: false,
-        backgroundColor: Colors.transparent, // Nền trong suốt để hiển thị gradient từ flexibleSpace
-        foregroundColor: Colors.white,
         elevation: 0,
-        scrolledUnderElevation: 0,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 16),
@@ -689,9 +752,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                     child: ElevatedButton(
                       onPressed: _onNext,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors
-                            .primary, // Đổi màu sắc để khớp với Đặt Ngay
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.primary, // Đổi màu sắc để khớp với Đặt Ngay
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),

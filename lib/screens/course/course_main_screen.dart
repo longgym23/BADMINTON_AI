@@ -4,6 +4,7 @@ import 'package:badminton_ai/providers/course_provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/screens/course/course_list_tab.dart';
 import 'package:badminton_ai/screens/course/watched_courses_screen.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class CourseMainScreen extends StatefulWidget {
   const CourseMainScreen({super.key});
@@ -49,8 +50,7 @@ class _CourseMainScreenState extends State<CourseMainScreen> with TickerProvider
 
         if (provider.categories.isEmpty) {
           return Scaffold(
-            backgroundColor: AppColors.background,
-            appBar: AppBar(
+            appBar: CustomGradientAppBar(
               title: const Text(
                 'Khóa học thể thao',
                 style: TextStyle(
@@ -60,23 +60,13 @@ class _CourseMainScreenState extends State<CourseMainScreen> with TickerProvider
               ),
               centerTitle: false,
               leading: const BackButton(color: Colors.white),
-              flexibleSpace: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              ),
             ),
             body: const Center(child: Text('Không có danh mục khóa học nào')),
           );
         }
 
         return Scaffold(
-          backgroundColor: AppColors.background,
-          appBar: AppBar(
+          appBar: CustomGradientAppBar(
             title: const Text(
               'Khóa học thể thao',
               style: TextStyle(
@@ -86,15 +76,6 @@ class _CourseMainScreenState extends State<CourseMainScreen> with TickerProvider
             ),
             centerTitle: false,
             leading: const BackButton(color: Colors.white),
-            flexibleSpace: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-            ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.history, color: Colors.white),

@@ -12,6 +12,7 @@ class MapViewModel extends ChangeNotifier {
 
   // Data
   List<CourtLocationModel> _allCourts = [];
+  List<CourtLocationModel> searchHistory = [];
   
   // State
   LatLng currentPosition = const LatLng(21.028511, 105.804817);
@@ -136,7 +137,7 @@ class MapViewModel extends ChangeNotifier {
   }
 
   List<CourtLocationModel> get searchResults {
-    if (searchQuery.isEmpty) return [];
+    if (searchQuery.trim().isEmpty) return searchHistory;
     return filteredCourts;
   }
 
@@ -168,6 +169,10 @@ class MapViewModel extends ChangeNotifier {
   }
 
   void selectCourt(CourtLocationModel court) {
+    searchHistory.removeWhere((c) => c.id == court.id);
+    searchHistory.insert(0, court);
+    if (searchHistory.length > 5) searchHistory.removeLast();
+
     showNearbyList = false;
     selectedCourt = court;
     hideFabs = false;

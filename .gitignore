@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Supabase DB schema/migrations (Ẩn khỏi Git theo yêu cầu)
+supabase/migrations/
+docs
+
+# API Keys (KHÔNG push lên Git)
+lib/config/api_keys.dart
+badminton_ai_backend/.env

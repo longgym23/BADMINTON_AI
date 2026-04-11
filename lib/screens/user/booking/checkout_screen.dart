@@ -10,6 +10,8 @@ import 'package:badminton_ai/providers/notification_provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 import 'package:badminton_ai/viewmodels/checkout_viewmodel.dart';
+import 'package:badminton_ai/widgets/app_toast.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class CheckoutScreen extends StatelessWidget {
   final CourtLocationModel selectedCourt;
@@ -17,6 +19,8 @@ class CheckoutScreen extends StatelessWidget {
   final List<SelectedSlot> selectedSlots;
   final double totalHours;
   final int totalPrice;
+  final String? reservedTransactionId;
+  final DateTime? reservedExpiresAt;
 
   const CheckoutScreen({
     super.key,
@@ -25,6 +29,8 @@ class CheckoutScreen extends StatelessWidget {
     required this.selectedSlots,
     required this.totalHours,
     required this.totalPrice,
+    this.reservedTransactionId,
+    this.reservedExpiresAt,
   });
 
   @override
@@ -40,7 +46,18 @@ class CheckoutScreen extends StatelessWidget {
           vm.setCustomerPhone(user.phoneNumber ?? '');
           walletBal = user.balance;
         }
-        vm.initializePayment(totalPrice, selectedCourt.id, walletBalance: walletBal);
+        vm.initializePayment(
+          totalPrice,
+          selectedCourt.id,
+          walletBalance: walletBal,
+          transactionId: reservedTransactionId,
+        );
+
+        // If slots already reserved from previous screen (UX-first flow),
+        // mark booking created so user can proceed to payment immediately.
+        if (reservedTransactionId != null) {
+          vm.setBookingCreated(true);
+        }
         return vm;
       },
       child: CheckoutScreenView(
@@ -49,6 +66,7 @@ class CheckoutScreen extends StatelessWidget {
         selectedSlots: selectedSlots,
         totalHours: totalHours,
         totalPrice: totalPrice,
+        reservedExpiresAt: reservedExpiresAt,
       ),
     );
   }
@@ -60,6 +78,7 @@ class CheckoutScreenView extends StatefulWidget {
   final List<SelectedSlot> selectedSlots;
   final double totalHours;
   final int totalPrice;
+  final DateTime? reservedExpiresAt;
 
   const CheckoutScreenView({
     super.key,
@@ -68,6 +87,7 @@ class CheckoutScreenView extends StatefulWidget {
     required this.selectedSlots,
     required this.totalHours,
     required this.totalPrice,
+    this.reservedExpiresAt,
   });
 
   @override
@@ -86,6 +106,31 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     _nameController = TextEditingController(text: vm.customerName);
     _phoneController = TextEditingController(text: vm.customerPhone);
     _noteController = TextEditingController();
+
+    // Nếu slot đã được reserve từ màn grid, chỉ khởi động đồng hồ đếm ngược.
+    // QR sẽ chỉ hiện sau khi user kiểm tra thông tin và bấm Xác nhận.
+    if (widget.reservedExpiresAt != null) {
+      final remaining =
+          widget.reservedExpiresAt!.difference(DateTime.now()).inSeconds;
+      if (remaining > 0) {
+        vm.startCountdown(() {
+          final authProvider = context.read<AppAuthProvider>();
+          final userId = authProvider.userModel?.id;
+          _onPaymentExpired(vm.transactionId, vm.appliedBalance, userId);
+        });
+        // Không gọi _listenForPayment() ở đây — chờ user bấm Xác nhận
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          await context.read<SupabaseRepository>().releaseBookingTransaction(
+                vm.transactionId,
+              );
+          if (mounted) {
+            AppToast.show(context, '⏰ Hết thời gian giữ chỗ. Vui lòng chọn lại slot.', type: ToastType.error);
+            Navigator.pop(context);
+          }
+        });
+      }
+    }
   }
 
   @override
@@ -210,7 +255,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
 
   void _onConfirmPayment() async {
     final vm = context.read<CheckoutViewModel>();
-    
+
     if (vm.customerName.isEmpty || vm.customerPhone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng điền đủ Tên và Số điện thoại')),
@@ -219,7 +264,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     }
 
     if (!vm.isBookingCreated) {
-      // 1. CHƯA TẠO BOOKING -> BẮT ĐẦU TẠO PENDING BOOKINGS
+      // TH1: Chưa reserve slot — tạo pending bookings trước
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -237,38 +282,46 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
       final isCreated = await _createPendingBookings();
       if (mounted) Navigator.pop(context);
 
-      if (isCreated) {
-        vm.setBookingCreated(true);
-        // Trừ tiền trong ví nếu có
-        final authProvider = context.read<AppAuthProvider>();
-        final userId = authProvider.userModel?.id;
-        final repo = context.read<SupabaseRepository>();
-        
-        if (vm.appliedBalance > 0 && userId != null) {
-          await repo.deductBalance(userId, vm.appliedBalance);
-          authProvider.updateUserModel(authProvider.userModel!.copyWith(
-              balance: authProvider.userModel!.balance - vm.appliedBalance));
-        }
-
-        if (vm.finalAmount > 0) {
-          // Bắt đầu đếm ngược 5 phút
-          vm.startCountdown(() => _onPaymentExpired(vm.transactionId, vm.appliedBalance, userId));
-          _listenForPayment();
-        } else {
-          // Zero payment logic
-          _processZeroPayment(vm.transactionId);
-        }
-      } else {
+      if (!isCreated) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Lỗi tạo đơn hàng, vui lòng thử lại!"), backgroundColor: AppColors.error),
           );
         }
+        return;
       }
+
+      vm.setBookingCreated(true);
+    }
+
+    // Xử lý trừ ví (cả 2 flow)
+    final authProvider = context.read<AppAuthProvider>();
+    final userId = authProvider.userModel?.id;
+    final repo = context.read<SupabaseRepository>();
+
+    if (vm.appliedBalance > 0 && userId != null) {
+      await repo.deductBalance(userId, vm.appliedBalance);
+      if (authProvider.userModel != null) {
+        authProvider.updateUserModel(
+          authProvider.userModel!.copyWith(
+            balance: authProvider.userModel!.balance - vm.appliedBalance,
+          ),
+        );
+      }
+    }
+
+    // Hiển QR và bắt đầu nghe thanh toán
+    if (vm.finalAmount > 0) {
+      vm.setQrVisible(true); // Hiện QR, ẩn button
+      if (!vm.isExpired) {
+        // Chỉ start countdown nếu chưa chạy (flow không pre-reserved)
+        if (widget.reservedExpiresAt == null) {
+          vm.startCountdown(() => _onPaymentExpired(vm.transactionId, vm.appliedBalance, userId));
+        }
+      }
+      _listenForPayment();
     } else {
-      if (vm.finalAmount > 0) {
-        _listenForPayment();
-      }
+      _processZeroPayment(vm.transactionId);
     }
   }
 
@@ -285,12 +338,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
       await _sendSuccessNotifications();
       if (mounted) {
         final l = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l.paymentSuccess),
-            backgroundColor: AppColors.success,
-          ),
-        );
+        AppToast.show(context, l.paymentSuccess, type: ToastType.success);
         Navigator.pop(context);
         Navigator.pop(context);
       }
@@ -301,7 +349,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
   Future<void> _onPaymentExpired(String transactionId, int refundedBalance, String? userId) async {
     try {
       final repo = context.read<SupabaseRepository>();
-      await repo.deletePendingBookingsByTransactionId(transactionId);
+      await repo.releaseBookingTransaction(transactionId);
       
       // Hoàn lại tiền ví nếu đã trừ
       if (refundedBalance > 0 && userId != null) {
@@ -317,13 +365,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⏰ Hết thời gian thanh toán. Đơn đặt sân đã bị huỷ.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
-      );
+      AppToast.show(context, '⏰ Hết thời gian thanh toán. Đơn đặt sân đã bị huỷ.', type: ToastType.error);
       // Về màn trước (court selection) rồi về Home
       Navigator.pop(context);
       Navigator.pop(context);
@@ -340,24 +382,14 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
       await _sendSuccessNotifications();
       if (mounted) {
         final l = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l.paymentSuccess),
-            backgroundColor: AppColors.success,
-          ),
-        );
+        AppToast.show(context, l.paymentSuccess, type: ToastType.success);
         Navigator.pop(context);
         Navigator.pop(context);
       }
     } else {
       // Nghe thất bại hoặc Timeout
       if (mounted && vm.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(vm.errorMessage!),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppToast.show(context, vm.errorMessage!, type: ToastType.error);
       }
     }
   }
@@ -374,251 +406,243 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
         return a.timeSlot.compareTo(b.timeSlot);
       });
 
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          l.checkoutTitle,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontSize: 18,
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (bool didPop, _) {
+        if (didPop) {
+          context.read<SupabaseRepository>().releaseBookingTransaction(vm.transactionId);
+        }
+      },
+      child: Scaffold(
+        appBar: CustomGradientAppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
           ),
-        ),
-        centerTitle: false,
-        backgroundColor: Colors.transparent, 
-        foregroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+          title: Text(
+            l.checkoutTitle,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              fontSize: 18,
             ),
           ),
+          centerTitle: false,
+          elevation: 0,
         ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionCard(
-              title: l.courtInfo,
-              icon: Icons.map_outlined,
-              children: [
-                _buildInfoRow(l.clubName, widget.selectedCourt.name),
-                const SizedBox(height: 8),
-                _buildInfoRow(l.address, widget.selectedCourt.address),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            _buildSectionCard(
-               title: l.bookingInfo,
-               icon: Icons.calendar_month_outlined,
-               children: [
-                 _buildInfoRow(l.date, DateFormat('dd/MM/yyyy').format(widget.selectedDate)),
-                 const SizedBox(height: 8),
-                 ...sortedSlots.map((slot) => Padding(
-                   padding: const EdgeInsets.only(bottom: 4.0),
-                   child: Text(
-                     "- ${l.court} ${slot.courtNumber}: ${_formatTime(slot.timeSlot)} - ${_formatTime(slot.timeSlot + 1)} | ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(widget.selectedCourt.pricePerHour)}",
-                     style: const TextStyle(color: AppColors.textBlack, fontSize: 14, fontWeight: FontWeight.w500),
-                   ),
-                 )),
-                 const SizedBox(height: 8),
-                 _buildInfoRow(l.sport, l.badminton),
-                 const SizedBox(height: 8),
-                 _buildInfoRow(l.totalHours, _displayTotalHours(widget.totalHours)),
-                 const SizedBox(height: 8),
-                 _buildInfoRow(l.totalPrice, NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(widget.totalPrice), isTotal: true),
-                 if (vm.appliedBalance > 0) ...[
-                   const SizedBox(height: 8),
-                   _buildInfoRow('Trừ Số Dư Ví', '- ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(vm.appliedBalance)}', color: Colors.green),
-                   const SizedBox(height: 8),
-                   _buildInfoRow('Cần thanh toán', NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(vm.finalAmount), isTotal: true, color: Colors.red),
-                 ],
-               ],
-            ),
-            const SizedBox(height: 24),
-
-            Text(
-              l.customerName,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textGrey),
-            ),
-            const SizedBox(height: 4),
-            TextField(
-              controller: _nameController,
-              onChanged: vm.setCustomerName,
-              decoration: _inputDecoration(l.customerNameHint, Icons.person_outline),
-            ),
-            const SizedBox(height: 16),
-
-            Text(
-              l.customerPhone,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textGrey),
-            ),
-            const SizedBox(height: 4),
-            TextField(
-              controller: _phoneController,
-              onChanged: vm.setCustomerPhone,
-              keyboardType: TextInputType.phone,
-              decoration: _inputDecoration(l.customerPhoneHint, Icons.phone_outlined),
-            ),
-            const SizedBox(height: 16),
-
-            Text(
-              l.noteForOwner,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textGrey),
-            ),
-            const SizedBox(height: 4),
-            TextField(
-              controller: _noteController,
-              onChanged: vm.setNote,
-              maxLines: 2,
-              decoration: _inputDecoration(l.noteHint, null),
-            ),
-            const SizedBox(height: 24),
-
-            // 4. Thanh toán QR (Chỉ hiển thị khi đã tạo Booking PENDING)
-            if (vm.isBookingCreated)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFFF3E0), Color(0xFFFFCC80)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+        // Button hiện khi chưa bấm Xác nhận, ẩn sau khi QR xuất hiện
+        bottomSheet: vm.isQrVisible
+            ? null
+            : Container(
+                color: AppColors.surface,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: vm.isLoading ? null : _onConfirmPayment,
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      l.createPayment,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary, width: 1.5),
                 ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.qr_code_2, color: AppColors.primaryDark),
-                        const SizedBox(width: 8),
-                        Text(
-                          l.scanVietQR,
-                          style: const TextStyle(
-                            color: AppColors.primaryDark,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+              ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionCard(
+                title: l.courtInfo,
+                icon: Icons.map_outlined,
+                children: [
+                  _buildInfoRow(l.clubName, widget.selectedCourt.name),
+                  const SizedBox(height: 8),
+                  _buildInfoRow(l.address, widget.selectedCourt.address),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              _buildSectionCard(
+                title: l.bookingInfo,
+                icon: Icons.calendar_month_outlined,
+                children: [
+                  _buildInfoRow(l.date, DateFormat('dd/MM/yyyy').format(widget.selectedDate)),
+                  const SizedBox(height: 8),
+                  ...sortedSlots.map((slot) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: Text(
+                      "- ${l.court} ${slot.courtNumber}: ${_formatTime(slot.timeSlot)} - ${_formatTime(slot.timeSlot + 1)} | ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(widget.selectedCourt.pricePerHour)}",
+                      style: const TextStyle(color: AppColors.textBlack, fontSize: 14, fontWeight: FontWeight.w500),
+                    ),
+                  )),
+                  const SizedBox(height: 8),
+                  _buildInfoRow(l.sport, l.badminton),
+                  const SizedBox(height: 8),
+                  _buildInfoRow(l.totalHours, _displayTotalHours(widget.totalHours)),
+                  const SizedBox(height: 8),
+                  _buildInfoRow(l.totalPrice, NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(widget.totalPrice), isTotal: true),
+                  if (vm.appliedBalance > 0) ...[
+                    const SizedBox(height: 8),
+                    _buildInfoRow('Trừ Số Dư Ví', '- ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(vm.appliedBalance)}', color: Colors.green),
+                    const SizedBox(height: 8),
+                    _buildInfoRow('Cần thanh toán', NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(vm.finalAmount), isTotal: true, color: Colors.red),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              Text(
+                l.customerName,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textGrey),
+              ),
+              const SizedBox(height: 4),
+              TextField(
+                controller: _nameController,
+                onChanged: vm.setCustomerName,
+                decoration: _inputDecoration(l.customerNameHint, Icons.person_outline),
+              ),
+              const SizedBox(height: 16),
+
+              Text(
+                l.customerPhone,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textGrey),
+              ),
+              const SizedBox(height: 4),
+              TextField(
+                controller: _phoneController,
+                onChanged: vm.setCustomerPhone,
+                keyboardType: TextInputType.phone,
+                decoration: _inputDecoration(l.customerPhoneHint, Icons.phone_outlined),
+              ),
+              const SizedBox(height: 16),
+
+              Text(
+                l.noteForOwner,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textGrey),
+              ),
+              const SizedBox(height: 4),
+              TextField(
+                controller: _noteController,
+                onChanged: vm.setNote,
+                maxLines: 2,
+                decoration: _inputDecoration(l.noteHint, null),
+              ),
+              const SizedBox(height: 24),
+
+              // QR thanh toán (chỉ hiển thị khi user đã bấm Xác nhận)
+              if (vm.isQrVisible)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFF3E0), Color(0xFFFFCC80)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary, width: 1.5),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.qr_code_2, color: AppColors.primaryDark),
+                          const SizedBox(width: 8),
+                          Text(
+                            l.scanVietQR,
+                            style: const TextStyle(
+                              color: AppColors.primaryDark,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        width: 200,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.all(8),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            vm.qrUrl,
+                            fit: BoxFit.contain,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.error_outline, color: Colors.red),
+                                    Text('Lỗi tải QR', style: TextStyle(fontSize: 12)),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      width: 200,
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
                       ),
-                      padding: const EdgeInsets.all(8),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          vm.qrUrl,
-                          fit: BoxFit.contain,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.error_outline, color: Colors.red),
-                                  Text('Lỗi tải QR', style: TextStyle(fontSize: 12)),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                      const SizedBox(height: 12),
+                      Text(
+                        l.waitingPayment,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: AppColors.textBlack, fontSize: 13, fontWeight: FontWeight.bold),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      l.waitingPayment,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.textBlack, fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 10),
-                    // Đồng hồ đếm ngược
-                    Consumer<CheckoutViewModel>(
-                      builder: (_, vm, __) {
-                        final isLow = vm.remainingSeconds <= 60;
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.timer_outlined,
-                              size: 18,
-                              color: isLow ? Colors.red : AppColors.primaryDark,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${l.expiresIn} ${vm.remainingLabel}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                      const SizedBox(height: 10),
+                      // Đồng hồ đếm ngược (không có loading spinner)
+                      Consumer<CheckoutViewModel>(
+                        builder: (_, vm, __) {
+                          final isLow = vm.remainingSeconds <= 60;
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.timer_outlined,
+                                size: 18,
                                 color: isLow ? Colors.red : AppColors.primaryDark,
                               ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    const CircularProgressIndicator(strokeWidth: 2),
-                  ],
+                              const SizedBox(width: 4),
+                              Text(
+                                '${l.expiresIn} ${vm.remainingLabel}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: isLow ? Colors.red : AppColors.primaryDark,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
-              ),
-            const SizedBox(height: 120), // Bottom padding for fixed bottom bar
-          ],
+              const SizedBox(height: 120),
+            ],
+          ),
         ),
-      ),
-      bottomSheet: Container(
-        color: AppColors.surface,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-        child: vm.isBookingCreated
-            ? const SizedBox.shrink()
-            : SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: vm.isLoading ? null : _onConfirmPayment,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    l.createPayment,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
-              ),
       ),
     );
   }
-
   Widget _buildSectionCard({
     required String title,
     required IconData icon,
@@ -632,7 +656,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, 2),
             blurRadius: 8,
           ),

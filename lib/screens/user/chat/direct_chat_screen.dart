@@ -137,7 +137,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
         ),
         backgroundColor: Colors.white,
         elevation: 1,
-        scrolledUnderElevation: 1,
+        
       ),
       body: Column(
         children: [

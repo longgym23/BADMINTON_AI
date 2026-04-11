@@ -84,7 +84,7 @@ class _ChatRoomsListContent extends StatelessWidget {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
-        scrolledUnderElevation: 2,
+        
       ),
       body: body,
       floatingActionButton: _CreateGroupFAB(),

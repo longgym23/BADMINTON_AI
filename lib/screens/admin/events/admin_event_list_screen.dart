@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
+import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
 class AdminEventListScreen extends StatefulWidget {
   const AdminEventListScreen({super.key});
@@ -30,7 +31,6 @@ class _AdminEventListScreenState extends State<AdminEventListScreen> {
         builder: (ctx, setState) {
           return AlertDialog(
             shape: BookingCalendarTheme.dialogShape,
-            backgroundColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
             content: SizedBox(
               width: BookingCalendarTheme.dialogWidth,
@@ -133,22 +133,12 @@ class _AdminEventListScreenState extends State<AdminEventListScreen> {
     final ownerId = isCourtOwner ? auth.userId : null;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
+      appBar: CustomGradientAppBar(
         title: const Text(
           'Quản lý sự kiện',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Column(
@@ -368,7 +358,6 @@ class _AdminEventListScreenState extends State<AdminEventListScreen> {
           );
           setState(() {});
         },
-        backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Thêm sự kiện', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),

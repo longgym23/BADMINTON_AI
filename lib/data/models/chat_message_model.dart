@@ -33,8 +33,10 @@ class ChatMessageModel {
           : DateTime.now(),
       imagePath: data['image_path'],
       audioPath: data['audio_path'],
-      type: 'text', // Bảng chat_messages chưa có cột type, mặc định text
-      metadata: null, // Bảng chưa có metadata
+      type: (data['type'] as String?) ?? 'text',
+      metadata: data['metadata'] is Map<String, dynamic>
+          ? (data['metadata'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -46,6 +48,8 @@ class ChatMessageModel {
       'is_user': isUser,
       'image_path': imagePath,
       'audio_path': audioPath,
+      'type': type,
+      'metadata': metadata,
       // 'created_at': Supabase tự sinh
     };
   }

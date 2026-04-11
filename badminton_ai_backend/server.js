@@ -46,32 +46,32 @@ if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_API_KEY_PLACEHOLDER') {
 let genAI;
 let model;
 let visionModel;
+let embedModel;
 try {
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
   visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  // Embedding model for RAG retrieval (default dimension expected 768)
+  const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2-preview'; // 3072 dim – khớp với migration 0005
+  embedModel = genAI.getGenerativeModel({ model: embeddingModelName });
 } catch (error) {
   console.error('Lỗi khởi tạo Gemini (kiểm tra API Key?):', error);
 }
 
-// Định nghĩa System Prompt - Tối ưu Token với RAG thực sự
+// Định nghĩa System Prompt - Tối ưu Token với RAG & JSON format
 const systemPrompt =
-  `Bạn là trợ lý ảo cho ứng dụng đặt sân thể thao 'KLOO'. Hỗ trợ các môn: cầu lông, bóng đá, tennis, pickleball.
-Nhiệm vụ của bạn là trả lời các câu hỏi của người dùng một cách thân thiện, ngắn gọn và hữu ích.
-1. Cách đặt sân: Người dùng chọn ngày, chọn sân, sau đó chọn giờ và sân con trên biểu đồ.
-2. Cách hủy sân: Người dùng vào Tab "Tài khoản" -> "Lịch sử đặt sân" và nhấn nút hủy.
-3. Giá cả: Giá được hiển thị khi chọn sân.
-4. Nội quy sân: Sân phải đặt trước tối thiểu 2 tiếng. Hủy trước 2 tiếng được hoàn tiền 100%, hủy trong vòng 2 tiếng không hoàn tiền.
-5. Thống kê chi tiêu: Người dùng có thể xem trong tab "Tài khoản" -> "Lịch sử chi tiêu".
-6. Lịch đặt: Xem trong tab "Tài khoản" -> "Lịch sử đặt sân".
-7. Lời khuyên thể thao: Gợi ý các môn thể thao và đồ dùng phù hợp.
-8. Hướng dẫn sử dụng đồ dùng: Cung cấp thông tin về cách sử dụng vợt, giày, và các đồ dùng thể thao.
-QUAN TRỌNG:
-- Trả lời bằng văn bản thuần túy, KHÔNG sử dụng markdown formatting như dấu *, **, #, hoặc các ký hiệu định dạng khác.
-- Khi người dùng muốn tìm/đặt sân, chèn mã [ACTION_SEARCH:mon_the_thao] vào cuối câu.
-- Khi người dùng muốn xem lịch đặt, chèn mã [ACTION_VIEW_SCHEDULE] vào cuối câu.
-- Khi người dùng muốn xem chi tiêu, chèn mã [ACTION_VIEW_EXPENSE] vào cuối câu.
-- Khi người dùng muốn hủy sân, chèn mã [ACTION_CANCEL_BOOKING] vào cuối câu.`;
+  `Bạn là trợ lý AI chuyên nghiệp của Hệ thống quản lý đặt sân cầu lông 'KLOO'.
+Nhiệm vụ của bạn là giải đáp các thắc mắc về hệ thống đặt sân, nội quy, chính sách hoàn tiền, giá cả sân bãi và các câu hỏi thường gặp.
+ĐẶC BIỆT LƯU Ý: 
+1. Chỉ dựa vào kiến thức cung cấp trong phần SOURCES để trả lời nội quy, chính sách, giá cả. Tuyệt đối KHÔNG tự bịa ra chính sách hoặc thông tin giá cả nếu SOURCES không có. Nếu tìm không thấy, hãy nói bạn không có thông tin.
+2. Ứng dụng chuyên môn về môn CẦU LÔNG. Từ chối trả lời lịch sự nếu câu hỏi hoàn toàn nằm ngoài nghiệp vụ thể thao hoặc đặt sân.
+3. KHÔNG sử dụng Markdown (như *, **, #) trong nội dung answer. Nội dung phải là dạng text thuần (plain text).
+4. Tự động nhận diện Action mà người dùng có ý định muốn thực hiện:
+ - "search_courts": Khi user muốn tìm sân, xem danh sách sân, đặt lịch.
+ - "view_schedule": Khi user muốn xem lịch hẹn trình, quản lý lịch đã đặt của tôi.
+ - "cancel_booking": Khi user muốn hủy lịch đã đặt.
+ - "view_expense": Khi user muốn xem số dư, nạp ví, chi tiêu.
+ - "none": Hỏi đáp thông thường.`;
 
 // Khởi tạo Express app
 const app = express();
@@ -137,6 +137,87 @@ async function getUserContext(userId) {
   }
 }
 
+async function embedText(text) {
+  if (!embedModel) throw new Error('Embedding model chưa sẵn sàng.');
+  // outputDimensionality: 1536 – khớp với vector(1536) trong Supabase
+  const res = await embedModel.embedContent({
+    content: { parts: [{ text }], role: 'user' },
+    outputDimensionality: 1536,
+  });
+  const v =
+    res?.embedding?.values ||
+    res?.embedding?.value ||
+    res?.embedding ||
+    res?.data?.[0]?.embedding;
+  if (!Array.isArray(v)) {
+    throw new Error('Embedding API trả về dữ liệu không hợp lệ.');
+  }
+  return v;
+}
+
+async function retrieveKnowledge({ userPrompt, tags }) {
+  if (!supabaseAdmin) return [];
+  try {
+    const queryEmbedding = await embedText(userPrompt);
+    const { data, error } = await supabaseAdmin.rpc('match_kb_chunks', {
+      query_embedding: queryEmbedding,
+      match_count: 6,
+      filter_tags: tags && tags.length ? tags : null,
+    });
+    if (error) {
+      console.error('RAG retrieve error:', error);
+      return [];
+    }
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error('RAG retrieve exception:', e);
+    return [];
+  }
+}
+
+function buildSourcesBlock(rows) {
+  if (!rows || rows.length === 0) return '';
+  const lines = rows.map((r, idx) => {
+    const source = r.source || r.title || 'KB';
+    const id = `S${idx + 1}`;
+    return `${id} | ${source} | ${String(r.content || '').replace(/\s+/g, ' ').trim()}`;
+  });
+  return `SOURCES:\n${lines.join('\n')}\n`;
+}
+
+function safeJsonParse(text) {
+  if (!text || typeof text !== 'string') return null;
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    // try to extract JSON from a larger text blob
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      try {
+        return JSON.parse(text.slice(start, end + 1));
+      } catch (_) {}
+    }
+    return null;
+  }
+}
+
+function normalizeAction(action) {
+  const a = action && typeof action === 'object' ? action : {};
+  const type = typeof a.type === 'string' ? a.type : 'none';
+  const allowed = new Set([
+    'search_courts',
+    'view_schedule',
+    'view_expense',
+    'cancel_booking',
+    'none',
+  ]);
+  if (!allowed.has(type)) return { type: 'none' };
+  const out = { type };
+  if (type === 'search_courts' && typeof a.sport === 'string') out.sport = a.sport;
+  return out;
+}
+
 // Định nghĩa Endpoint '/ask' - xử lý cả text và ảnh với RAG
 app.post('/ask', upload.single('image'), async (req, res) => {
   const imageFile = req.file;
@@ -145,7 +226,20 @@ app.post('/ask', upload.single('image'), async (req, res) => {
 
   // Lấy ngữ cảnh người dùng qua RAG
   const userContext = await getUserContext(userId);
-  const fullPrompt = `${systemPrompt}\n\n${userContext}\n\nUSER_ASK: ${userPrompt}`;
+  const kbRows = await retrieveKnowledge({ userPrompt, tags: null });
+  const sourcesBlock = buildSourcesBlock(kbRows);
+
+  const fullPrompt =
+    `${systemPrompt}\n\n` +
+    `Bạn PHẢI trả về JSON hợp lệ theo schema sau (KHÔNG thêm text ngoài JSON):\n` +
+    `{\n` +
+    `  "answer": "string (plain text, không markdown)",\n` +
+    `  "action": { "type": "search_courts|view_schedule|view_expense|cancel_booking|none", "sport": "badminton|football|tennis|pickleball (optional)" },\n` +
+    `  "used_sources": ["S1","S2"]\n` +
+    `}\n\n` +
+    `${sourcesBlock}\n` +
+    `${userContext}\n\n` +
+    `USER_ASK: ${userPrompt}`;
 
   // Nếu có ảnh, xử lý với Vision API
   if (imageFile) {
@@ -178,25 +272,56 @@ app.post('/ask', upload.single('image'), async (req, res) => {
       const response = result.response;
       if (!response) {
         cleanupFile(imageFile.path);
-        return res.status(500).json({ error: 'AI không thể phân tích ảnh.' });
+        return res.json({
+          answer: 'Xin lỗi bạn, mình chưa thể phân tích được ảnh này ạ. Bạn có thể gửi lại hoặc hỏi mình bằng tin nhắn nhé!',
+          action: { type: 'none' },
+          citations: []
+        });
       }
 
       let text = response.text();
       cleanupFile(imageFile.path);
 
       if (!text || text.trim().length === 0) {
-        return res.status(500).json({ error: 'AI không thể tạo câu trả lời từ ảnh.' });
+        return res.json({
+          answer: 'Xin lỗi bạn, mình không thể tạo câu trả lời từ ảnh này ạ. Bạn hãy thử gửi ảnh khác hoặc hỏi mình bằng văn bản nhé!',
+          action: { type: 'none' },
+          citations: []
+        });
       }
 
       // Loại bỏ markdown formatting
       text = removeMarkdown(text);
 
-      res.json({ answer: text });
+      // Vision path: best-effort JSON parse, but allow legacy plain text.
+      const parsed = safeJsonParse(text);
+      if (parsed && typeof parsed.answer === 'string') {
+        return res.json({
+          answer: removeMarkdown(parsed.answer),
+          action: normalizeAction(parsed.action),
+          citations: (kbRows || []).map((r, idx) => ({
+            id: `S${idx + 1}`,
+            document_id: r.document_id,
+            chunk_id: r.chunk_id,
+            title: r.title,
+            source: r.source,
+            url: r.url,
+            excerpt: r.content?.slice(0, 240) || '',
+            similarity: r.similarity,
+          })),
+        });
+      }
+
+      res.json({ answer: text, action: { type: 'none' }, citations: [] });
       return;
     } catch (error) {
       cleanupFile(imageFile.path);
-      console.error('Lỗi khi xử lý ảnh với Gemini:', error);
-      res.status(500).json({ error: 'Đã xảy ra lỗi khi xử lý ảnh.' });
+      // Trả lời lịch sự thay vì báo lỗi — ảnh có thể không liên quan hoặc bị Gemini reject
+      res.json({
+        answer: 'Xin lỗi bạn, mình không thể xử lý hình ảnh này ạ. Hình ảnh có vẻ không liên quan đến thể thao hoặc đặt sân cầu lông. Bạn có thể gửi ảnh sân bãi, dụng cụ thể thao hoặc hỏi mình bằng tin nhắn nhé!',
+        action: { type: 'none' },
+        citations: []
+      });
       return;
     }
   }
@@ -235,7 +360,30 @@ app.post('/ask', upload.single('image'), async (req, res) => {
     // Loại bỏ markdown formatting
     text = removeMarkdown(text);
 
-    res.json({ answer: text });
+    const parsed = safeJsonParse(text);
+    if (parsed && typeof parsed.answer === 'string') {
+      const used = Array.isArray(parsed.used_sources) ? parsed.used_sources : [];
+      const citations = (kbRows || []).map((r, idx) => ({
+        id: `S${idx + 1}`,
+        document_id: r.document_id,
+        chunk_id: r.chunk_id,
+        title: r.title,
+        source: r.source,
+        url: r.url,
+        excerpt: r.content?.slice(0, 240) || '',
+        similarity: r.similarity,
+      }));
+
+      return res.json({
+        answer: removeMarkdown(parsed.answer),
+        action: normalizeAction(parsed.action),
+        used_sources: used,
+        citations,
+      });
+    }
+
+    // Backward compatible response
+    res.json({ answer: text, action: { type: 'none' }, citations: [] });
   } catch (error) {
     console.error('Lỗi khi gọi Gemini API:', error);
     res.status(500).json({ error: 'Đã xảy ra lỗi khi kết nối với AI.' });

@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "ingest:kb:file": "node ingest_kb.js --file",
+    "ingest:kb:courts": "node ingest_kb.js --courts --tags courts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

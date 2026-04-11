@@ -223,6 +223,7 @@ class _HomeTabState extends State<HomeTab> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false, // Bàn phím trượt đè lên chống đẩy UI
       body: Column(
         children: [
           _buildHeader(user),
@@ -237,13 +238,16 @@ class _HomeTabState extends State<HomeTab> {
   Widget _buildHeader(user) {
     return Container(
       padding: const EdgeInsets.only(top: 50, left: 16, right: 16, bottom: 20),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.brandOrangeDark, AppColors.brandOrangeLight],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: const AssetImage('assets/images/home.jpg'),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            AppColors.brandOrange.withValues(alpha: 0.4), // Darken slightly for readability of white text
+            BlendMode.darken,
+          ),
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
       ),
       child: Column(
         children: [
