@@ -47,6 +47,7 @@ app.*.map.json
 # Supabase DB schema/migrations (Ẩn khỏi Git theo yêu cầu)
 supabase/migrations/
 docs
+fix
 
 # API Keys (KHÔNG push lên Git)
 lib/config/api_keys.dart
