@@ -38,6 +38,11 @@ class CustomGradientAppBar extends StatelessWidget implements PreferredSizeWidge
       titleSpacing: titleSpacing,
       backgroundColor: Colors.transparent, // Trong suốt để thấy Gradient bên dưới
       foregroundColor: Colors.white, // Text nổi lên sẽ mang màu trắng
+      titleTextStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+      ),
       iconTheme: iconTheme ?? const IconThemeData(color: Colors.white),
       flexibleSpace: Container(
         decoration: const BoxDecoration(

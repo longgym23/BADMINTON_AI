@@ -10,6 +10,9 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
+import 'package:badminton_ai/widgets/app_toast.dart';
+import 'package:badminton_ai/utils/dialog_utils.dart';
+import 'package:flutter/cupertino.dart';
 
 /// Card hiển thị thông tin 1 booking (nhóm slot liên tiếp).
 class BookingCard extends StatelessWidget {
@@ -64,67 +67,55 @@ class BookingCard extends StatelessWidget {
     );
 
     final diffHours = bookingTime.difference(now).inHours;
+    final diffMinutes = bookingTime.difference(now).inMinutes;
+
+    // Ngưỡng hoàn tiền 3 mức
     int expectedRefund = 0;
     String refundMsg = "";
-    
-    if (diffHours >= 24) {
+
+    if (diffHours >= 2) {
       expectedRefund = group.price;
-      refundMsg = "Bạn huỷ trước 24h, hệ thống sẽ hoàn 100% (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(expectedRefund)}) vào Số Dư Ví trên App.";
-    } else if (diffHours >= 12) {
+      refundMsg = "Bạn hủy trước 2 giờ, hệ thống sẽ hoàn 100% (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(expectedRefund)}) vào Số Dư Ví.";
+    } else if (diffMinutes > 0) {
       expectedRefund = (group.price * 0.5).toInt();
-      refundMsg = "Bạn huỷ trước dưới 24h và trên 12h, bạn chỉ được hoàn 50% (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(expectedRefund)}) vào Số Dư Ví.";
+      refundMsg = "Bạn hủy trong vòng 2 giờ (chưa tới giờ chơi), sẽ được hoàn 50% (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(expectedRefund)}) vào Số Dư Ví.";
     } else {
       expectedRefund = 0;
-      refundMsg = "Bạn huỷ sân quá sát giờ chơi (< 12h), bạn sẽ không được hoàn cọc theo quy định.";
+      refundMsg = "Đã tới hoặc quá giờ chơi, bạn sẽ không được hoàn tiền theo quy định.";
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Xác nhận Huỷ sân"),
-        content: Text("Bạn có chắc chắn muốn huỷ lịch đặt sân này?\n\n$refundMsg"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text("Không", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
-            child: const Text("Xác nhận Huỷ"),
-          ),
-        ],
-      ),
+    DialogUtils.showConfirmDialog(
+      context,
+      title: "Xác nhận hủy sân",
+      content: "Bạn có chắc chắn muốn hủy lịch đặt sân này?\n\n$refundMsg",
+      confirmText: "Xác nhận hủy",
+      cancelText: "Không",
+      isDestructive: true,
+      onConfirm: () async {
+        // Hiển thị dialog đang tải
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator()),
+        );
+
+        try {
+          for (var item in group.items) {
+            await repo.cancelBookingWithRefund(item);
+          }
+          if (context.mounted) {
+            await context.read<AppAuthProvider>().reloadUserModel();
+            Navigator.pop(context); // Tắt loading
+            AppToast.show(context, 'Đã huỷ sân thành công. Số dư ví đã được cập nhật!', type: ToastType.success);
+          }
+        } catch (e) {
+          if (context.mounted) {
+            Navigator.pop(context); // Tắt loading
+            AppToast.show(context, 'Lỗi khi huỷ sân: $e', type: ToastType.error);
+          }
+        }
+      },
     );
-
-    if (confirmed == true) {
-      // Hiển thị dialog đang tải
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-
-      try {
-        for (var item in group.items) {
-          await repo.cancelBookingWithRefund(item);
-        }
-        if (context.mounted) {
-          await context.read<AppAuthProvider>().reloadUserModel();
-          Navigator.pop(context); // Tắt loading
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã huỷ sân thành công. Số dư ví đã được cập nhật!')),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          Navigator.pop(context); // Tắt loading
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Lỗi khi huỷ sân: $e')),
-          );
-        }
-      }
-    }
   }
 
   @override
@@ -253,9 +244,7 @@ class BookingCard extends StatelessWidget {
                 else
                   TextButton.icon(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l.rebookComingSoon)),
-                      );
+                      AppToast.show(context, l.rebookComingSoon, type: ToastType.success);
                     },
                     icon: const Icon(Icons.refresh, size: 15, color: AppColors.primary),
                     label: Text(l.rebook, style: const TextStyle(color: AppColors.primary)),

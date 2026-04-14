@@ -116,23 +116,50 @@ class FriendRepository {
 
   /// Chấp nhận lời mời kết bạn (accepted)
   Future<void> acceptFriendRequest(String userId1, String userId2) async {
-    String id1 = userId1.compareTo(userId2) < 0 ? userId1 : userId2;
-    String id2 = userId1.compareTo(userId2) > 0 ? userId1 : userId2;
-
-    await _client.from('friendships').update({'status': 'accepted'}).match({
-      'user_id1': id1,
-      'user_id2': id2,
-    });
+    await _client.from('friendships').update({'status': 'accepted'}).or(
+      'and(user_id1.eq.$userId1,user_id2.eq.$userId2),and(user_id1.eq.$userId2,user_id2.eq.$userId1)'
+    );
   }
 
   /// Xóa bạn (hoặc hủy lời mời)
   Future<void> removeFriend(String userId1, String userId2) async {
-    String id1 = userId1.compareTo(userId2) < 0 ? userId1 : userId2;
-    String id2 = userId1.compareTo(userId2) > 0 ? userId1 : userId2;
+    try {
+      // Tìm chính xác dòng quan hệ (thử cả 2 chiều)
+      final rows = await _client.from('friendships')
+        .select()
+        .or('and(user_id1.eq.$userId1,user_id2.eq.$userId2),and(user_id1.eq.$userId2,user_id2.eq.$userId1)');
 
-    await _client.from('friendships').delete().match({
-      'user_id1': id1,
-      'user_id2': id2,
-    });
+      if (rows.isNotEmpty) {
+        final Map<String, dynamic> row = rows.first;
+        final validId1 = row['user_id1'];
+        final validId2 = row['user_id2'];
+
+        // Thử xoá và yêu cầu trả về dữ liệu (để kiểm tra xem có xoá được thật không)
+        final deletedRows = await _client.from('friendships')
+            .delete()
+            .match({'user_id1': validId1, 'user_id2': validId2})
+            .select();
+
+        // Nếu deletedRows rỗng nghĩa là RLS policy đã CHẶN lệnh DELETE!
+        if (deletedRows.isEmpty) {
+          // Thử UPDATE chuyển status về rejected
+          final updatedRows = await _client.from('friendships')
+              .update({'status': 'rejected'})
+              .match({'user_id1': validId1, 'user_id2': validId2})
+              .select();
+              
+          if (updatedRows.isEmpty) {
+             throw Exception('Hành động bị chặn bởi bảo mật CSDL (Row-Level Security của Supabase). Hãy kiểm tra lại policy bảng friendships.');
+          }
+        }
+      } else {
+        throw Exception('Không tìm thấy dữ liệu bạn bè trên hệ thống.');
+      }
+    } catch (e) {
+      print("Lỗi khi xóa bạn: $e");
+      rethrow;
+    }
   }
+
+
 }

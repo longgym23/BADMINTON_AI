@@ -1,6 +1,7 @@
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/screens/user/booking/event_checkout_screen.dart';
+import 'package:badminton_ai/utils/notification_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
@@ -242,7 +243,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
-                    onPressed: () {},
+                    onPressed: () => NotificationUtils.showComingSoon(context),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: AppColors.primary),
                       shape: RoundedRectangleBorder(

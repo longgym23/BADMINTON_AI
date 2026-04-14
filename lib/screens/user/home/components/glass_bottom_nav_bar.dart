@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
+import 'package:provider/provider.dart';
+import 'package:badminton_ai/providers/unread_count_provider.dart';
 
 class GlassBottomNavBar extends StatefulWidget {
   final int currentIndex;
@@ -40,6 +42,11 @@ class _GlassBottomNavBarState extends State<GlassBottomNavBar> {
   Widget build(BuildContext context) {
     int mappedIndex = _getMappedIndex(widget.currentIndex);
     bool isMainTab = mappedIndex != -1;
+    
+    // Đọc số tin nhắn chưa đọc
+    // Sử dụng _ từ provider nếu import chưa sẵn, nhưng phải listen
+    // Tạm chưa có context.watch nên phải thêm import
+    final unreadCount = context.watch<UnreadCountProvider>().unreadCount;
 
     return Positioned(
       bottom: 24,
@@ -54,6 +61,7 @@ class _GlassBottomNavBarState extends State<GlassBottomNavBar> {
               borderRadius: BorderRadius.circular(40),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                blendMode: BlendMode.srcOver,
                 child: Container(
                   height: 68,
                   decoration: BoxDecoration(
@@ -261,6 +269,7 @@ class _GlassBottomNavBarState extends State<GlassBottomNavBar> {
                                   3,
                                   itemWidth,
                                   visualRealIndex,
+                                  badgeCount: unreadCount,
                                 ),
                                 _buildNavItem(
                                   Icons.person_rounded,
@@ -286,6 +295,7 @@ class _GlassBottomNavBarState extends State<GlassBottomNavBar> {
             borderRadius: BorderRadius.circular(34),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              blendMode: BlendMode.srcOver,
               child: GestureDetector(
                 onTap: () => widget.onTap(2),
                 child: AnimatedContainer(
@@ -347,8 +357,31 @@ class _GlassBottomNavBarState extends State<GlassBottomNavBar> {
     double width,
     int visualCurrentIndex, {
     String? assetIcon,
+    int badgeCount = 0,
   }) {
     final isSelected = visualCurrentIndex == index;
+
+    Widget iconWidget = assetIcon != null
+        ? Image.asset(
+            assetIcon,
+            height: 24,
+            width: 24,
+            color: isSelected ? AppColors.primary : AppColors.textGrey,
+          )
+        : Icon(
+            defaultIcon,
+            color: isSelected ? AppColors.primary : AppColors.textGrey,
+            size: 26,
+          );
+
+    if (badgeCount > 0) {
+      iconWidget = Badge(
+        label: Text(
+          badgeCount > 99 ? '99+' : badgeCount.toString(),
+        ),
+        child: iconWidget,
+      );
+    }
 
     return SizedBox(
       width: width,
@@ -359,18 +392,7 @@ class _GlassBottomNavBarState extends State<GlassBottomNavBar> {
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeOutBack,
             transform: Matrix4.translationValues(0, isSelected ? -2.0 : 0.0, 0),
-            child: assetIcon != null
-                ? Image.asset(
-                    assetIcon,
-                    height: 24,
-                    width: 24,
-                    color: isSelected ? AppColors.primary : AppColors.textGrey,
-                  )
-                : Icon(
-                    defaultIcon,
-                    color: isSelected ? AppColors.primary : AppColors.textGrey,
-                    size: 26,
-                  ),
+            child: iconWidget,
           ),
           const SizedBox(height: 2),
           DefaultTextStyle(

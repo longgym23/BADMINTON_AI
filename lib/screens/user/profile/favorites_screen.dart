@@ -14,7 +14,7 @@ class FavoritesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: const Text('Sân yêu thích'),
+        title: Text('Sân yêu thích', style: TextStyle(color: Colors.white)),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),

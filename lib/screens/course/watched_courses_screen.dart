@@ -25,7 +25,7 @@ class _WatchedCoursesScreenState extends State<WatchedCoursesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: const Text('Đã xem gần đây'),
+        title: const Text('Đã xem gần đây', style: TextStyle(color: Colors.white)),
       ),
       body: Consumer<CourseProvider>(
         builder: (context, provider, child) {

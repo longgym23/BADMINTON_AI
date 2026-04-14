@@ -1,6 +1,7 @@
 import 'package:badminton_ai/l10n/generated/app_localizations.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/viewmodels/booking_history_viewmodel.dart';
+import 'package:badminton_ai/viewmodels/mixins/filterable_viewmodel_mixin.dart';
 import 'package:badminton_ai/screens/user/booking/components/booking_history/calendar_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -41,6 +42,7 @@ class FilterRow extends StatelessWidget {
         builder: (ctx, setState) => AlertDialog(
           shape: BookingCalendarTheme.dialogShape,
           backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           content: SizedBox(
             width: BookingCalendarTheme.dialogWidth,
             child: Column(
@@ -55,6 +57,7 @@ class FilterRow extends StatelessWidget {
                 GridView.count(
                   crossAxisCount: 4,
                   shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
                   childAspectRatio: 1.4,
@@ -106,6 +109,7 @@ class FilterRow extends StatelessWidget {
         builder: (ctx, setState) => AlertDialog(
           shape: BookingCalendarTheme.dialogShape,
           backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
           content: SizedBox(
             width: BookingCalendarTheme.dialogWidth,
@@ -121,6 +125,7 @@ class FilterRow extends StatelessWidget {
                 GridView.count(
                   crossAxisCount: 3,
                   shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
                   childAspectRatio: 1.6,

@@ -304,16 +304,25 @@ class _MapTabContentState extends State<_MapTabContent> {
                       if (_searchFocusNode.hasFocus && vm.searchResults.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                          child: Card(
-                            elevation: 8,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            child: Container(
-                              constraints: const BoxConstraints(maxHeight: 280),
-                              child: ListView.separated(
+                          child: Container(
+                            constraints: const BoxConstraints(maxHeight: 300),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.12),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: ListView.builder(
                                 shrinkWrap: true,
-                                padding: EdgeInsets.zero,
+                                padding: const EdgeInsets.symmetric(vertical: 8),
                                 itemCount: vm.searchResults.length,
-                                separatorBuilder: (_, __) => const Divider(height: 1),
                                 itemBuilder: (context, index) {
                                   final court = vm.searchResults[index];
                                   final isHistory = vm.searchQuery.trim().isEmpty;
@@ -331,18 +340,10 @@ class _MapTabContentState extends State<_MapTabContent> {
                                   else if (inferredSport.contains('foot') || inferredSport.contains('bóng')) sType = SportType.football;
                                   else if (inferredSport.contains('tennis')) sType = SportType.tennis;
 
-                                  return ListTile(
-                                    leading: Icon(
-                                      isHistory ? Icons.history : Icons.location_on, 
-                                      color: isHistory ? Colors.grey : Colors.red
-                                    ),
-                                    title: Text(court.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    subtitle: Text(court.address, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
-                                    trailing: SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: _getAvatarForSport(sType, true, AppColors.primary),
-                                    ),
+                                  final sportColor = _getSportColor(sType);
+                                  final sportLabel = _getSportLabel(sType);
+
+                                  return InkWell(
                                     onTap: () {
                                       _searchController.text = court.name;
                                       vm.setSearchQuery(court.name);
@@ -353,6 +354,74 @@ class _MapTabContentState extends State<_MapTabContent> {
                                       _searchFocusNode.unfocus();
                                       FocusScope.of(context).unfocus();
                                     },
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 40,
+                                            height: 40,
+                                            decoration: BoxDecoration(
+                                              color: isHistory
+                                                  ? Colors.grey.shade100
+                                                  : sportColor.withOpacity(0.12),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Icon(
+                                              isHistory ? Icons.history_rounded : Icons.place_rounded,
+                                              color: isHistory ? Colors.grey.shade500 : sportColor,
+                                              size: 20,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  court.name,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14,
+                                                    color: Color(0xFF1A1A2E),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  court.address,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey.shade500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: sportColor.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(20),
+                                              border: Border.all(color: sportColor.withOpacity(0.3)),
+                                            ),
+                                            child: Text(
+                                              sportLabel,
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                                color: sportColor,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   );
                                 },
                               ),
@@ -495,59 +564,233 @@ class _MapTabContentState extends State<_MapTabContent> {
 
   // Removed _buildBottomCard and _buildSmallCourtCard as they are now replaced by CourtDetailSheet inline
 
+  Color _getSportColor(SportType type) {
+    switch (type) {
+      case SportType.pickleball: return const Color(0xFF3B82F6);
+      case SportType.football:   return const Color(0xFFF97316);
+      case SportType.tennis:     return const Color(0xFF8B5CF6);
+      default:                   return AppColors.primary;
+    }
+  }
+
+  String _getSportLabel(SportType type) {
+    switch (type) {
+      case SportType.pickleball: return 'Pickleball';
+      case SportType.football:   return 'Bóng đá';
+      case SportType.tennis:     return 'Tennis';
+      default:                   return 'Cầu lông';
+    }
+  }
+
+  SportType _inferSportType(CourtLocationModel court) {
+    String? s = court.sportType?.toLowerCase();
+    if (s == null || s.isEmpty) {
+      final n = court.name.toLowerCase();
+      if (n.contains('pickle')) s = 'pickleball';
+      else if (n.contains('bóng đá') || n.contains('football')) s = 'football';
+      else if (n.contains('tennis')) s = 'tennis';
+      else s = 'badminton';
+    }
+    if (s.contains('pickle')) return SportType.pickleball;
+    if (s.contains('foot') || s.contains('bóng')) return SportType.football;
+    if (s.contains('tennis')) return SportType.tennis;
+    return SportType.badminton;
+  }
+
   Widget _buildNearbyListCard(MapViewModel vm) {
     final courts = vm.courtsSortedByDistance.take(15).toList();
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      elevation: 8,
-      color: Colors.white,
-      margin: EdgeInsets.zero,
-      child: Container(
-        height: MediaQuery.of(context).size.height * 0.4,
-        padding: const EdgeInsets.only(top: 12),
-        child: Column(
-          children: [
-            Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
-            ),
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text('Sân gần đây & Đã tìm kiếm', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-            Expanded(
-              child: ListView.separated(
-                itemCount: courts.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final court = courts[index];
-                  String distanceStr = '';
-                  if (vm.currentPosition.latitude != 21.028511) {
-                    final dist = Geolocator.distanceBetween(
-                      vm.currentPosition.latitude, vm.currentPosition.longitude, court.latitude, court.longitude);
-                    distanceStr = '${(dist / 1000).toStringAsFixed(1)}km';
-                  }
-                  
-                  return ListTile(
-                    leading: const Icon(Icons.history, color: Colors.grey),
-                    title: Text(court.name, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    subtitle: Text(
-                      distanceStr.isNotEmpty ? '($distanceStr) ${court.address}' : court.address,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: const Icon(Icons.turn_right, color: Colors.grey),
-                    onTap: () {
-                      vm.selectCourt(court);
-                      _mapController?.animateCamera(
-                        CameraUpdate.newLatLngZoom(LatLng(court.latitude, court.longitude), 16.0),
-                      );
-                    },
-                  );
-                },
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.42,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FE),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 30,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // ── Handle bar ──
+          Padding(
+            padding: const EdgeInsets.only(top: 10, bottom: 4),
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-          ],
-        ),
+          ),
+
+          // ── Header title ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Row(
+              children: [
+                Icon(Icons.place_rounded, color: AppColors.primary, size: 18),
+                const SizedBox(width: 8),
+                const Text(
+                  'Sân gần đây & Đã tìm kiếm',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── List ──
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              itemCount: courts.length,
+              itemBuilder: (context, index) {
+                final court = courts[index];
+                final sType = _inferSportType(court);
+                final sportColor = _getSportColor(sType);
+                final sportLabel = _getSportLabel(sType);
+
+                String distanceStr = '';
+                if (vm.currentPosition.latitude != 21.028511) {
+                  final dist = Geolocator.distanceBetween(
+                    vm.currentPosition.latitude, vm.currentPosition.longitude,
+                    court.latitude, court.longitude,
+                  );
+                  distanceStr = '${(dist / 1000).toStringAsFixed(1)}km';
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    elevation: 0,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        vm.selectCourt(court);
+                        _mapController?.animateCamera(
+                          CameraUpdate.newLatLngZoom(
+                            LatLng(court.latitude, court.longitude), 16.0),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade100),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            // Sport icon
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: sportColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Center(
+                                child: _getAvatarForSport(sType, false, sportColor),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Name & address
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    court.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: Color(0xFF1A1A2E),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    court.address,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Right side: distance + sport badge
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                if (distanceStr.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          AppColors.primary,
+                                          AppColors.primary.withOpacity(0.75),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      distanceStr,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: sportColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    sportLabel,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: sportColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

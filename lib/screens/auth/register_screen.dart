@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -158,7 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final authProvider = context.watch<AppAuthProvider>();
     final isLoading = authProvider.authState == AuthState.loading;
     final size = MediaQuery.of(context).size;
-    final imageH = size.height * 0.38;
+    final imageH = size.height * 0.30;
 
     return Scaffold(
       backgroundColor: Colors.white,

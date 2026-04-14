@@ -4,20 +4,34 @@ import 'package:badminton_ai/screens/user/chat/direct_chat_screen.dart';
 import 'package:badminton_ai/screens/user/chat/create_group_screen.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/blocs/chat_rooms/chat_rooms_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
+import 'package:badminton_ai/providers/friend_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 // ─────────────────────────────────────────────
 // Entry point
 // ─────────────────────────────────────────────
-class ChatRoomsListScreen extends StatelessWidget {
+class ChatRoomsListScreen extends StatefulWidget {
   final bool isEmbedded;
+  final String roomType; // 'all', 'direct', 'group'
 
-  const ChatRoomsListScreen({super.key, this.isEmbedded = false});
+  const ChatRoomsListScreen({
+    super.key,
+    this.isEmbedded = false,
+    this.roomType = 'all',
+  });
 
+  @override
+  State<ChatRoomsListScreen> createState() => _ChatRoomsListScreenState();
+}
+
+class _ChatRoomsListScreenState extends State<ChatRoomsListScreen> {
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
   @override
   Widget build(BuildContext context) {
     final userId = context.read<AppAuthProvider>().userModel?.id;
@@ -29,7 +43,42 @@ class ChatRoomsListScreen extends StatelessWidget {
       create: (context) =>
           ChatRoomsBloc(chatRoomRepository: context.read<ChatRoomRepository>())
             ..add(ChatRoomsLoadStarted(userId: userId)),
-      child: _ChatRoomsListContent(isEmbedded: isEmbedded),
+      child: Column(
+        children: [
+          _buildSearchField(),
+          Expanded(
+            child: _ChatRoomsListContent(
+              isEmbedded: widget.isEmbedded,
+              roomType: widget.roomType,
+              searchQuery: _searchQuery,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.grey[200]!.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: TextField(
+          controller: _searchController,
+          onChanged: (val) => setState(() => _searchQuery = val),
+          decoration: InputDecoration(
+            hintText: 'Tìm kiếm người dùng hoặc nhóm...',
+            hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+            prefixIcon: Icon(Icons.search, color: Colors.grey[500], size: 20),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -39,8 +88,14 @@ class ChatRoomsListScreen extends StatelessWidget {
 // ─────────────────────────────────────────────
 class _ChatRoomsListContent extends StatelessWidget {
   final bool isEmbedded;
+  final String roomType;
+  final String searchQuery;
 
-  const _ChatRoomsListContent({required this.isEmbedded});
+  const _ChatRoomsListContent({
+    required this.isEmbedded,
+    required this.roomType,
+    required this.searchQuery,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -55,9 +110,34 @@ class _ChatRoomsListContent extends StatelessWidget {
         }
         if (state is ChatRoomsError) return _ErrorView(error: state.error);
         if (state is ChatRoomsLoaded) {
-          return state.rooms.isEmpty
+          var filteredRooms = state.rooms;
+
+          // Lọc theo loại phòng
+          if (roomType == 'direct') {
+            filteredRooms = filteredRooms.where((r) => !r.isGroup).toList();
+          } else if (roomType == 'group') {
+            filteredRooms = filteredRooms.where((r) => r.isGroup).toList();
+          }
+
+          // Lọc theo tìm kiếm
+          if (searchQuery.isNotEmpty) {
+            final q = searchQuery.toLowerCase();
+            filteredRooms = filteredRooms
+                .where(
+                  (r) =>
+                      (r.displayTitle ?? '').toLowerCase().contains(q) ||
+                      (r.lastMessage ?? '').toLowerCase().contains(q),
+                )
+                .toList();
+          }
+
+          return filteredRooms.isEmpty
               ? const _EmptyView()
-              : _RoomsList(rooms: state.rooms, isEmbedded: isEmbedded);
+              : _RoomsList(
+                  rooms: filteredRooms,
+                  isEmbedded: isEmbedded,
+                  roomType: roomType,
+                );
         }
         return const SizedBox.shrink();
       },
@@ -84,7 +164,6 @@ class _ChatRoomsListContent extends StatelessWidget {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
-        
       ),
       body: body,
       floatingActionButton: _CreateGroupFAB(),
@@ -98,8 +177,13 @@ class _ChatRoomsListContent extends StatelessWidget {
 class _RoomsList extends StatelessWidget {
   final List rooms;
   final bool isEmbedded;
+  final String roomType;
 
-  const _RoomsList({required this.rooms, required this.isEmbedded});
+  const _RoomsList({
+    required this.rooms,
+    required this.isEmbedded,
+    required this.roomType,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -109,10 +193,12 @@ class _RoomsList extends StatelessWidget {
     return ListView.builder(
       padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
       itemCount: rooms.length,
-      itemBuilder: (context, index) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: _RoomCard(room: rooms[index]),
-      ),
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _RoomCard(room: rooms[index]),
+        );
+      },
     );
   }
 }
@@ -139,17 +225,22 @@ class _RoomCard extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.6),
+            color: Colors.white.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: AppColors.primary.withValues(alpha: 0.15),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -158,22 +249,36 @@ class _RoomCard extends StatelessWidget {
             child: InkWell(
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => DirectChatScreen(room: room),
-                ),
+                MaterialPageRoute(builder: (_) => DirectChatScreen(room: room)),
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
+                  horizontal: 14,
+                  vertical: 12,
                 ),
                 child: Row(
                   children: [
                     _RoomAvatar(room: room),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 14),
                     Expanded(child: _RoomInfo(room: room)),
-                    const SizedBox(width: 8),
-                    _TimeChip(label: timeAgoStr),
+                    if (room.unreadCount > 0) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          room.unreadCount > 9 ? '9+' : room.unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -195,44 +300,90 @@ class _RoomAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withOpacity(0.5),
-        border: Border.all(color: Colors.white, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+    // Tìm otherUser để lấy trạng thái online nế là chat 1-1
+    dynamic otherUser;
+    if (!room.isGroup && room.members != null) {
+      final myId = context.read<AppAuthProvider>().userModel?.id;
+      try {
+        otherUser = (room.members as List).firstWhere((m) => m.id != myId);
+      } catch (_) {
+        otherUser = null;
+      }
+    }
+
+    final bool isOnline = otherUser?.status == 'online';
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withValues(alpha: 0.5),
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: ClipOval(
-        child: room.displayAvatar != null
-            ? CachedNetworkImage(
-                imageUrl: room.displayAvatar!,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => const Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.primary,
-                  ),
-                ),
-                errorWidget: (_, __, ___) => _fallbackIcon(room.isGroup),
-              )
-            : _fallbackIcon(room.isGroup),
-      ),
+          child: ClipOval(
+            child: room.displayAvatar != null
+                ? CachedNetworkImage(
+                    imageUrl: room.displayAvatar!,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    errorWidget: (_, __, ___) => _fallbackIcon(room.isGroup),
+                  )
+                : _fallbackIcon(room.isGroup),
+          ),
+        ),
+        if (isOnline)
+          Positioned(
+            right: 0,
+            bottom: 2,
+            child: Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: AppColors.success, // Màu xanh lá khi online
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2.5),
+              ),
+            ),
+          )
+        else if (otherUser != null)
+          Positioned(
+            right: 0,
+            bottom: 2,
+            child: Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: Colors.grey[400], // Màu xám khi offline
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2.5),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
   Widget _fallbackIcon(bool isGroup) => Icon(
-        isGroup ? Icons.group : Icons.person,
-        color: AppColors.primary.withOpacity(0.7),
-        size: 28,
-      );
+    isGroup ? Icons.group : Icons.person,
+    color: AppColors.primary.withValues(alpha: 0.7),
+    size: 28,
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -245,31 +396,224 @@ class _RoomInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    dynamic otherUser;
+    if (!room.isGroup && room.members != null) {
+      final myId = context.read<AppAuthProvider>().userModel?.id;
+      try {
+        otherUser = (room.members as List).firstWhere((m) => m.id != myId);
+      } catch (_) {
+        otherUser = null;
+      }
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          room.displayTitle ?? 'Không tên',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 16,
-            color: AppColors.textBlack,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                room.displayTitle ?? 'Không tên',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: AppColors.textBlack,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text(
-          'Chạm để xem tin nhắn...',
+          room.lastMessage ?? 'Chạm để nhắn tin...',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: AppColors.textGrey.withOpacity(0.9),
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+            color: (room.unreadCount > 0)
+                ? AppColors.textBlack
+                : AppColors.textGrey.withValues(alpha: 0.9),
+            fontSize: 13.5,
+            fontWeight: (room.unreadCount > 0)
+                ? FontWeight.bold
+                : FontWeight.w400,
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// Active friends horizontal row
+// ─────────────────────────────────────────────
+class _ActiveFriendsRow extends StatelessWidget {
+  const _ActiveFriendsRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<FriendProvider>(
+      builder: (context, provider, child) {
+        // Lọc những người bạn đang online (hoặc hiện tất cả nhưng ưu tiên online)
+        final friends = provider.friends;
+        if (friends.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(left: 4, bottom: 12),
+              child: Text(
+                "Đang hoạt động",
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textGrey,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 100,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: friends.length,
+                itemBuilder: (context, index) {
+                  final friend = friends[index];
+                  final bool isOnline = friend.status == 'online';
+
+                  return GestureDetector(
+                    onTap: () async {
+                      final myId = context
+                          .read<AppAuthProvider>()
+                          .userModel
+                          ?.id;
+                      if (myId == null) return;
+
+                      try {
+                        final roomId = await context
+                            .read<ChatRoomRepository>()
+                            .createDirectRoom(myId, friend.id);
+
+                        if (!context.mounted) return;
+
+                        final room = ChatRoom(
+                          id: roomId,
+                          isGroup: false,
+                          createdAt: DateTime.now(),
+                        );
+                        room.displayTitle = friend.displayName ?? 'Người dùng';
+                        room.displayAvatar = friend.photoUrl;
+                        room.members = [friend]; // Mock members for navigation
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DirectChatScreen(room: room),
+                          ),
+                        );
+                      } catch (e) {
+                        print("Lỗi mở chat từ ActiveRow: $e");
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Stack(
+                            children: [
+                              Container(
+                                width: 62,
+                                height: 62,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: isOnline
+                                      ? LinearGradient(
+                                          colors: [
+                                            AppColors.primary,
+                                            AppColors.primary.withValues(
+                                              alpha: 0.5,
+                                            ),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        )
+                                      : null,
+                                  color: !isOnline ? Colors.grey[300] : null,
+                                ),
+                                padding: const EdgeInsets.all(2.5),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: CircleAvatar(
+                                    backgroundImage: friend.photoUrl != null
+                                        ? NetworkImage(friend.photoUrl!)
+                                        : null,
+                                    backgroundColor: Colors.grey[200],
+                                    child: friend.photoUrl == null
+                                        ? const Icon(
+                                            Icons.person,
+                                            color: Colors.grey,
+                                          )
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                              if (isOnline)
+                                Positioned(
+                                  right: 2,
+                                  bottom: 2,
+                                  child: Container(
+                                    width: 15,
+                                    height: 15,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.success,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: 65,
+                            child: Text(
+                              friend.displayName ?? "User",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: isOnline
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: isOnline
+                                    ? AppColors.textBlack
+                                    : AppColors.textGrey,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -287,9 +631,12 @@ class _TimeChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.8)),
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
       ),
       child: Text(
         label,
@@ -315,7 +662,11 @@ class _EmptyView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey.shade300),
+          Icon(
+            Icons.chat_bubble_outline,
+            size: 80,
+            color: Colors.grey.shade300,
+          ),
           const SizedBox(height: 16),
           const Text(
             'Theo dõi cuộc hội thoại',
@@ -374,12 +725,11 @@ class _ErrorView extends StatelessWidget {
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {
-              final userId =
-                  context.read<AppAuthProvider>().userModel?.id;
+              final userId = context.read<AppAuthProvider>().userModel?.id;
               if (userId != null) {
-                context
-                    .read<ChatRoomsBloc>()
-                    .add(ChatRoomsLoadStarted(userId: userId));
+                context.read<ChatRoomsBloc>().add(
+                  ChatRoomsLoadStarted(userId: userId),
+                );
               }
             },
             child: const Text('Thử lại'),

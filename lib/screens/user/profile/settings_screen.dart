@@ -84,12 +84,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             _buildSettingItem(
               context,
-              icon: Icons.language_outlined,
-              title: 'Ngôn ngữ - Tiếng Việt',
-              onTap: () {},
-            ),
-            _buildSettingItem(
-              context,
               icon: Icons.lock_outline,
               title: 'Đổi mật khẩu',
               onTap: () {

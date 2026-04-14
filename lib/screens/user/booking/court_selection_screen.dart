@@ -12,6 +12,7 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:flutter/cupertino.dart';
 
 class CourtSelectionScreen extends StatefulWidget {
   final CourtLocationModel selectedCourt;
@@ -57,7 +58,13 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
   @override
   void initState() {
     super.initState();
-    _currentDate = widget.selectedDate;
+    final now = DateTime.now();
+    final todayMidnight = DateTime(now.year, now.month, now.day);
+    if (widget.selectedDate.isBefore(todayMidnight)) {
+      _currentDate = todayMidnight;
+    } else {
+      _currentDate = widget.selectedDate;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchBookingsForCurrentDate();
     });
@@ -98,6 +105,20 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
   }
 
   Future<void> _reserveAndGoCheckout() async {
+    final now = DateTime.now();
+    final isToday = isSameDay(_currentDate, now);
+    final isPastDay = _currentDate.isBefore(DateTime(now.year, now.month, now.day));
+
+    if (isPastDay) {
+      AppToast.show(context, 'Không thể đặt sân cho ngày trong quá khứ', type: ToastType.error);
+      return;
+    }
+
+    if (_selectedSlots.any((s) => isToday && s.timeSlot <= now.hour)) {
+      AppToast.show(context, 'Một số khung giờ bạn chọn đã trôi qua', type: ToastType.error);
+      return;
+    }
+
     final auth = context.read<AppAuthProvider>();
     if (auth.authState != AuthState.authenticated) {
       AppToast.show(context, 'Vui lòng đăng nhập để đặt sân', type: ToastType.error);
@@ -195,6 +216,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
+              backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -205,12 +227,17 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                   children: [
                     TableCalendar(
                       locale: 'vi_VN',
-                      firstDay: DateTime.now().subtract(
-                        const Duration(days: 365),
-                      ),
+                      firstDay: DateTime.now(),
                       lastDay: DateTime.now().add(const Duration(days: 365)),
-                      focusedDay: tempFocusedDate,
+                      focusedDay: tempFocusedDate.isBefore(DateTime.now()) ? DateTime.now() : tempFocusedDate,
                       currentDay: DateTime.now(),
+                      enabledDayPredicate: (day) => !day.isBefore(
+                        DateTime(
+                          DateTime.now().year,
+                          DateTime.now().month,
+                          DateTime.now().day,
+                        ),
+                      ),
                       selectedDayPredicate: (day) =>
                           isSameDay(tempSelectedDate, day),
                       onDaySelected: (selectedDay, focusedDay) {
@@ -402,9 +429,11 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                       labelColor: Colors.white,
                     ),
                     const _LegendItem(
-                      color: Color(0xFF9E9E9E),
-                      label: 'Khoá',
-                      labelColor: Colors.white,
+                      color: Color(0xFFE0E0E0),
+                      label: 'Khoá/Hết hạn',
+                      labelColor: AppColors.textGrey,
+                      icon: Icons.block,
+                      iconSize: 12,
                     ),
                     const _LegendItem(
                       color: Color(0xFFBA68C8),
@@ -630,15 +659,27 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                                       ),
                                     );
 
+                                    final now = DateTime.now();
+                                    final isToday = isSameDay(_currentDate, now);
+                                    final isPastDay = _currentDate.isBefore(DateTime(now.year, now.month, now.day));
+                                    final isPastTime = isToday && t <= now.hour;
+                                    final isDisable = isPastDay || isPastTime;
+
                                     Color bgColor = AppColors.surface;
                                     Widget? child;
 
-                                    if (isBooked) {
+                                    if (isDisable) {
+                                      bgColor = const Color(0xFFE0E0E0); // Grey for past/disabled
+                                      child = const Icon(
+                                        Icons.block,
+                                        color: Colors.white,
+                                        size: 16,
+                                      );
+                                    } else if (isBooked) {
                                       bgColor = const Color(0xFFEF5350); // Red
                                       child = null;
                                     } else if (isSelected) {
-                                      bgColor = AppColors
-                                          .primary; // Đồng bộ màu nút chính
+                                      bgColor = AppColors.primary;
                                       child = const Icon(
                                         Icons.check,
                                         color: Colors.white,
@@ -646,11 +687,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                                       );
                                     }
 
-                                    // Example logic for "Khoá" (Lock) based on time or random for demo?
-                                    // For now strictly using booking data for red.
-
                                     return InkWell(
-                                      onTap: isBooked
+                                      onTap: (isBooked || isDisable)
                                           ? null
                                           : () {
                                               setState(() {

@@ -5,6 +5,8 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/screens/user/chat/direct_chat_screen.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({super.key});
@@ -17,6 +19,17 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final TextEditingController _nameController = TextEditingController();
   final Set<String> _selectedFriendIds = {};
   bool _isLoading = false;
+  XFile? _groupImage;
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickImage() async {
+    final image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image != null) {
+      setState(() {
+        _groupImage = image;
+      });
+    }
+  }
 
   Future<void> _createGroup() async {
     final name = _nameController.text.trim();
@@ -40,10 +53,20 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     setState(() => _isLoading = true);
 
     try {
+      String? avatarUrl;
+      if (_groupImage != null) {
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}_group.jpg';
+        avatarUrl = await context.read<ChatRoomRepository>().uploadImage(
+          _groupImage!.path,
+          fileName,
+        );
+      }
+
       final memberIds = [myId, ..._selectedFriendIds];
       final roomId = await context.read<ChatRoomRepository>().createGroupRoom(
         name,
         memberIds,
+        avatarUrl: avatarUrl,
       );
 
       if (!mounted) return;
@@ -55,7 +78,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         createdAt: DateTime.now(),
       );
       room.displayTitle = name;
-      room.displayAvatar = null;
+      room.displayAvatar = avatarUrl;
 
       Navigator.pushReplacement(
         context,
@@ -105,14 +128,70 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       body: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             color: Colors.white,
-            child: TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                hintText: 'Tên nhóm...',
-                border: InputBorder.none,
-              ),
+            child: Column(
+              children: [
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primary,
+                        ),
+                        child: ClipOval(
+                          child: _groupImage != null
+                              ? Image.file(
+                                  File(_groupImage!.path),
+                                  fit: BoxFit.cover,
+                                  width: 80,
+                                  height: 80,
+                                )
+                              : Center(
+                                  child: Icon(
+                                    Icons.group,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    hintText: 'Tên nhóm...',
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),

@@ -9,6 +9,7 @@ import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/viewmodels/statistics_viewmodel.dart';
 import 'package:badminton_ai/screens/user/profile/components/statistics_filter_row.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:badminton_ai/viewmodels/mixins/filterable_viewmodel_mixin.dart';
 
 class StatisticsScreen extends StatelessWidget {
   const StatisticsScreen({super.key});
@@ -136,7 +137,7 @@ class _SummaryCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -163,38 +164,56 @@ class _FilterHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(
-          vm.filterMode == FilterMode.all ? l.sectionAll : l.statisticalFilter,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-            letterSpacing: 0.5,
+        Expanded(
+          child: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  vm.filterMode == FilterMode.all ? l.sectionAll : l.statisticalFilter,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              if (vm.filterMode != FilterMode.all) ...[
+                const SizedBox(width: 8),
+                Flexible(
+                  child: GestureDetector(
+                    onTap: vm.setFilterAll,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBg,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              vm.filterLabel(context),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: const TextStyle(color: AppColors.primary, fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.close, size: 12, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-        if (vm.filterMode != FilterMode.all) ...[
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: vm.setFilterAll,
-            child: Container(
-               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.primaryBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(vm.filterLabel(context, l.viewAll, l.filterByDateRange, l.filterByMonth, l.filterByYear), 
-                        style: const TextStyle(color: AppColors.primary, fontSize: 12)),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.close, size: 12, color: AppColors.primary),
-                ],
-              ),
-            ),
-          ),
-        ],
-        const Spacer(),
+        const SizedBox(width: 8),
         StatisticsFilterRow(vm: vm, l: l),
       ],
     );
@@ -273,7 +292,7 @@ class _ChartSection extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(

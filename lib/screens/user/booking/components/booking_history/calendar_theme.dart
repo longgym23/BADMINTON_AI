@@ -129,7 +129,12 @@ class BookingCalendarTheme {
   static TextButton cancelButton({required VoidCallback onPressed, required String label}) {
     return TextButton(
       onPressed: onPressed,
-      style: TextButton.styleFrom(foregroundColor: AppColors.courtLocked),
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.textGrey,
+        backgroundColor: Colors.grey[200],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      ),
       child: Text(label),
     );
   }

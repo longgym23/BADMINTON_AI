@@ -766,35 +766,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _buildMenuItem(3, '7 ngày gần đây'),
         ],
         child: Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: AppColors.brandOrange),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(4),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Text(
+                _filterMode == 3 ? '7 ngày gần đây' : _getFilterLabel(),
+                style: const TextStyle(
+                  color: Color.fromARGB(255, 108, 108, 108),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(width: 8),
               const Icon(
                 Icons.calendar_month,
                 color: AppColors.brandOrange,
                 size: 16,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                _getFilterLabel(),
-                style: const TextStyle(
-                  color: AppColors.textBlack,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(width: 4),
-              const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: AppColors.brandOrange,
-                size: 18,
               ),
             ],
           ),
@@ -933,6 +926,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setStateDialog) => AlertDialog(
           shape: BookingCalendarTheme.dialogShape,
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           content: SizedBox(
             width: BookingCalendarTheme.dialogWidth,
             child: Column(
@@ -961,7 +956,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          'T$m',
+                          'Tháng $m',
                           style: BookingCalendarTheme.gridItemTextStyle(
                             selected: selected,
                           ),
@@ -977,14 +972,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
+                BookingCalendarTheme.cancelButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text(
-                    'Huỷ',
-                    style: TextStyle(color: Colors.grey),
-                  ),
+                  label: 'Huỷ',
                 ),
-                TextButton(
+                const SizedBox(width: 16),
+                BookingCalendarTheme.confirmButton(
                   onPressed: () {
                     Navigator.pop(ctx);
                     setState(() {
@@ -994,17 +987,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     });
                     _fetchDashboardData();
                   },
-                  child: const Text(
-                    'Chọn',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  label: 'Chọn',
                 ),
               ],
             ),
           ],
+
         ),
       ),
     );
@@ -1020,6 +1008,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setStateDialog) => AlertDialog(
           shape: BookingCalendarTheme.dialogShape,
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           content: SizedBox(
             width: BookingCalendarTheme.dialogWidth,
             child: Column(
@@ -1065,14 +1055,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
+                BookingCalendarTheme.cancelButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text(
-                    'Huỷ',
-                    style: TextStyle(color: Colors.grey),
-                  ),
+                  label: 'Huỷ',
                 ),
-                TextButton(
+                const SizedBox(width: 16),
+                BookingCalendarTheme.confirmButton(
                   onPressed: () {
                     Navigator.pop(ctx);
                     setState(() {
@@ -1081,17 +1069,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     });
                     _fetchDashboardData();
                   },
-                  child: const Text(
-                    'Chọn',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  label: 'Chọn',
                 ),
               ],
             ),
           ],
+
         ),
       ),
     );

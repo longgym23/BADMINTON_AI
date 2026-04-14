@@ -128,6 +128,27 @@ class ChatRepository {
           };
           aiType = (responseBody['type'] as String?) ?? 'text';
         }
+
+        // --- Bắt trường hợp Gemini trả nguyên chuỗi JSON về ---
+        try {
+          String cleanAnswer = answer.trim();
+          if (cleanAnswer.startsWith('```json')) {
+            cleanAnswer = cleanAnswer.replaceAll('```json', '').replaceAll('```', '').trim();
+          }
+          if (cleanAnswer.startsWith('{') && cleanAnswer.endsWith('}')) {
+            final parsedAnswer = jsonDecode(cleanAnswer);
+            if (parsedAnswer is Map) {
+              answer = parsedAnswer['answer'] ?? answer;
+              if (parsedAnswer['action'] != null) {
+                aiMetadata ??= {};
+                aiMetadata['action'] = parsedAnswer['action'];
+              }
+            }
+          }
+        } catch (e) {
+          // Xử lý lỗi parse JSON ngầm, không làm gián đoạn luồng
+        }
+        
       } else {
         try {
           final responseBody = jsonDecode(response.body);

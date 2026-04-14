@@ -2,12 +2,14 @@ import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/viewmodels/checkout_viewmodel.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
+import 'package:badminton_ai/providers/notification_provider.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:flutter/cupertino.dart';
 
 class EventCheckoutScreen extends StatelessWidget {
   final EventModel event;
@@ -70,39 +72,58 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle, color: AppColors.success, size: 60),
-            const SizedBox(height: 16),
-            const Text(
-              'Xác nhận thành công!',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Bạn đã đặt ${widget.quantity} vé tham gia sự kiện:\n"${widget.event.title}"',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx); 
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                ),
-                child: const Text('Hoàn tất'),
+        backgroundColor: Colors.white,
+        content: Material(
+          color: Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: AppColors.success, size: 60),
+              const SizedBox(height: 16),
+              const Text(
+                'Xác nhận thành công!',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                'Bạn đã đặt ${widget.quantity} vé tham gia sự kiện:\n"${widget.event.title}"',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx); 
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            child: const Text('Hoàn tất', style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
+  }
+
+  Future<void> _sendSuccessNotifications() async {
+    final notificationProvider = context.read<NotificationProvider>();
+    final authProvider = context.read<AppAuthProvider>();
+    final userId = authProvider.userId;
+    if (userId == null) return;
+
+    try {
+      await notificationProvider.createEventSuccessNotification(
+        userId: userId,
+        eventTitle: widget.event.title,
+        startTime: widget.event.startTime,
+        endTime: widget.event.endTime,
+        date: widget.event.dateTime,
+        quantity: widget.quantity,
+      );
+    } catch (e) {
+      debugPrint("Lỗi tạo thông báo Event: $e");
+    }
   }
 
   void _onConfirmPayment() async {
@@ -117,6 +138,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
       await vm.processZeroPayment();
       try {
         await repo.joinEvent(widget.event.id, auth.userId!, amountDeductedFromWallet.toDouble());
+        await _sendSuccessNotifications();
         if (mounted) _showSuccessDialog();
       } catch (e) {
         if (mounted) {
@@ -155,6 +177,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
 
       try {
         await repo.joinEvent(widget.event.id, auth.userId!, amountDeductedFromWallet.toDouble());
+        await _sendSuccessNotifications();
         if (mounted) _showSuccessDialog();
       } catch (e) {
         if (mounted) {

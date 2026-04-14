@@ -3,7 +3,8 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/viewmodels/statistics_viewmodel.dart';
 import 'package:badminton_ai/screens/user/booking/components/booking_history/calendar_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
+import 'package:badminton_ai/viewmodels/mixins/filterable_viewmodel_mixin.dart';
+import 'package:badminton_ai/widgets/custom_date_range_picker_dialog.dart';
 
 /// Popup filter button that opens date-range / month / year pickers for Statistics.
 class StatisticsFilterRow extends StatelessWidget {
@@ -15,65 +16,11 @@ class StatisticsFilterRow extends StatelessWidget {
   // ─── Date Range Picker ─────────────────────────────────────────────────
 
   Future<void> _pickDateRange(BuildContext context) async {
-    DateTime? tempStart = vm.selectedDateRange?.start;
-    DateTime? tempEnd = vm.selectedDateRange?.end;
-    DateTime focusedDay = tempStart ?? DateTime.now();
-
-    final result = await showDialog<DateTimeRange>(
+    final result = await showCustomDateRangePicker(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) {
-          return AlertDialog(
-            shape: BookingCalendarTheme.dialogShape,
-            backgroundColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-            content: SizedBox(
-              width: BookingCalendarTheme.dialogWidth,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TableCalendar(
-                    focusedDay: focusedDay,
-                    firstDay: DateTime(2020),
-                    lastDay: DateTime(2030),
-                    rangeStartDay: tempStart,
-                    rangeEndDay: tempEnd,
-                    rangeSelectionMode: RangeSelectionMode.enforced,
-                    onRangeSelected: (start, end, focused) {
-                      setState(() {
-                        tempStart = start;
-                        tempEnd = end;
-                        focusedDay = focused;
-                      });
-                    },
-                    locale: 'vi_VN',
-                    headerStyle: BookingCalendarTheme.headerStyle(
-                      formatter: (date, locale) => 'Tháng ${date.month}, ${date.year}',
-                    ),
-                    calendarStyle: BookingCalendarTheme.calendarStyle,
-                    daysOfWeekStyle: BookingCalendarTheme.daysOfWeekStyle,
-                    availableGestures: AvailableGestures.horizontalSwipe,
-                    startingDayOfWeek: StartingDayOfWeek.monday,
-                  ),
-                  const SizedBox(height: 16),
-                  _DialogActions(
-                    onCancel: () => Navigator.pop(ctx),
-                    onConfirm: () {
-                      if (tempStart != null) {
-                        Navigator.pop(ctx, DateTimeRange(start: tempStart!, end: tempEnd ?? tempStart!));
-                      } else {
-                        Navigator.pop(ctx);
-                      }
-                    },
-                    cancelLabel: l.cancel,
-                    confirmLabel: l.confirm,
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+      initialDateRange: vm.selectedDateRange,
+      cancelLabel: l.cancel,
+      confirmLabel: l.confirm,
     );
 
     if (result != null) {
@@ -94,53 +41,70 @@ class StatisticsFilterRow extends StatelessWidget {
         builder: (ctx, setState) => AlertDialog(
           shape: BookingCalendarTheme.dialogShape,
           backgroundColor: Colors.white,
-          content: SizedBox(
-            width: BookingCalendarTheme.dialogWidth,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                BookingCalendarTheme.yearNavigator(
-                  label: '$tempYear',
-                  onPrevious: () => setState(() => tempYear--),
-                  onNext: () => setState(() => tempYear++),
-                ),
-                const SizedBox(height: 8),
-                GridView.count(
-                  crossAxisCount: 4,
-                  shrinkWrap: true,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  childAspectRatio: 1.4,
-                  children: List.generate(12, (i) {
-                    final m = i + 1;
-                    final selected = m == tempMonth;
-                    return GestureDetector(
-                      onTap: () => setState(() => tempMonth = m),
-                      child: Container(
-                        decoration: BookingCalendarTheme.gridItemDecoration(selected: selected),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Tháng $m',
-                          style: BookingCalendarTheme.gridItemTextStyle(selected: selected),
+          surfaceTintColor: Colors.transparent,
+          content: Material(
+            color: Colors.transparent,
+            child: SizedBox(
+              width: BookingCalendarTheme.dialogWidth,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  BookingCalendarTheme.yearNavigator(
+                    label: '$tempYear',
+                    onPrevious: () => setState(() => tempYear--),
+                    onNext: () => setState(() => tempYear++),
+                  ),
+                  const SizedBox(height: 8),
+                  GridView.count(
+                    crossAxisCount: 4,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 1.4,
+                    children: List.generate(12, (i) {
+                      final m = i + 1;
+                      final selected = m == tempMonth;
+                      return GestureDetector(
+                        onTap: () => setState(() => tempMonth = m),
+                        child: Container(
+                          decoration: BookingCalendarTheme.gridItemDecoration(selected: selected),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Tháng $m',
+                            style: BookingCalendarTheme.gridItemTextStyle(selected: selected),
+                          ),
                         ),
-                      ),
-                    );
-                  }),
-                ),
-              ],
+                      );
+                    }),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
-            _DialogActions(
-              onCancel: () => Navigator.pop(ctx),
-              onConfirm: () {
-                Navigator.pop(ctx);
-                vm.setFilterMonth(tempMonth, tempYear);
-              },
-              cancelLabel: l.cancel,
-              confirmLabel: l.confirm,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  BookingCalendarTheme.cancelButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    label: l.cancel,
+                  ),
+                  const SizedBox(width: 16),
+                  BookingCalendarTheme.confirmButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      vm.setFilterMonth(tempMonth, tempYear);
+                    },
+                    label: l.confirm,
+                  ),
+                ],
+              ),
             ),
           ],
+
         ),
       ),
     );
@@ -159,57 +123,70 @@ class StatisticsFilterRow extends StatelessWidget {
         builder: (ctx, setState) => AlertDialog(
           shape: BookingCalendarTheme.dialogShape,
           backgroundColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-          content: SizedBox(
-            width: BookingCalendarTheme.dialogWidth,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                BookingCalendarTheme.yearNavigator(
-                  label: '$startYear - ${startYear + 11}',
-                  onPrevious: () => setState(() => startYear -= 12),
-                  onNext: () => setState(() => startYear += 12),
-                ),
-                const SizedBox(height: 8),
-                GridView.count(
-                  crossAxisCount: 3,
-                  shrinkWrap: true,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  childAspectRatio: 1.6,
-                  children: List.generate(12, (i) {
-                    final year = startYear + i;
-                    final selected = year == tempYear;
-                    return GestureDetector(
-                      onTap: () => setState(() => tempYear = year),
-                      child: Container(
-                        decoration: BookingCalendarTheme.gridItemDecoration(selected: selected),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '$year',
-                          style: BookingCalendarTheme.gridItemTextStyle(selected: selected, fontSize: 14),
+          surfaceTintColor: Colors.transparent,
+          content: Material(
+            color: Colors.transparent,
+            child: SizedBox(
+              width: BookingCalendarTheme.dialogWidth,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  BookingCalendarTheme.yearNavigator(
+                    label: '$startYear - ${startYear + 11}',
+                    onPrevious: () => setState(() => startYear -= 12),
+                    onNext: () => setState(() => startYear += 12),
+                  ),
+                  const SizedBox(height: 8),
+                  GridView.count(
+                    crossAxisCount: 3,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 1.6,
+                    children: List.generate(12, (i) {
+                      final year = startYear + i;
+                      final selected = year == tempYear;
+                      return GestureDetector(
+                        onTap: () => setState(() => tempYear = year),
+                        child: Container(
+                          decoration: BookingCalendarTheme.gridItemDecoration(selected: selected),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '$year',
+                            style: BookingCalendarTheme.gridItemTextStyle(selected: selected, fontSize: 14),
+                          ),
                         ),
-                      ),
-                    );
-                  }),
-                ),
-              ],
+                      );
+                    }),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _DialogActions(
-                onCancel: () => Navigator.pop(ctx),
-                onConfirm: () {
-                  Navigator.pop(ctx);
-                  vm.setFilterYear(tempYear);
-                },
-                cancelLabel: l.cancel,
-                confirmLabel: l.confirm,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  BookingCalendarTheme.cancelButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    label: l.cancel,
+                  ),
+                  const SizedBox(width: 16),
+                  BookingCalendarTheme.confirmButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      vm.setFilterYear(tempYear);
+                    },
+                    label: l.confirm,
+                  ),
+                ],
               ),
             ),
           ],
+
         ),
       ),
     );
@@ -258,7 +235,7 @@ class StatisticsFilterRow extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                vm.filterMode == FilterMode.all ? l.viewAll : vm.filterLabel(context, l.viewAll, l.filterByDateRange, l.filterByMonth, l.filterByYear),
+                vm.filterMode == FilterMode.all ? l.viewAll : vm.filterLabel(context),
                 style: const TextStyle(
                   color: Color.fromARGB(255, 108, 108, 108),
                   fontWeight: FontWeight.w500,

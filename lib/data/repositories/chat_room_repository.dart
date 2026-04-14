@@ -12,7 +12,11 @@ class ChatRoom {
   // Dữ liệu mở rộng để hiển thị UI
   String? displayTitle;
   String? displayAvatar;
+  String? lastMessage;
+  DateTime? lastMessageTime;
+  int unreadCount = 0;
   List<UserModel> members = [];
+  String? adminId;
 
   ChatRoom({
     required this.id,
@@ -20,6 +24,7 @@ class ChatRoom {
     this.name,
     this.avatarUrl,
     required this.createdAt,
+    this.adminId,
   });
 
   factory ChatRoom.fromSupabase(Map<String, dynamic> data) {
@@ -29,6 +34,7 @@ class ChatRoom {
       name: data['name'],
       avatarUrl: data['avatar_url'],
       createdAt: DateTime.parse(data['created_at']),
+      adminId: data['admin_id'],
     );
   }
 }
@@ -113,14 +119,27 @@ class ChatRoomRepository {
                 room.displayTitle = room.name ?? "Nhóm không tên";
                 room.displayAvatar = room.avatarUrl;
               } else {
-                // Xác định người kia (người không phải là mình)
                 final otherUser = room.members.firstWhere(
                   (m) => m.id != userId,
-                  orElse: () =>
-                      room.members.first, // Fallback nếu lỡ chat với chính mình
+                  orElse: () => room.members.first,
                 );
                 room.displayTitle = otherUser.displayName ?? 'Người dùng';
                 room.displayAvatar = otherUser.photoUrl;
+              }
+
+              // Lấy tin nhắn cuối cùng của phòng này
+              final lastMsgData = await _client
+                  .from('messages')
+                  .select()
+                  .eq('room_id', roomId)
+                  .order('created_at', ascending: false)
+                  .limit(1)
+                  .maybeSingle();
+
+              if (lastMsgData != null) {
+                final lastMsg = Message.fromSupabase(lastMsgData);
+                room.lastMessage = lastMsg.content;
+                room.lastMessageTime = lastMsg.createdAt;
               }
 
               rooms.add(room);
@@ -129,8 +148,12 @@ class ChatRoomRepository {
             }
           }
 
-          // Sắp xếp theo ngày tạo (Có thể nâng cấp sắp xếp theo tin nhắn mới nhất sau)
-          rooms.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          // Sắp xếp theo tin nhắn mới nhất (hoặc ngày tạo nếu chưa có tin nhắn)
+          rooms.sort((a, b) {
+            final aTime = a.lastMessageTime ?? a.createdAt;
+            final bTime = b.lastMessageTime ?? b.createdAt;
+            return bTime.compareTo(aTime);
+          });
 
           // Lọc bỏ phòng 1-1 trùng lặp (nếu có lỗi race condition khi tạo)
           List<ChatRoom> uniqueRooms = [];
@@ -206,11 +229,16 @@ class ChatRoomRepository {
   }
 
   /// Khởi tạo phòng chat nhóm
-  Future<String> createGroupRoom(String name, List<String> memberIds) async {
+  Future<String> createGroupRoom(String name, List<String> memberIds, {String? avatarUrl, String? sportType}) async {
     // 1. Tạo phòng mới
+    final roomData = {'is_group': true, 'name': name};
+    if (avatarUrl != null) roomData['avatar_url'] = avatarUrl;
+    if (sportType != null) roomData['sport_type'] = sportType;
+    if (memberIds.isNotEmpty) roomData['admin_id'] = memberIds.first;
+    
     final roomInsert = await _client
         .from('chat_rooms')
-        .insert({'is_group': true, 'name': name})
+        .insert(roomData)
         .select()
         .single();
 
@@ -302,7 +330,8 @@ class ChatRoomRepository {
   Future<String?> uploadImage(String filePath, String fileName) async {
     try {
       final file = File(filePath);
-      final path = 'chat_images/$fileName';
+      // Removed 'chat_images/' because the bucket name is already 'chat_images'
+      final path = fileName;
 
       await _client.storage
           .from('chat_images')
@@ -317,5 +346,22 @@ class ChatRoomRepository {
       print('Lỗi upload ảnh: $e');
       return null;
     }
+  }
+
+  /// Giải tán nhóm
+  Future<void> dissolveGroup(String roomId) async {
+    // Xóa tất cả tin nhắn
+    await _client.from('messages').delete().eq('room_id', roomId);
+    // Xóa thành viên
+    await _client.from('chat_room_members').delete().eq('room_id', roomId);
+    // Xóa phòng
+    await _client.from('chat_rooms').delete().eq('id', roomId);
+  }
+
+  /// Rời khỏi nhóm
+  Future<void> leaveGroup(String roomId, String userId) async {
+    await _client.from('chat_room_members').delete()
+        .eq('room_id', roomId)
+        .eq('user_id', userId);
   }
 }

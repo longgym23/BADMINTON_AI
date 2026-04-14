@@ -11,5 +11,7 @@ abstract class BookingRepository {
   
   Future<void> deleteBooking(String bookingId);
   
+  Future<void> cancelBooking(String bookingId);
+  
   Future<void> deletePendingBookingsByTransactionId(String transactionId);
 }

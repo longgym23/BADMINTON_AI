@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:badminton_ai/data/repositories/chat_room_repository.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
@@ -6,6 +7,10 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:badminton_ai/providers/unread_count_provider.dart';
+import 'package:badminton_ai/utils/snackbar_utils.dart';
+import 'package:badminton_ai/utils/dialog_utils.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 class DirectChatScreen extends StatefulWidget {
   final ChatRoom room;
@@ -19,65 +24,68 @@ class DirectChatScreen extends StatefulWidget {
 class _DirectChatScreenState extends State<DirectChatScreen> {
   final TextEditingController _msgController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
+  XFile? _previewImage;
   bool _isUploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        // Báo provider: phòng này đang mở → bỏ đếm badge ngay
+        context.read<UnreadCountProvider>().enterRoom(widget.room.id);
+        // Ghi DB last_read_at
+        context.read<UnreadCountProvider>().markRoomAsRead(widget.room.id);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // Báo provider: đã thoát phòng → tính lại badge
+    context.read<UnreadCountProvider>().leaveRoom();
+    _msgController.dispose();
+    super.dispose();
+  }
 
   Future<void> _sendMessage() async {
     final text = _msgController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty && _previewImage == null) return;
 
     final userId = context.read<AppAuthProvider>().userModel?.id;
     if (userId == null) return;
 
-    _msgController.clear();
+    // Cache local references
+    final currentText = text;
+    final PickedImage = _previewImage;
 
-    await context.read<ChatRoomRepository>().sendMessage(
-      widget.room.id,
-      userId,
-      text,
-    );
-  }
+    setState(() {
+      _isUploading = true;
+      _msgController.clear();
+      _previewImage = null; // clear preview instantly
+    });
 
-  Future<void> _pickImage() async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 70,
-      );
-      if (image == null) return;
-
-      final userId = context.read<AppAuthProvider>().userModel?.id;
-      if (userId == null) return;
-
-      setState(() {
-        _isUploading = true;
-      });
-
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${image.name}';
-      final imageUrl = await context.read<ChatRoomRepository>().uploadImage(
-        image.path,
-        fileName,
-      );
-
-      if (imageUrl != null) {
-        await context.read<ChatRoomRepository>().sendMessage(
-          widget.room.id,
-          userId,
-          '[Hình ảnh]',
-          imagePath: imageUrl,
+      String? uploadedUrl;
+      if (PickedImage != null) {
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${PickedImage.name}';
+        uploadedUrl = await context.read<ChatRoomRepository>().uploadImage(
+          PickedImage.path,
+          fileName,
         );
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Lỗi tải ảnh lên.')));
+        if (uploadedUrl == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lỗi tải ảnh lên.')));
+          }
         }
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Không thể chọn ảnh: $e')));
-      }
+
+      await context.read<ChatRoomRepository>().sendMessage(
+        widget.room.id,
+        userId,
+        currentText.isEmpty && uploadedUrl != null ? '[Hình ảnh]' : currentText,
+        imagePath: uploadedUrl,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -85,6 +93,59 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
         });
       }
     }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        imageQuality: 70,
+      );
+      if (image == null) return;
+
+      setState(() {
+        _previewImage = image;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể chọn ảnh: $e')));
+      }
+    }
+  }
+
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          body: Center(
+            child: Hero(
+              tag: imageUrl,
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -122,13 +183,44 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                       fontSize: 16,
                     ),
                   ),
-                  const Text(
-                    "Đang hoạt động",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.normal,
-                    ),
+                  Builder(
+                    builder: (context) {
+                      if (widget.room.isGroup) {
+                        return Text(
+                          "${widget.room.members.length} thành viên",
+                          style: const TextStyle(fontSize: 12, color: AppColors.primary),
+                        );
+                      }
+                      
+                      if (widget.room.members.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      final otherUser = widget.room.members.firstWhere(
+                        (m) => m.id != userId,
+                        orElse: () => widget.room.members.first,
+                      );
+                      
+                      final isOnline = otherUser.status == 'online';
+                      String text = "Ngoại tuyến";
+                      Color color = Colors.grey;
+                      
+                      if (isOnline) {
+                        text = "Đang hoạt động";
+                        color = AppColors.success;
+                      } else if (otherUser.lastActiveAt != null) {
+                        timeago.setLocaleMessages('vi', timeago.ViMessages());
+                        text = "Hoạt động ${timeago.format(otherUser.lastActiveAt!, locale: 'vi')}";
+                      }
+                      
+                      return Text(
+                        text,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: color,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      );
+                    }
                   ),
                 ],
               ),
@@ -137,7 +229,69 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
         ),
         backgroundColor: Colors.white,
         elevation: 1,
-        
+        actions: widget.room.isGroup
+            ? [
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: AppColors.textBlack),
+                  onSelected: (value) async {
+                    if (value == 'leave') {
+                      DialogUtils.showConfirmDialog(
+                        context,
+                        title: 'Rời nhóm',
+                        content: 'Bạn có chắc chắn muốn rời khỏi nhóm này không?',
+                        confirmText: 'Rời đi',
+                        isDestructive: true,
+                        onConfirm: () async {
+                          if (userId == null) return;
+                          try {
+                            await context.read<ChatRoomRepository>().leaveGroup(widget.room.id, userId);
+                            if (mounted) {
+                              Navigator.pop(context); // Trở về màn hình trước
+                              SnackbarUtils.showSuccess(context, 'Đã rời nhóm');
+                            }
+                          } catch (e) {
+                            if (mounted) SnackbarUtils.showError(context, 'Lỗi: $e');
+                          }
+                        },
+                      );
+                    } else if (value == 'dissolve') {
+                      DialogUtils.showConfirmDialog(
+                        context,
+                        title: 'Giải tán nhóm',
+                        content: 'Hành động này sẽ xóa vĩnh viễn nhóm và tất cả tin nhắn. Bạn có chắc chắn không?',
+                        confirmText: 'Giải tán',
+                        isDestructive: true,
+                        onConfirm: () async {
+                          try {
+                            await context.read<ChatRoomRepository>().dissolveGroup(widget.room.id);
+                            if (mounted) {
+                              Navigator.pop(context); // Trở về
+                              SnackbarUtils.showSuccess(context, 'Đã giải tán nhóm');
+                            }
+                          } catch (e) {
+                            if (mounted) SnackbarUtils.showError(context, 'Lỗi: $e');
+                          }
+                        },
+                      );
+                    }
+                  },
+                  itemBuilder: (BuildContext context) {
+                    final isLeader = widget.room.adminId == null || widget.room.adminId == userId;
+                    return [
+                      if (isLeader)
+                        const PopupMenuItem(
+                          value: 'dissolve',
+                          child: Text('Giải tán nhóm', style: TextStyle(color: AppColors.error)),
+                        ),
+                      const PopupMenuItem(
+                        value: 'leave',
+                        child: Text('Rời nhóm'),
+                      ),
+                    ];
+                  },
+                )
+              ]
+            : null,
       ),
       body: Column(
         children: [
@@ -147,6 +301,12 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                 widget.room.id,
               ),
               builder: (context, snapshot) {
+                // Đánh dấu đã đọc bất cứ khi nào có tin nhắn mới stream về
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    context.read<UnreadCountProvider>().markRoomAsRead(widget.room.id);
+                  }
+                });
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
@@ -212,7 +372,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
+                                    color: Colors.black.withValues(alpha: 0.05),
                                     blurRadius: 5,
                                     offset: const Offset(0, 2),
                                   ),
@@ -223,32 +383,44 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    if (msg.imagePath != null &&
-                                        msg.imagePath!.isNotEmpty)
-                                      CachedNetworkImage(
-                                        imageUrl: msg.imagePath!,
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                        placeholder: (context, url) =>
-                                            Container(
-                                              height: 200,
-                                              color: Colors.grey.shade200,
-                                              child: const Center(
-                                                child:
-                                                    CircularProgressIndicator(),
-                                              ),
+                                    // ── Ảnh (chỉ render khi có imagePath) ──
+                                    if (msg.imagePath != null)
+                                      GestureDetector(
+                                        onTap: () => _showFullScreenImage(context, msg.imagePath!),
+                                        child: Hero(
+                                          tag: msg.imagePath!,
+                                          child: ConstrainedBox(
+                                            constraints: const BoxConstraints(
+                                              maxHeight: 220,
                                             ),
-                                        errorWidget: (context, url, error) =>
-                                            Container(
-                                              height: 150,
-                                              color: Colors.grey.shade200,
-                                              child: const Icon(
-                                                Icons.broken_image,
-                                                color: Colors.grey,
-                                                size: 40,
-                                              ),
+                                            child: CachedNetworkImage(
+                                              imageUrl: msg.imagePath!,
+                                              fit: BoxFit.cover,
+                                              width: double.infinity,
+                                              placeholder: (context, url) =>
+                                                  Container(
+                                                    height: 200,
+                                                    color: Colors.grey.shade200,
+                                                    child: const Center(
+                                                      child:
+                                                          CircularProgressIndicator(),
+                                                    ),
+                                                  ),
+                                              errorWidget: (context, url, error) =>
+                                                  Container(
+                                                    height: 150,
+                                                    color: Colors.grey.shade200,
+                                                    child: const Icon(
+                                                      Icons.broken_image,
+                                                      color: Colors.grey,
+                                                      size: 40,
+                                                    ),
+                                                  ),
                                             ),
+                                          ),
+                                        ),
                                       ),
+                                    // ── Nội dung text ──
                                     if (msg.content.isNotEmpty &&
                                         msg.content != '[Hình ảnh]')
                                       Padding(
@@ -266,6 +438,10 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                                           ),
                                         ),
                                       ),
+                                    // Nếu chỉ có ảnh (không có text), thêm padding nhỏ
+                                    if (msg.imagePath != null &&
+                                        (msg.content.isEmpty || msg.content == '[Hình ảnh]'))
+                                      const SizedBox(height: 4),
                                   ],
                                 ),
                               ),
@@ -311,56 +487,124 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     offset: const Offset(0, -2),
                     blurRadius: 5,
                   ),
                 ],
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.image_outlined,
-                      color: AppColors.primary,
-                      size: 28,
-                    ),
-                    onPressed: _isUploading ? null : _pickImage,
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _msgController,
-                      minLines: 1,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: "Nhắn tin...",
-                        hintStyle: const TextStyle(color: AppColors.textLight),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
+                  if (_previewImage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8, left: 8, top: 4),
+                      child: SizedBox(
+                        width: 88,
+                        height: 88,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.borderColor),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.file(
+                                  File(_previewImage!.path),
+                                  fit: BoxFit.cover,
+                                  width: 80,
+                                  height: 80,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: -8,
+                              right: -8,
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _previewImage = null;
+                                  });
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 1.5),
+                                  ),
+                                  padding: const EdgeInsets.all(3),
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 13,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  CircleAvatar(
-                    backgroundColor: AppColors.primary,
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.send_rounded,
-                        color: Colors.white,
-                        size: 20,
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.camera_alt_outlined,
+                          color: AppColors.primary,
+                          size: 26,
+                        ),
+                        onPressed: _isUploading ? null : () => _pickImage(ImageSource.camera),
                       ),
-                      onPressed: _sendMessage,
-                    ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.image_outlined,
+                          color: AppColors.primary,
+                          size: 26,
+                        ),
+                        onPressed: _isUploading ? null : () => _pickImage(ImageSource.gallery),
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _msgController,
+                          minLines: 1,
+                          maxLines: 4,
+                          decoration: InputDecoration(
+                            hintText: "Nhắn tin...",
+                            hintStyle: const TextStyle(color: AppColors.textLight),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                          ),
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _sendMessage(),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      CircleAvatar(
+                        backgroundColor: AppColors.primary,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.send_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          onPressed: _sendMessage,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

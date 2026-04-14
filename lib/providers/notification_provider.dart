@@ -52,6 +52,27 @@ class NotificationProvider extends ChangeNotifier {
     await _repository.createNotification(notification);
   }
 
+  // Tạo notification khi tham gia sự kiện thành công
+  Future<void> createEventSuccessNotification({
+    required String userId,
+    required String eventTitle,
+    required String startTime,
+    required String endTime,
+    required DateTime date,
+    required int quantity,
+  }) async {
+    final dateStr = _formatDate(date);
+    final notification = NotificationModel(
+      userId: userId,
+      type: 'booking_success',
+      title: 'Đăng ký sự kiện thành công!',
+      message: 'Bạn đã đăng ký $quantity vé tham gia Sự kiện "$eventTitle" diễn ra vào $dateStr từ $startTime đến $endTime',
+      createdAt: DateTime.now(),
+      isRead: false,
+    );
+    await _repository.createNotification(notification);
+  }
+
   // Đánh dấu notification là đã đọc
   Future<void> markAsRead(String notificationId) async {
     await _repository.markNotificationAsRead(notificationId);

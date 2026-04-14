@@ -6,7 +6,9 @@ class UserModel {
   final String role;
   final String? photoUrl;
   final String? fcmToken;
+  final DateTime? lastActiveAt;
   final int balance;
+  final String status; // 'online', 'offline', 'away'
 
   UserModel({
     required this.id,
@@ -16,7 +18,9 @@ class UserModel {
     this.role = 'user',
     this.photoUrl,
     this.fcmToken,
+    this.lastActiveAt,
     this.balance = 0,
+    this.status = 'offline',
   });
 
   UserModel copyWith({
@@ -27,7 +31,9 @@ class UserModel {
     String? role,
     String? photoUrl,
     String? fcmToken,
+    DateTime? lastActiveAt,
     int? balance,
+    String? status,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -37,7 +43,9 @@ class UserModel {
       role: role ?? this.role,
       photoUrl: photoUrl ?? this.photoUrl,
       fcmToken: fcmToken ?? this.fcmToken,
+      lastActiveAt: lastActiveAt ?? this.lastActiveAt,
       balance: balance ?? this.balance,
+      status: status ?? this.status,
     );
   }
 
@@ -50,7 +58,11 @@ class UserModel {
       role: data['role'] ?? 'user',
       photoUrl: data['avatar_url'],
       fcmToken: data['fcm_token'],
+      lastActiveAt: data['last_active_at'] != null 
+          ? DateTime.parse(data['last_active_at']) 
+          : null,
       balance: (data['balance'] as num?)?.toInt() ?? 0,
+      status: data['status'] ?? 'offline',
     );
   }
 
@@ -60,6 +72,8 @@ class UserModel {
       'display_name': displayName,
       'phone_number': phoneNumber,
       'role': role,
+      // status & last_active_at được quản lý riêng bởi presence system
+      // không ghi đè ở đây để tránh lỗi nếu cột chưa tồn tại trên DB
       if (fcmToken != null) 'fcm_token': fcmToken,
       if (photoUrl != null) 'avatar_url': photoUrl,
       'balance': balance,

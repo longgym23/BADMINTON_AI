@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/cupertino.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -48,32 +49,43 @@ class ProfileTab extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(l.selectLanguage, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _LangOption(
-              flag: '🇻🇳',
-              label: l.languageVietnamese,
-              isSelected: langProvider.isVietnamese,
-              onTap: () {
-                langProvider.setVietnamese();
-                Navigator.pop(ctx);
-              },
+        content: Material(
+          color: Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _LangOption(
+                  flag: '🇻🇳',
+                  label: l.languageVietnamese,
+                  isSelected: langProvider.isVietnamese,
+                  onTap: () {
+                    langProvider.setVietnamese();
+                    Navigator.pop(ctx);
+                  },
+                ),
+                const SizedBox(height: 8),
+                _LangOption(
+                  flag: '🇺🇸',
+                  label: l.languageEnglish,
+                  isSelected: !langProvider.isVietnamese,
+                  onTap: () {
+                    langProvider.setEnglish();
+                    Navigator.pop(ctx);
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            _LangOption(
-              flag: '🇺🇸',
-              label: l.languageEnglish,
-              isSelected: !langProvider.isVietnamese,
-              onTap: () {
-                langProvider.setEnglish();
-                Navigator.pop(ctx);
-              },
-            ),
-          ],
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l.cancel, style: const TextStyle(color: Colors.blue)),
+          ),
+        ],
       ),
     );
   }

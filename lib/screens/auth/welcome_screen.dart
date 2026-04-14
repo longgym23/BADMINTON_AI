@@ -434,7 +434,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -580,26 +580,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   // ==========================================
   // SHARED WIDGETS
   // ==========================================
-  Widget _buildFloatingIcon(IconData icon, Color color, {double size = 56}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Icon(icon, color: color, size: size * 0.5),
-      ),
-    );
-  }
+
 
   Widget _buildFloatingImage(String imagePath, {double size = 56}) {
     return Container(

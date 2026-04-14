@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-
+import 'package:flutter/material.dart';
 abstract class HomeFilterEvent extends Equatable {
   const HomeFilterEvent();
 
@@ -28,11 +28,35 @@ class SportFilterToggled extends HomeFilterEvent {
 class FilterCriteriaApplied extends HomeFilterEvent {
   final String? sportType;
   final double? maxPrice;
+  final String? scheduleType;
+  final DateTimeRange? dateRange;
+  final TimeOfDay? timeStart;
+  final TimeOfDay? timeEnd;
+  final String? eventTimeFilter;
+  final double? distance;
 
-  const FilterCriteriaApplied({this.sportType, this.maxPrice});
+  const FilterCriteriaApplied({
+    this.sportType,
+    this.maxPrice,
+    this.scheduleType,
+    this.dateRange,
+    this.timeStart,
+    this.timeEnd,
+    this.eventTimeFilter,
+    this.distance,
+  });
 
   @override
-  List<Object?> get props => [sportType, maxPrice];
+  List<Object?> get props => [
+        sportType,
+        maxPrice,
+        scheduleType,
+        dateRange,
+        timeStart,
+        timeEnd,
+        eventTimeFilter,
+        distance,
+      ];
 }
 
 class FilterCriteriaReset extends HomeFilterEvent {}

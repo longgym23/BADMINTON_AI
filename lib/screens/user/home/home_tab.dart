@@ -21,6 +21,7 @@ import 'package:badminton_ai/blocs/home_filter/home_filter_state.dart';
 import 'package:badminton_ai/screens/user/home/components/home_search_bar.dart';
 import 'package:badminton_ai/screens/user/home/components/home_filter_bar.dart';
 import 'package:badminton_ai/screens/user/home/components/home_filter_modal.dart';
+import 'package:flutter/cupertino.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -165,7 +166,7 @@ class _HomeTabState extends State<HomeTab> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
+            child: const Text('Hủy', style: TextStyle(color: Colors.blue)),
           ),
           if (isLink)
             TextButton(
@@ -173,7 +174,7 @@ class _HomeTabState extends State<HomeTab> {
                 Navigator.pop(ctx);
                 launchUrl(uri, mode: LaunchMode.externalApplication);
               },
-              child: const Text('Mở'),
+              child: const Text('Mở', style: TextStyle(color: Colors.blue)),
             ),
         ],
       ),
@@ -181,16 +182,11 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   void _showFilterModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => BlocProvider.value(
-        value: context.read<HomeFilterBloc>(),
-        child: Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: context.read<HomeFilterBloc>(),
           child: HomeFilterModal(
             initialCriteria: context
                 .read<HomeFilterBloc>()

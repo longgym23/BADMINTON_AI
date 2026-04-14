@@ -1,63 +1,140 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:badminton_ai/utils/app_colors.dart';
 
-class LoadingSpinner extends StatelessWidget {
+/// Full-screen elegant loading overlay
+class LoadingSpinner extends StatefulWidget {
   final String message;
   const LoadingSpinner({Key? key, this.message = 'Đang tải...'})
-    : super(key: key);
+      : super(key: key);
+
+  @override
+  State<LoadingSpinner> createState() => _LoadingSpinnerState();
+}
+
+class _LoadingSpinnerState extends State<LoadingSpinner>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    // SỬA LỖI: Sử dụng Scaffold để tránh overflow và đảm bảo layout đúng
     return Scaffold(
-      backgroundColor: Colors.black.withOpacity(0.65),
+      backgroundColor: Colors.white,
       body: Center(
-        child: Container(
-          constraints: const BoxConstraints(
-            maxWidth: 200, // Giới hạn chiều rộng tối đa
-            minWidth: 120, // Chiều rộng tối thiểu
-          ),
-          decoration: BoxDecoration(
-            color: colors.primary.withOpacity(0.9), // Nền xanh đậm
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20.0,
-            vertical: 16.0, // Giảm padding để tránh overflow
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize:
-                MainAxisSize.min, // Quan trọng: giữ kích thước tối thiểu
-            children: [
-              SizedBox(
-                width: 36,
-                height: 36,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    colors.secondary,
-                  ), // Màu vàng
-                ),
-              ),
-              const SizedBox(height: 10), // Giảm khoảng cách
-              Flexible(
-                child: Text(
-                  message, // Sử dụng message parameter
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13, // Giảm font size một chút
-                    decoration: TextDecoration.none, // Bỏ gạch chân
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Logo ──
+            Image.asset(
+              'assets/images/logo1.png',
+              width: 100,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 40),
+
+            // ── Custom arc spinner ──
+            AnimatedBuilder(
+              animation: _ctrl,
+              builder: (_, __) {
+                return CustomPaint(
+                  size: const Size(56, 56),
+                  painter: _ArcSpinnerPainter(
+                    progress: _ctrl.value,
+                    color: AppColors.primary,
+                    trackColor: AppColors.primary.withOpacity(0.12),
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                );
+              },
+            ),
+            const SizedBox(height: 28),
+
+            // ── Text ──
+            Text(
+              widget.message,
+              style: const TextStyle(
+                color: AppColors.textGrey,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.3,
+                decoration: TextDecoration.none,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+/// Vẽ arc spinner (vòng tròn với đuôi mờ dần)
+class _ArcSpinnerPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final Color trackColor;
+
+  const _ArcSpinnerPainter({
+    required this.progress,
+    required this.color,
+    required this.trackColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 4;
+    final strokeWidth = 4.5;
+
+    // Track (vòng nền)
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = trackColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth,
+    );
+
+    // Arc xoay
+    final paintArc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..shader = SweepGradient(
+        startAngle: 0,
+        endAngle: math.pi * 2,
+        colors: [
+          color.withOpacity(0.0),
+          color.withOpacity(0.6),
+          color,
+        ],
+        stops: const [0.0, 0.5, 1.0],
+        transform: GradientRotation(math.pi * 2 * progress),
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      math.pi * 2 * progress - math.pi / 2,
+      math.pi * 1.5,
+      false,
+      paintArc,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ArcSpinnerPainter old) => old.progress != progress;
 }

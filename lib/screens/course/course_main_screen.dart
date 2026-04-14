@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/providers/course_provider.dart';
-import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/screens/course/course_list_tab.dart';
 import 'package:badminton_ai/screens/course/watched_courses_screen.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';

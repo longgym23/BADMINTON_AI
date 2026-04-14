@@ -4,6 +4,7 @@ import 'package:badminton_ai/l10n/generated/app_localizations.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/screens/user/booking/components/booking_history/booking_card.dart';
 import 'package:badminton_ai/screens/user/booking/components/booking_history/filter_section.dart';
+import 'package:badminton_ai/viewmodels/mixins/filterable_viewmodel_mixin.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/viewmodels/booking_history_viewmodel.dart';
 import 'package:flutter/material.dart';
@@ -172,27 +173,6 @@ class _FilterHeader extends StatelessWidget {
             letterSpacing: 0.5,
           ),
         ),
-        if (vm.filterMode != FilterMode.all) ...[
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: vm.setFilterAll,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.primaryBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(vm.filterLabel(context), style: const TextStyle(color: AppColors.primary, fontSize: 12)),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.close, size: 12, color: AppColors.primary),
-                ],
-              ),
-            ),
-          ),
-        ],
         const Spacer(),
         FilterRow(vm: vm, l: l),
       ],

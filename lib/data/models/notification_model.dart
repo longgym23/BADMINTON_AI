@@ -35,7 +35,7 @@ class NotificationModel {
 
   factory NotificationModel.fromSupabase(Map<String, dynamic> data) {
     return NotificationModel(
-      id: data['id'] ?? '',
+      id: data['id']?.toString() ?? '',
       userId: data['user_id'] ?? '',
       type: data['type'] ?? '',
       title: data['title'] ?? '',

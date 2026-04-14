@@ -1,10 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 
-enum FilterMode { all, dateRange, month, year }
+import 'package:badminton_ai/viewmodels/mixins/filterable_viewmodel_mixin.dart';
 
 /// Extends BookingGroup to include sportType for chart grouping
 class StatBookingGroup {
@@ -23,22 +24,17 @@ class StatBookingGroup {
   });
 }
 
-class StatisticsViewModel extends ChangeNotifier {
+class StatisticsViewModel extends ChangeNotifier with FilterableViewModelMixin {
   final SupabaseRepository repo;
   final String userId;
 
   List<StatBookingGroup> _allGroups = [];
   List<StatBookingGroup> _filteredGroups = [];
   Map<String, CourtLocationModel> _courtMap = {};
+  StreamSubscription? _bookingsSubscription;
 
   bool _isLoading = true;
   String? _error;
-
-  // Filter state
-  FilterMode _filterMode = FilterMode.all;
-  DateTimeRange? _selectedDateRange;
-  int? _selectedMonth;
-  int? _selectedYear;
 
   StatisticsViewModel({required this.repo, required this.userId}) {
     _initData();
@@ -48,31 +44,29 @@ class StatisticsViewModel extends ChangeNotifier {
   String? get error => _error;
   List<StatBookingGroup> get filteredGroups => _filteredGroups;
 
-  FilterMode get filterMode => _filterMode;
-  DateTimeRange? get selectedDateRange => _selectedDateRange;
-  int? get selectedMonth => _selectedMonth;
-  int? get selectedYear => _selectedYear;
+  // Overriding mixin setter to trigger local filter application
+  @override
+  void setFilterAll() {
+    super.setFilterAll();
+    _applyFilter();
+  }
 
-  // Helper cho text hiển thị của filter
-  String filterLabel(BuildContext context, String allLabel, String dateLabel, String monthLabel, String yearLabel) {
-    switch (_filterMode) {
-      case FilterMode.all:
-        return allLabel;
-      case FilterMode.dateRange:
-        if (_selectedDateRange != null) {
-          final fmt = DateFormat('dd/MM');
-          return '${fmt.format(_selectedDateRange!.start)} - ${fmt.format(_selectedDateRange!.end)}';
-        }
-        return dateLabel;
-      case FilterMode.month:
-        if (_selectedMonth != null && _selectedYear != null) {
-          return 'T$_selectedMonth/$_selectedYear';
-        }
-        return monthLabel;
-      case FilterMode.year:
-        if (_selectedYear != null) return 'Năm $_selectedYear';
-        return yearLabel;
-    }
+  @override
+  void setFilterDateRange(DateTimeRange range) {
+    super.setFilterDateRange(range);
+    _applyFilter();
+  }
+
+  @override
+  void setFilterMonth(int month, int year) {
+    super.setFilterMonth(month, year);
+    _applyFilter();
+  }
+
+  @override
+  void setFilterYear(int year) {
+    super.setFilterYear(year);
+    _applyFilter();
   }
 
   // Khởi tạo data
@@ -87,14 +81,21 @@ class StatisticsViewModel extends ChangeNotifier {
       final courts = await courtsStream.first; 
       _courtMap = {for (var c in courts) c.id: c};
 
-      // 2. Fetch user bookings
-      final bookingsStream = repo.getUserBookingHistoryStream(userId);
-      final bookings = await bookingsStream.first;
-      
-      _allGroups = _groupBookings(bookings);
-      _applyFilter();
-      _isLoading = false;
-      notifyListeners();
+      // 2. Subscribe to user bookings stream for real-time updates
+      _bookingsSubscription?.cancel();
+      _bookingsSubscription = repo.getUserBookingHistoryStream(userId).listen(
+        (bookings) {
+          _allGroups = _groupBookings(bookings);
+          _applyFilter();
+          _isLoading = false;
+          notifyListeners();
+        },
+        onError: (e) {
+          _error = e.toString();
+          _isLoading = false;
+          notifyListeners();
+        },
+      );
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
@@ -102,68 +103,14 @@ class StatisticsViewModel extends ChangeNotifier {
     }
   }
 
-  void setFilterAll() {
-    _filterMode = FilterMode.all;
-    _selectedDateRange = null;
-    _selectedMonth = null;
-    _selectedYear = null;
-    _applyFilter();
-  }
-
-  void setFilterDateRange(DateTimeRange range) {
-    _filterMode = FilterMode.dateRange;
-    _selectedDateRange = range;
-    _applyFilter();
-  }
-
-  void setFilterMonth(int month, int year) {
-    _filterMode = FilterMode.month;
-    _selectedMonth = month;
-    _selectedYear = year;
-    _applyFilter();
-  }
-
-  void setFilterYear(int year) {
-    _filterMode = FilterMode.year;
-    _selectedYear = year;
-    _applyFilter();
+  @override
+  void dispose() {
+    _bookingsSubscription?.cancel();
+    super.dispose();
   }
 
   void _applyFilter() {
-    switch (_filterMode) {
-      case FilterMode.all:
-        _filteredGroups = _allGroups;
-        break;
-      case FilterMode.dateRange:
-        if (_selectedDateRange == null) {
-          _filteredGroups = _allGroups;
-          break;
-        }
-        final start = _selectedDateRange!.start;
-        final end = _selectedDateRange!.end;
-        _filteredGroups = _allGroups.where((g) {
-          final d = g.base.date;
-          return !d.isBefore(DateTime(start.year, start.month, start.day)) &&
-                 !d.isAfter(DateTime(end.year, end.month, end.day));
-        }).toList();
-        break;
-      case FilterMode.month:
-        if (_selectedMonth == null || _selectedYear == null) {
-           _filteredGroups = _allGroups;
-           break;
-        }
-        _filteredGroups = _allGroups
-            .where((g) => g.base.date.month == _selectedMonth && g.base.date.year == _selectedYear)
-            .toList();
-        break;
-      case FilterMode.year:
-        if (_selectedYear == null) {
-          _filteredGroups = _allGroups; 
-          break;
-        }
-        _filteredGroups = _allGroups.where((g) => g.base.date.year == _selectedYear).toList();
-        break;
-    }
+    _filteredGroups = _allGroups.where((g) => isDateInFilter(g.base.date)).toList();
     notifyListeners();
   }
 

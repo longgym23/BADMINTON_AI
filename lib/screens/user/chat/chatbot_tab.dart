@@ -14,7 +14,10 @@ import 'package:badminton_ai/services/groq_stt_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
+import 'package:badminton_ai/screens/user/booking/booking_history_screen.dart';
+import 'package:badminton_ai/screens/user/profile/statistics_screen.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:flutter/cupertino.dart';
 
 class ChatbotTab extends StatefulWidget {
   /// Callback để quay lại trang chủ (tab 0) thay vì Navigator.pop
@@ -37,7 +40,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
   bool _mounted = true; // Fix: tránh setState sau dispose
   String _recognizedText = '';
   String? _pendingImagePath; // Fix: image preview kiểu ChatGPT
-  bool _useGroqFallback = false; // true = dùng Groq Whisper thay native STT
+  bool _useGroqFallback = true; // Bắt buộc dùng Groq Whisper để STT tiếng Việt chuẩn xác hơn
   bool _isTranscribing = false; // true = đang gửi audio lên Groq
   String? _recordingPath; // Đường dẫn file audio đang ghi
 
@@ -155,6 +158,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
     return Scaffold(
       appBar: CustomGradientAppBar(
         title: Column(
@@ -165,7 +169,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
-                color: AppColors.textBlack,
+                color: AppColors.background,
               ),
             ),
             Row(
@@ -195,7 +199,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
         centerTitle: true,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textBlack),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           // Fix màn đen: dùng onBack callback thay Navigator.pop
           // vì tab này nằm trong IndexedStack, Navigator.pop sẽ pop HomeScreen
           onPressed: () {
@@ -213,6 +217,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
           if (!_isListening && !_isTranscribing) _buildSuggestionChips(),
           if (_pendingImagePath != null) _buildImagePreview(),
           _buildInputArea(),
+          if (!isKeyboardVisible) const SizedBox(height: 92),
         ],
       ),
     );
@@ -751,9 +756,7 @@ class _MessageBubble extends StatelessWidget {
 
     // Check for "Success Card" trigger
     bool isSuccessCard =
-        !isUser &&
-        (cleanText.contains("thành công") ||
-            message.type == 'booking_success');
+        !isUser && message.type == 'booking_success';
 
     if (isSuccessCard) {
       return _buildSuccessCard(context);
@@ -830,26 +833,14 @@ class _MessageBubble extends StatelessWidget {
                         ),
                       if (cleanText.isNotEmpty)
                         Text(
-                          cleanText,
+                          (!isUser && searchSportType != null)
+                              ? 'Dưới đây là các sân bạn có thể tham khảo:'
+                              : (!isUser && cancelBooking)
+                                  ? 'Để hủy sân, bạn vui lòng nhấn vào nút "Hủy sân" bên dưới để chuyển đến màn hình Lịch đặt của tôi nhé.'
+                                  : cleanText,
                           style: TextStyle(
                             color: isUser ? AppColors.surface : AppColors.textBlack,
                             fontSize: 15,
-                          ),
-                        ),
-
-                      if (!isUser && _citations().isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: InkWell(
-                            onTap: () => _showCitationsDialog(context, _citations()),
-                            child: const Text(
-                              'Xem nguồn (RAG)',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
                           ),
                         ),
                     ],
@@ -877,19 +868,28 @@ class _MessageBubble extends StatelessWidget {
                     _ActionButton(
                       icon: Icons.calendar_today,
                       label: 'Xem lịch',
-                      onTap: () => Navigator.pushNamed(context, '/history'),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const BookingHistoryScreen()),
+                      ),
                     ),
                   if (viewExpense)
                     _ActionButton(
                       icon: Icons.account_balance_wallet,
                       label: 'Xem chi tiêu',
-                      onTap: () => Navigator.pushNamed(context, '/history'),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const StatisticsScreen()),
+                      ),
                     ),
                   if (cancelBooking)
                     _ActionButton(
                       icon: Icons.cancel,
                       label: 'Hủy sân',
-                      onTap: () => Navigator.pushNamed(context, '/history'),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const BookingHistoryScreen()),
+                      ),
                     ),
                 ],
               ),
@@ -978,34 +978,37 @@ class _MessageBubble extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Nguồn tham khảo'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: citations.length,
-            separatorBuilder: (_, __) => const Divider(height: 12),
-            itemBuilder: (context, index) {
-              final c = citations[index];
-              final m = c is Map ? c : const {};
-              final id = m['id']?.toString() ?? 'S${index + 1}';
-              final title = m['title']?.toString() ?? (m['source']?.toString() ?? 'KB');
-              final excerpt = m['excerpt']?.toString() ?? '';
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('$id • $title', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  if (excerpt.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(excerpt, style: const TextStyle(fontSize: 13)),
-                    ),
-                ],
-              );
-            },
+        content: Material(
+          color: Colors.transparent,
+          child: SizedBox(
+            width: double.maxFinite,
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: citations.length,
+              separatorBuilder: (_, __) => const Divider(height: 12),
+              itemBuilder: (context, index) {
+                final c = citations[index];
+                final m = c is Map ? c : const {};
+                final id = m['id']?.toString() ?? 'S\${index + 1}';
+                final title = m['title']?.toString() ?? (m['source']?.toString() ?? 'KB');
+                final excerpt = m['excerpt']?.toString() ?? '';
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('\$id • \$title', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    if (excerpt.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(excerpt, style: const TextStyle(fontSize: 13)),
+                      ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đóng')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đóng', style: TextStyle(color: Colors.blue))),
         ],
       ),
     );

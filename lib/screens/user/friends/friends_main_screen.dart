@@ -7,8 +7,11 @@ import 'package:badminton_ai/screens/user/chat/create_group_screen.dart';
 import 'package:badminton_ai/screens/user/chat/direct_chat_screen.dart';
 import 'package:badminton_ai/data/repositories/chat_room_repository.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
+import 'package:badminton_ai/utils/snackbar_utils.dart';
+import 'package:badminton_ai/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'dart:ui';
 
 class FriendsMainScreen extends StatefulWidget {
@@ -33,32 +36,65 @@ class _FriendsMainScreenState extends State<FriendsMainScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: _TabIndexListener(
-        onTabChanged: (index) {}, // only used for FAB, handled inside
+        onTabChanged: (int index) {},
         builder: (context, currentTab) => Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
-            title: const Text("Cộng đồng & Bạn bè"),
-            backgroundColor: Colors.white,
+            centerTitle: false,
+            title: const Text(
+              "Cộng đồng",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textBlack,
+                letterSpacing: -0.5,
+              ),
+            ),
+            backgroundColor: Colors.white.withValues(alpha: 0.8),
+            elevation: 0,
             actions: [
               IconButton(
-                icon: const Icon(Icons.person_add),
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.person_add, color: AppColors.primary, size: 20),
+                ),
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const AddFriendScreen()),
                 ),
               ),
+              const SizedBox(width: 8),
             ],
-            bottom: const TabBar(
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.textGrey,
-              indicatorColor: AppColors.primary,
-              tabs: [
-                Tab(text: "Tin nhắn"),
-                Tab(text: "Bạn bè"),
-                Tab(text: "Lời mời"),
-              ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(48),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TabBar(
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  labelColor: AppColors.primary,
+                  unselectedLabelColor: AppColors.textGrey,
+                  indicatorColor: AppColors.primary,
+                  indicatorWeight: 4,
+                  indicatorSize: TabBarIndicatorSize.label,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: -0.4),
+                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, letterSpacing: -0.4),
+                  dividerColor: Colors.transparent,
+                  tabs: [
+                    Tab(text: "Cá nhân"),
+                    Tab(text: "Nhóm"),
+                    Tab(text: "Bạn bè"),
+                    Tab(text: "Lời mời"),
+                  ],
+                ),
+              ),
             ),
           ),
           floatingActionButton: currentTab == 0
@@ -80,7 +116,8 @@ class _FriendsMainScreenState extends State<FriendsMainScreen> {
               : null,
           body: const TabBarView(
             children: [
-              ChatRoomsListScreen(isEmbedded: true),
+              ChatRoomsListScreen(isEmbedded: true, roomType: 'direct'),
+              ChatRoomsListScreen(isEmbedded: true, roomType: 'group'),
               _FriendsListTab(),
               _PendingRequestsTab(),
             ],
@@ -142,141 +179,238 @@ class _TabIndexListenerState extends State<_TabIndexListener> {
 }
 
 // ─────────────────────────────────────────────
-class _FriendsListTab extends StatelessWidget {
+class _FriendsListTab extends StatefulWidget {
   const _FriendsListTab();
   @override
+  State<_FriendsListTab> createState() => _FriendsListTabState();
+}
+
+class _FriendsListTabState extends State<_FriendsListTab> {
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
   Widget build(BuildContext context) {
-    return Consumer<FriendProvider>(
-      builder: (context, provider, child) {
-        final friends = provider.friends;
+    return Column(
+      children: [
+        _buildSearchField(),
+        Expanded(
+          child: Consumer<FriendProvider>(
+            builder: (context, provider, child) {
+              var friends = provider.friends;
 
-        if (friends.isEmpty) {
-          return const Center(
-            child: Text("Bạn chưa có người bạn nào. Hãy thêm bạn bè nhé!"),
-          );
-        }
+              if (_searchQuery.isNotEmpty) {
+                final q = _searchQuery.toLowerCase();
+                friends = friends.where((f) => 
+                  (f.displayName ?? '').toLowerCase().contains(q) ||
+                  (f.phoneNumber ?? '').toLowerCase().contains(q)
+                ).toList();
+              }
 
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          itemCount: friends.length,
-          itemBuilder: (context, index) {
-            final friend = friends[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-                  child: Container(
+              if (friends.isEmpty) {
+                return const Center(
+                  child: Text("Không tìm thấy bạn bè nào."),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                itemCount: friends.length,
+                itemBuilder: (context, index) {
+                  final friend = friends[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _FriendCard(friend: friend),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchField() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.grey[200]!.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: TextField(
+          controller: _searchController,
+          onChanged: (val) => setState(() => _searchQuery = val),
+          decoration: InputDecoration(
+            hintText: 'Tìm kiếm tên hoặc số điện thoại...',
+            hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
+            prefixIcon: Icon(Icons.search, color: Colors.grey[500], size: 20),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FriendCard extends StatelessWidget {
+  final UserModel friend;
+  const _FriendCard({required this.friend});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isOnline = friend.status == 'online';
+    
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.9),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: Stack(
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.9),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.5),
+                      border: Border.all(color: Colors.white, width: 2),
                     ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(27),
+                      child: friend.photoUrl != null
+                          ? Image.network(friend.photoUrl!, fit: BoxFit.cover)
+                          : Icon(Icons.person, color: AppColors.primary.withValues(alpha: 0.7)),
+                    ),
+                  ),
+                  if (isOnline)
+                    Positioned(
+                      right: 0,
+                      bottom: 2,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: AppColors.success,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2.5),
                         ),
-                        leading: Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.5),
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(25),
-                            child: friend.photoUrl != null
-                                ? Image.network(
-                                    friend.photoUrl!,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Icon(
-                                    Icons.person,
-                                    color: AppColors.primary.withOpacity(0.7),
-                                  ),
-                          ),
+                      ),
+                    )
+                  else
+                    Positioned(
+                      right: 0,
+                      bottom: 2,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[400],
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2.5),
                         ),
-                        title: Text(
-                          friend.displayName ?? 'Người dùng không tên',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textBlack,
-                          ),
-                        ),
-                        subtitle: Text(
-                          friend.phoneNumber ?? '',
-                          style: TextStyle(
-                            color: AppColors.textGrey.withOpacity(0.9),
-                          ),
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(
-                            Icons.message,
-                            color: AppColors.primary,
-                          ),
-                          onPressed: () async {
-                            final myId = context
-                                .read<AppAuthProvider>()
-                                .userModel
-                                ?.id;
+                      ),
+                    ),
+                ],
+              ),
+              title: Text(
+                friend.displayName ?? 'Người dùng không tên',
+                style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textBlack),
+              ),
+              subtitle: Text(
+                friend.phoneNumber ?? '',
+                style: TextStyle(color: AppColors.textGrey.withValues(alpha: 0.9), fontSize: 12),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.message_rounded, color: AppColors.primary, size: 20),
+                      onPressed: () async {
+                        final myId = context.read<AppAuthProvider>().userModel?.id;
+                        if (myId == null) return;
+
+                        try {
+                          final roomId = await context.read<ChatRoomRepository>().createDirectRoom(myId, friend.id);
+                          if (!context.mounted) return;
+                          final room = ChatRoom(id: roomId, isGroup: false, createdAt: DateTime.now());
+                          room.displayTitle = friend.displayName ?? 'Người dùng';
+                          room.displayAvatar = friend.photoUrl;
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => DirectChatScreen(room: room)));
+                        } catch (e) {
+                          if (context.mounted) {
+                            SnackbarUtils.showError(context, 'Lỗi tạo phòng: $e');
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.person_remove, color: AppColors.error, size: 20),
+                      onPressed: () {
+                        DialogUtils.showConfirmDialog(
+                          context,
+                          title: 'Xóa bạn bè',
+                          content: 'Bạn có chắc chắn muốn xóa ${friend.displayName ?? "người này"} khỏi danh sách bạn bè?',
+                          confirmText: 'Xóa',
+                          isDestructive: true,
+                          onConfirm: () async {
+                            final myId = context.read<AppAuthProvider>().userModel?.id;
                             if (myId == null) return;
-
                             try {
-                              final roomId = await context
-                                  .read<ChatRoomRepository>()
-                                  .createDirectRoom(myId, friend.id);
-
-                              if (!context.mounted) return;
-
-                              final room = ChatRoom(
-                                id: roomId,
-                                isGroup: false,
-                                createdAt: DateTime.now(),
-                              );
-                              room.displayTitle =
-                                  friend.displayName ?? 'Người dùng';
-                              room.displayAvatar = friend.photoUrl;
-
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      DirectChatScreen(room: room),
-                                ),
-                              );
+                              await context.read<FriendProvider>().rejectOrRemoveFriend(myId, friend.id);
+                              if (context.mounted) {
+                                SnackbarUtils.showSuccess(context, "Đã xóa bạn bè");
+                              }
                             } catch (e) {
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Lỗi tạo phòng: $e')),
-                                );
+                                SnackbarUtils.showError(context, "Lỗi: $e");
                               }
                             }
                           },
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
-                ),
+                ],
               ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -309,15 +443,15 @@ class _PendingRequestsTab extends StatelessWidget {
                   filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         width: 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withValues(alpha: 0.04),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -326,72 +460,55 @@ class _PendingRequestsTab extends StatelessWidget {
                     child: Material(
                       color: Colors.transparent,
                       child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         leading: Container(
-                          width: 50,
-                          height: 50,
+                          width: 54,
+                          height: 54,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.5),
+                            color: Colors.white.withValues(alpha: 0.5),
                             border: Border.all(color: Colors.white, width: 2),
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(25),
+                            borderRadius: BorderRadius.circular(27),
                             child: sender.photoUrl != null
-                                ? Image.network(
-                                    sender.photoUrl!,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Icon(
-                                    Icons.person,
-                                    color: AppColors.primary.withOpacity(0.7),
-                                  ),
+                                ? Image.network(sender.photoUrl!, fit: BoxFit.cover)
+                                : Icon(Icons.person, color: AppColors.primary.withValues(alpha: 0.7)),
                           ),
                         ),
                         title: Text(
                           sender.displayName ?? 'Người dùng không tên',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textBlack,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textBlack),
                         ),
-                        subtitle: Text(
-                          sender.phoneNumber ?? '',
-                          style: TextStyle(
-                            color: AppColors.textGrey.withOpacity(0.9),
-                          ),
-                        ),
+                        subtitle: const Text("Muốn kết bạn với bạn", style: TextStyle(fontSize: 12, color: AppColors.textGrey)),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.check_circle,
-                                color: AppColors.success,
-                                size: 28,
-                              ),
-                              onPressed: () {
-                                provider.acceptFriendRequest(
-                                  request['user_id1'],
-                                  request['user_id2'],
-                                );
+                            TextButton(
+                              onPressed: () async {
+                                try {
+                                  await provider.acceptFriendRequest(request['user_id1'], request['user_id2']);
+                                  if (context.mounted) {
+                                    SnackbarUtils.showSuccess(context, "Chấp nhận thành công");
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    SnackbarUtils.showError(context, "Lỗi: $e");
+                                  }
+                                }
                               },
+                              style: TextButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                              ),
+                              child: const Text("Chấp nhận", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             ),
+                            const SizedBox(width: 8),
                             IconButton(
-                              icon: const Icon(
-                                Icons.cancel,
-                                color: AppColors.error,
-                                size: 28,
-                              ),
-                              onPressed: () {
-                                provider.rejectOrRemoveFriend(
-                                  request['user_id1'],
-                                  request['user_id2'],
-                                );
-                              },
+                              icon: const Icon(Icons.close, color: AppColors.textGrey, size: 20),
+                              onPressed: () => provider.rejectOrRemoveFriend(request['user_id1'], request['user_id2']),
                             ),
                           ],
                         ),

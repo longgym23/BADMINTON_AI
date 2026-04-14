@@ -45,10 +45,21 @@ class FriendProvider extends ChangeNotifier {
   }
 
   Future<void> acceptFriendRequest(String userId1, String userId2) {
+    _pendingRequests.removeWhere((r) => 
+      (r['user_id1'] == userId1 && r['user_id2'] == userId2) || 
+      (r['user_id1'] == userId2 && r['user_id2'] == userId1)
+    );
+    notifyListeners();
     return _repository.acceptFriendRequest(userId1, userId2);
   }
 
   Future<void> rejectOrRemoveFriend(String userId1, String userId2) {
+    _friends.removeWhere((f) => f.id == userId1 || f.id == userId2);
+    _pendingRequests.removeWhere((r) => 
+      (r['user_id1'] == userId1 && r['user_id2'] == userId2) || 
+      (r['user_id1'] == userId2 && r['user_id2'] == userId1)
+    );
+    notifyListeners();
     return _repository.removeFriend(userId1, userId2);
   }
 

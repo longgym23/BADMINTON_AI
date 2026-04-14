@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:badminton_ai/data/models/user_model.dart';
 import 'package:badminton_ai/data/repositories/auth_repository.dart';
+import 'package:badminton_ai/services/presence_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
@@ -16,6 +17,9 @@ class AppAuthProvider extends ChangeNotifier {
   UserModel? get userModel => _userModel;
   bool _isUpdatingProfile = false;
   bool get isUpdatingProfile => _isUpdatingProfile;
+
+  bool _isSigningIn = false;
+  bool get isSigningIn => _isSigningIn;
 
   AuthState _authState = AuthState.unknown;
   AuthState get authState => _authState;
@@ -58,13 +62,15 @@ class AppAuthProvider extends ChangeNotifier {
         // Lấy thông tin user (vai trò) từ Table profiles
         _userModel = await _authRepository.getUserModel(user.id);
         _authState = AuthState.authenticated;
+        // Khởi động PresenceService
+        PresenceService().start(user.id);
       }
       notifyListeners();
     });
   }
 
   Future<String?> signIn(String email, String password) async {
-    _authState = AuthState.loading;
+    _isSigningIn = true;
     notifyListeners();
     try {
       final userModel = await _authRepository.signInWithEmailAndPassword(
@@ -75,35 +81,34 @@ class AppAuthProvider extends ChangeNotifier {
       if (userModel != null) {
         _userModel = userModel;
         _authState = AuthState.authenticated;
+        _isSigningIn = false;
         notifyListeners();
         return null; // Success
       }
+      _isSigningIn = false;
+      notifyListeners();
       return 'Đăng nhập thất bại';
     } on AuthException catch (e) {
-      _authState = AuthState.unauthenticated;
+      _isSigningIn = false;
       notifyListeners();
-      // Trả về message từ Supabase (đã được localize hoặc raw message)
       return e.message;
     } catch (e) {
-      _authState = AuthState.unauthenticated;
+      _isSigningIn = false;
       notifyListeners();
       return 'Đã xảy ra lỗi không xác định: $e';
     }
   }
 
   Future<bool> signInWithGoogle() async {
-    _authState = AuthState.loading;
+    _isSigningIn = true;
     notifyListeners();
     try {
-      // Gọi repository
       final success = await _authRepository.signInWithGoogle();
-      if (!success) {
-        _authState = AuthState.unauthenticated;
-        notifyListeners();
-      }
+      _isSigningIn = false;
+      notifyListeners();
       return success;
     } catch (e) {
-      _authState = AuthState.unauthenticated;
+      _isSigningIn = false;
       notifyListeners();
       return false;
     }
@@ -134,6 +139,7 @@ class AppAuthProvider extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    await PresenceService().stop();
     await _authRepository.signOut();
   }
 

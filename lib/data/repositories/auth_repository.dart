@@ -147,4 +147,16 @@ class AuthRepository {
   Future<void> signOut() async {
     await _client.auth.signOut();
   }
+
+  /// Cập nhật trạng thái hoạt động cuối cùng
+  Future<void> updateLastActiveStatus(String userId, String status) async {
+    try {
+      await _client.from('profiles').update({
+        'status': status,
+        'last_active_at': DateTime.now().toIso8601String(),
+      }).eq('id', userId);
+    } catch (e) {
+      print("Error updateLastActiveStatus: $e");
+    }
+  }
 }

@@ -45,7 +45,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       extendBody: true, // Allow body to stretch behind the navigation bar
-      resizeToAvoidBottomInset: false, // Cho phép bàn phím đè lên BottomNavBar thay vì đẩy nó lên
+      resizeToAvoidBottomInset:
+          false, // Cho phép bàn phím đè lên BottomNavBar thay vì đẩy nó lên
       body: Stack(
         children: [
           IndexedStack(index: _currentIndex, children: _tabs),

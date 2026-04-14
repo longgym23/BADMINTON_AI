@@ -32,6 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _login() async {
+    FocusScope.of(context).unfocus(); // Đóng bàn phím để hiển thị Toast rõ ràng
     if (_formKey.currentState?.validate() ?? false) {
       final authProvider = context.read<AppAuthProvider>();
       String? error = await authProvider.signIn(
@@ -155,9 +156,9 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AppAuthProvider>();
-    final isLoading = authProvider.authState == AuthState.loading;
+    final isLoading = authProvider.isSigningIn;
     final size = MediaQuery.of(context).size;
-    final imageH = size.height * 0.42;
+    final imageH = size.height * 0.40; // Adjust proportionally
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -171,52 +172,9 @@ class _LoginScreenState extends State<LoginScreen> {
               left: 0,
               right: 0,
               height: imageH,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.asset(
-                    'assets/images/background_badminton.jpg',
-                    fit: BoxFit.cover,
-                  ),
-                  // Overlay tối nhẹ
-                  // Container(
-                  //   decoration: BoxDecoration(
-                  //     gradient: LinearGradient(
-                  //       begin: Alignment.topCenter,
-                  //       end: Alignment.bottomCenter,
-                  //       colors: [
-                  //         Colors.black.withOpacity(0.25),
-                  //         Colors.black.withOpacity(0.50),
-                  //       ],
-                  //     ),
-                  //   ),
-                  // ),
-                  // // Logo nhỏ 44x44 góc trên trái
-                  // Positioned(
-                  //   top: MediaQuery.of(context).padding.top + 0.5,
-                  //   left: 10,
-                  //   child: Container(
-                  //     width: 100,
-                  //     height: 100,
-                  //     // decoration: BoxDecoration(
-                  //     //   color: Colors.white,
-                  //     //   borderRadius: BorderRadius.circular(12),
-                  //     //   boxShadow: [
-                  //     //     BoxShadow(
-                  //     //       color: Colors.black.withOpacity(0.15),
-                  //     //       blurRadius: 8,
-                  //     //       offset: const Offset(0, 3),
-                  //     //     ),
-                  //     //   ],
-                  //     // ),
-                  //     padding: const EdgeInsets.all(6),
-                  //     child: Image.asset(
-                  //       'assets/images/logo1.png',
-                  //       fit: BoxFit.contain,
-                  //     ),
-                  //   ),
-                  // ),
-                ],
+              child: Image.asset(
+                'assets/images/background_badminton.jpg',
+                fit: BoxFit.cover,
               ),
             ),
 
@@ -235,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(28, 32, 28, 16),
+                  padding: const EdgeInsets.fromLTRB(28, 24, 28, 16),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -252,27 +210,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                   const Text(
                                     'Chào mừng\ntrở lại KLOO',
                                     style: TextStyle(
-                                      fontSize: 34,
+                                      fontSize: 26, // Reduced slightly
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.brandOrange,
-                                      height: 1.2,
+                                      height: 1.1,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   const Text(
                                     'Sân chơi của bạn',
                                     style: TextStyle(
-                                      fontSize: 15,
+                                      fontSize: 14,
                                       color: _textGray,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            // Avatar người dùng (placeholder khi chưa login)
                             Container(
-                              width: 52,
-                              height: 52,
+                              width: 48,
+                              height: 48,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.white,
@@ -284,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 12),
 
                         // Email field
                         _buildField(
@@ -303,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12), // Reduced from 16
 
                         // Password field
                         _buildField(
@@ -321,7 +278,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 10.0),   // ← Điều chỉnh số này để di chuyển xuống
+                            padding: const EdgeInsets.only(top: 4.0),
                             child: TextButton(
                               onPressed: () => Navigator.push(
                                 context,
@@ -344,12 +301,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12), // Reduced from 16
 
                         // Nút đăng nhập
                         SizedBox(
                           width: double.infinity,
-                          height: 52,
+                          height: 50, // Reduced from 52
                           child: ElevatedButton(
                             onPressed: isLoading ? null : _login,
                             style: ElevatedButton.styleFrom(
@@ -378,8 +335,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        // or sign in with
+                        const SizedBox(height: 12), // Reduced from 20
+                        
                         Center(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -410,12 +367,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12), // Reduced from 16
 
                         // Social buttons
                         SizedBox(
                           width: double.infinity,
-                          height: 52,
+                          height: 50, // Reduced from 52
                           child: OutlinedButton(
                             onPressed: isLoading ? null : _loginWithGoogle,
                             style: OutlinedButton.styleFrom(
@@ -430,14 +387,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 Image.asset(
                                   'assets/images/google.png',
-                                  width: 26,
-                                  height: 26,
+                                  width: 24,
+                                  height: 24,
                                 ),
                                 const SizedBox(width: 12),
                                 const Text(
                                   'Google',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 15,
                                     color: Color(0xFF0D6331),
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -446,7 +403,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),

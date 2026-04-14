@@ -1,11 +1,12 @@
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
-import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:badminton_ai/widgets/app_toast.dart';
+import 'package:flutter/cupertino.dart';
 
 class AdminCreateEventScreen extends StatefulWidget {
   const AdminCreateEventScreen({super.key});
@@ -54,9 +55,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
   Future<void> _saveEvent() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedCourtId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vui lòng chọn Cơ sở sân!'), backgroundColor: Colors.red),
-        );
+        AppToast.show(context, 'Vui lòng chọn Cơ sở sân!', type: ToastType.error);
         return;
       }
 
@@ -84,17 +83,50 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
       try {
         await context.read<SupabaseRepository>().createEvent(newEvent, ownerId);
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Thêm sự kiện thành công!')),
-        );
+        AppToast.show(context, 'Thêm sự kiện thành công!', type: ToastType.success);
         Navigator.pop(context);
       } catch (e) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi khi thêm: $e'), backgroundColor: Colors.red),
-        );
+        AppToast.show(context, 'Lỗi khi thêm: $e', type: ToastType.error);
       }
     }
+  }
+
+  void _showTimePickerIOS(TextEditingController controller) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext builder) {
+        return Container(
+          height: 250,
+          color: Colors.white,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Xong', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                  )
+                ],
+              ),
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.time,
+                  use24hFormat: true,
+                  initialDateTime: DateTime.now(),
+                  onDateTimeChanged: (DateTime newDateTime) {
+                    setState(() {
+                      controller.text = '${newDateTime.hour.toString().padLeft(2, '0')}:${newDateTime.minute.toString().padLeft(2, '0')}';
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -103,8 +135,9 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
       appBar: CustomGradientAppBar(
         title: const Text('Thêm sự kiện mới'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
@@ -124,12 +157,13 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                   }
                   final courts = snapshot.data!;
                   return DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Chọn cơ sở sân (Venue)'),
-                    value: _selectedCourtId,
+                    decoration: const InputDecoration(labelText: 'Chọn cơ sở sân (Venue)', border: OutlineInputBorder()),
+                    initialValue: _selectedCourtId,
+                    isExpanded: true,
                     items: courts.map((court) {
                       return DropdownMenuItem(
                         value: court.id,
-                        child: Text(court.name),
+                        child: Text(court.name, overflow: TextOverflow.ellipsis),
                       );
                     }).toList(),
                     onChanged: (val) {
@@ -157,19 +191,43 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: TextFormField(controller: _startTimeCtrl, decoration: const InputDecoration(labelText: 'Giờ bắt đầu (vd: 14h)'))),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _startTimeCtrl,
+                      readOnly: true,
+                      onTap: () => _showTimePickerIOS(_startTimeCtrl),
+                      decoration: const InputDecoration(labelText: 'Giờ bắt đầu (vd: 14:00)'),
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Expanded(child: TextFormField(controller: _endTimeCtrl, decoration: const InputDecoration(labelText: 'Giờ kết thúc (vd: 18h)'))),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _endTimeCtrl,
+                      readOnly: true,
+                      onTap: () => _showTimePickerIOS(_endTimeCtrl),
+                      decoration: const InputDecoration(labelText: 'Giờ k.thúc (vd: 18:00)'),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _sportTypeCtrl,
+              DropdownButtonFormField<String>(
+                value: _sportTypeCtrl.text.isEmpty ? 'Cầu lông' : _sportTypeCtrl.text,
                 decoration: const InputDecoration(labelText: 'Môn thể thao'),
+                items: const [
+                  DropdownMenuItem(value: 'Cầu lông', child: Text('Cầu lông')),
+                  DropdownMenuItem(value: 'Pickleball', child: Text('Pickleball')),
+                  DropdownMenuItem(value: 'Bóng đá', child: Text('Bóng đá')),
+                  DropdownMenuItem(value: 'Tennis', child: Text('Tennis')),
+                ],
+                onChanged: (val) {
+                  if (val != null) setState(() => _sportTypeCtrl.text = val);
+                },
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _levelCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Trình độ (vd: 2.0 -> 3.0)'),
               ),
               const SizedBox(height: 12),
@@ -209,9 +267,11 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                   child: const Text('LƯU SỰ KIỆN', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
+              const SizedBox(height: 50),
             ],
           ),
         ),
+      ),
       ),
     );
   }

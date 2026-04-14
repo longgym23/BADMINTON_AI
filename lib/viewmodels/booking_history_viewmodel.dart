@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:badminton_ai/data/models/booking_model.dart';
 
-/// Các chế độ lọc lịch sử đặt sân
-enum FilterMode { all, dateRange, month, year }
+import 'package:badminton_ai/viewmodels/mixins/filterable_viewmodel_mixin.dart';
 
 class BookingGroup {
   final BookingModel base;
@@ -21,67 +20,7 @@ class BookingGroup {
   });
 }
 
-class BookingHistoryViewModel extends ChangeNotifier {
-  // ─── Filter state ──────────────────────────────────────────────────────────
-  FilterMode _filterMode = FilterMode.all;
-  DateTimeRange? _selectedDateRange;
-  int? _selectedMonth;
-  int? _selectedYear;
-
-  FilterMode get filterMode => _filterMode;
-  DateTimeRange? get selectedDateRange => _selectedDateRange;
-  int? get selectedMonth => _selectedMonth;
-  int? get selectedYear => _selectedYear;
-
-  String filterLabel(BuildContext context) {
-    switch (_filterMode) {
-      case FilterMode.all:
-        return 'Xem tất cả';
-      case FilterMode.dateRange:
-        if (_selectedDateRange != null) {
-          final fmt = DateFormat('dd/MM');
-          return '${fmt.format(_selectedDateRange!.start)} - ${fmt.format(_selectedDateRange!.end)}';
-        }
-        return 'Khoảng ngày';
-      case FilterMode.month:
-        if (_selectedMonth != null && _selectedYear != null) {
-          return 'T$_selectedMonth/$_selectedYear';
-        }
-        return 'Theo tháng';
-      case FilterMode.year:
-        if (_selectedYear != null) return 'Năm $_selectedYear';
-        return 'Theo năm';
-    }
-  }
-
-  // ─── Actions ───────────────────────────────────────────────────────────────
-  void setFilterAll() {
-    _filterMode = FilterMode.all;
-    _selectedDateRange = null;
-    _selectedMonth = null;
-    _selectedYear = null;
-    notifyListeners();
-  }
-
-  void setFilterDateRange(DateTimeRange range) {
-    _filterMode = FilterMode.dateRange;
-    _selectedDateRange = range;
-    notifyListeners();
-  }
-
-  void setFilterMonth(int month, int year) {
-    _filterMode = FilterMode.month;
-    _selectedMonth = month;
-    _selectedYear = year;
-    notifyListeners();
-  }
-
-  void setFilterYear(int year) {
-    _filterMode = FilterMode.year;
-    _selectedYear = year;
-    notifyListeners();
-  }
-
+class BookingHistoryViewModel extends ChangeNotifier with FilterableViewModelMixin {
   // ─── Business logic ────────────────────────────────────────────────────────
 
   /// Nhóm các booking riêng lẻ thành các nhóm slot liên tiếp
@@ -128,27 +67,7 @@ class BookingHistoryViewModel extends ChangeNotifier {
 
   /// Lọc danh sách groups theo filter hiện tại
   List<BookingGroup> applyFilter(List<BookingGroup> groups) {
-    switch (_filterMode) {
-      case FilterMode.all:
-        return groups;
-      case FilterMode.dateRange:
-        if (_selectedDateRange == null) return groups;
-        final start = _selectedDateRange!.start;
-        final end = _selectedDateRange!.end;
-        return groups.where((g) {
-          final d = g.base.date;
-          return !d.isBefore(DateTime(start.year, start.month, start.day)) &&
-              !d.isAfter(DateTime(end.year, end.month, end.day));
-        }).toList();
-      case FilterMode.month:
-        if (_selectedMonth == null || _selectedYear == null) return groups;
-        return groups
-            .where((g) => g.base.date.month == _selectedMonth && g.base.date.year == _selectedYear)
-            .toList();
-      case FilterMode.year:
-        if (_selectedYear == null) return groups;
-        return groups.where((g) => g.base.date.year == _selectedYear).toList();
-    }
+    return groups.where((g) => isDateInFilter(g.base.date)).toList();
   }
 
   /// Tổng tiền từ danh sách groups đã lọc

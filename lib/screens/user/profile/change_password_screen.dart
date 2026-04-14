@@ -3,6 +3,7 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:badminton_ai/widgets/app_toast.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -33,16 +34,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     if (success) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đổi mật khẩu thành công!'), backgroundColor: Colors.green),
-        );
+        AppToast.show(context, 'Đổi mật khẩu thành công!', type: ToastType.success);
         Navigator.pop(context);
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lỗi khi đổi mật khẩu. Chỉ có thể đổi với tài khoản Email/Password trực tiếp.'), backgroundColor: Colors.red),
-        );
+        AppToast.show(context, 'Lỗi khi đổi mật khẩu. Chỉ có thể đổi với tài khoản Email/Password trực tiếp.', type: ToastType.error);
       }
     }
   }

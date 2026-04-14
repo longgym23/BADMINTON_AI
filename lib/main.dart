@@ -11,6 +11,7 @@ import 'package:badminton_ai/providers/notification_provider.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:badminton_ai/blocs/chat/chat_bloc.dart';
 import 'package:badminton_ai/data/repositories/chat_repository.dart';
+import 'package:badminton_ai/providers/unread_count_provider.dart';
 import 'package:badminton_ai/screens/splash/splash_screen.dart';
 import 'package:badminton_ai/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -128,6 +129,18 @@ class AppWithProviders extends StatelessWidget {
           create: (context) => CourseProvider(
             courseRepository: context.read<ICourseRepository>(),
           ),
+        ),
+        ChangeNotifierProxyProvider<AppAuthProvider, UnreadCountProvider>(
+          create: (_) => UnreadCountProvider(),
+          update: (_, auth, unread) {
+            final provider = unread ?? UnreadCountProvider();
+            if (auth.userId != null) {
+              provider.startListening(auth.userId!);
+            } else {
+              provider.stopListening();
+            }
+            return provider;
+          },
         ),
       ],
       // Consumer<LanguageProvider> đảm bảo toàn bộ MaterialApp rebuild khi đổi ngôn ngữ
