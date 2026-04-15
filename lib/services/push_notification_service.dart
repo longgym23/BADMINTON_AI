@@ -10,6 +10,7 @@ class PushNotificationService {
 
   static final PushNotificationService _instance =
       PushNotificationService._internal();
+  RealtimeChannel? _notificationChannel;
 
   factory PushNotificationService() {
     return _instance;
@@ -129,6 +130,66 @@ class PushNotificationService {
     });
   }
 
+  void listenToRealtimeNotifications(String userId) {
+    _notificationChannel?.unsubscribe();
+    // Lắng nghe bảng notifications chung
+    _notificationChannel = Supabase.instance.client
+        .channel('public:notifications_$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (payload) {
+            final newRow = payload.newRecord;
+            final title = newRow['title'] ?? 'Thông báo hệ thống';
+            final body = newRow['message'] ?? 'Bạn có một thông báo mới';
+            final id = DateTime.now().millisecondsSinceEpoch.remainder(10000);
+            
+            _showLocalPush(id, title, body);
+          },
+        )
+        .subscribe((status, [error]) {
+          if (kDebugMode) {
+            print('Realtime notification channel status: $status, error: $error');
+          }
+          // Nếu timeout hoặc lỗi, thử subscribe lại sau 5 giây
+          if (status == RealtimeSubscribeStatus.timedOut ||
+              status == RealtimeSubscribeStatus.channelError) {
+            if (kDebugMode) print('Retrying realtime notification subscription...');
+            Future.delayed(const Duration(seconds: 5), () {
+              listenToRealtimeNotifications(userId);
+            });
+          }
+        });
+  }
+
+  void _showLocalPush(int id, String title, String body) {
+    _localNotifications.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          importance: Importance.max,
+          priority: Priority.max,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+    );
+  }
+
   Future<void> _saveTokenToSupabase(String token) async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
@@ -153,6 +214,8 @@ class PushNotificationService {
     try {
       // 1. Xóa trên Firebase local
       await _fcm.deleteToken();
+      _notificationChannel?.unsubscribe();
+      _notificationChannel = null;
       
       // 2. Xóa trên Supabase db
       final user = Supabase.instance.client.auth.currentUser;

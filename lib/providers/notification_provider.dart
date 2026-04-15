@@ -18,6 +18,7 @@ class NotificationProvider extends ChangeNotifier {
   // Tạo notification khi đặt sân thành công
   Future<void> createBookingSuccessNotification({
     required String userId,
+    required String courtId,
     required String bookingId,
     required String courtName,
     required String? courtAddress,
@@ -50,11 +51,27 @@ class NotificationProvider extends ChangeNotifier {
     );
 
     await _repository.createNotification(notification);
+
+    try {
+      final idsToNotify = await _repository.getAdminsAndCourtOwner(courtId);
+      for (final id in idsToNotify) {
+        if (id == userId) continue;
+        final ownerNotif = notification.copyWith(
+          userId: id,
+          title: 'Có người đặt sân mới!',
+          message: 'Khách hàng vừa đặt sân $courtName ($courtAddress) - Sân $courtNumber vào $dateStr từ $timeStr với giá $priceStr',
+        );
+        await _repository.createNotification(ownerNotif);
+      }
+    } catch (e) {
+      debugPrint("Lỗi notify owner: $e");
+    }
   }
 
   // Tạo notification khi tham gia sự kiện thành công
   Future<void> createEventSuccessNotification({
     required String userId,
+    required String courtId,
     required String eventTitle,
     required String startTime,
     required String endTime,
@@ -71,6 +88,21 @@ class NotificationProvider extends ChangeNotifier {
       isRead: false,
     );
     await _repository.createNotification(notification);
+
+    try {
+      final idsToNotify = await _repository.getAdminsAndCourtOwner(courtId);
+      for (final id in idsToNotify) {
+        if (id == userId) continue;
+        final ownerNotif = notification.copyWith(
+          userId: id,
+          title: 'Có người đăng ký sự kiện!',
+          message: 'Khách hàng vừa đăng ký $quantity vé Sự kiện "$eventTitle" diễn ra vào $dateStr từ $startTime đến $endTime',
+        );
+        await _repository.createNotification(ownerNotif);
+      }
+    } catch (e) {
+      debugPrint("Lỗi notify owner event: $e");
+    }
   }
 
   // Đánh dấu notification là đã đọc

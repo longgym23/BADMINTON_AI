@@ -1,11 +1,15 @@
 import 'dart:io';
 
 import 'package:badminton_ai/data/models/court_location_model.dart';
+import 'package:badminton_ai/data/models/review_model.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
+import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/favorite_courts_provider.dart';
 import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -21,6 +25,10 @@ class CourtDetailSheet extends StatefulWidget {
 class _CourtDetailSheetState extends State<CourtDetailSheet>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  List<ReviewModel>? _reviews;
+  bool _loadingReviews = false;
+  bool? _hasBooked;
+  bool? _hasReviewed;
 
   @override
   void initState() {
@@ -28,6 +36,10 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
+      // Load reviews khi chuyển sang tab Đánh giá
+      if (_tabController.index == 3 && _reviews == null) {
+        _loadReviews();
+      }
     });
   }
 
@@ -35,6 +47,28 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadReviews() async {
+    if (_loadingReviews) return;
+    setState(() => _loadingReviews = true);
+    final repo = SupabaseRepository();
+    final userId = context.read<AppAuthProvider>().userId;
+    final reviews = await repo.getReviewsForCourt(widget.court.id);
+    bool hasBooked = false;
+    bool hasReviewed = false;
+    if (userId != null) {
+      hasBooked = await repo.hasUserBookedCourt(widget.court.id, userId);
+      hasReviewed = await repo.hasUserReviewedCourt(widget.court.id, userId);
+    }
+    if (mounted) {
+      setState(() {
+        _reviews = reviews;
+        _hasBooked = hasBooked;
+        _hasReviewed = hasReviewed;
+        _loadingReviews = false;
+      });
+    }
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -419,6 +453,11 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
       case 2:
         return _buildImagesTabSlivers(court);
       case 3:
+        if (_reviews == null && !_loadingReviews) {
+          // start loading if not already
+          WidgetsBinding.instance.addPostFrameCallback((_) => _loadReviews());
+        }
+        return _buildReviewsTabSlivers(court);
       default:
         return _buildReviewsTabSlivers(court);
     }
@@ -605,80 +644,317 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
   }
 
   List<Widget> _buildReviewsTabSlivers(CourtLocationModel court) {
-    if (court.totalReviews == 0) {
+    // Loading state
+    if (_loadingReviews) {
       return [
-        SliverFillRemaining(
+        const SliverFillRemaining(
           hasScrollBody: false,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.rate_review_rounded,
-                    size: 56, color: Colors.grey.shade300),
-                const SizedBox(height: 12),
-                const Text('Chưa có đánh giá nào',
-                    style: TextStyle(color: AppColors.textGrey, fontSize: 15)),
-                const SizedBox(height: 4),
-                const Text('Hãy đặt sân và chia sẻ trải nghiệm của bạn!',
-                    style: TextStyle(color: AppColors.textLight, fontSize: 13)),
-              ],
-            ),
-          ),
+          child: Center(child: CircularProgressIndicator()),
         ),
       ];
     }
+
+    final reviews = _reviews ?? [];
+    final userId = context.read<AppAuthProvider>().userId;
+    final canReview = (_hasBooked == true) && (_hasReviewed == false) && userId != null;
 
     return [
       SliverPadding(
         padding: const EdgeInsets.all(16),
         sliver: SliverList(
           delegate: SliverChildListDelegate([
-            Row(
-              children: [
-                Text(
-                  court.rating.toStringAsFixed(1),
-                  style: const TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textBlack),
+            // --- Summary Header ---
+            if (reviews.isNotEmpty) ..._buildRatingSummary(court, reviews),
+
+            // --- Write Review Button ---
+            if (canReview) ..._buildWriteReviewButton(court, userId),
+
+            // --- Prompt to book if hasn't booked ---
+            if (_hasBooked == false) ...[  
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                 ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Row(
-                      children: List.generate(
-                        5,
-                        (i) => Icon(
-                          i < court.rating.floor()
-                              ? Icons.star_rounded
-                              : Icons.star_border_rounded,
-                          color: Colors.amber,
-                          size: 20,
-                        ),
+                    Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 20),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Bạn cần đặt sân tại đây để có thể viết đánh giá.',
+                        style: TextStyle(color: AppColors.primary, fontSize: 13),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${court.totalReviews} đánh giá',
-                      style: const TextStyle(
-                          color: AppColors.textGrey, fontSize: 13),
                     ),
                   ],
                 ),
-              ],
-            ),
-            const Divider(height: 24),
-            const Center(
-              child: Text(
-                'Chi tiết đánh giá đang được cập nhật',
-                style: TextStyle(color: AppColors.textLight),
               ),
-            ),
+            ],
+
+            const SizedBox(height: 12),
+
+            // --- Empty State ---
+            if (reviews.isEmpty)
+              Center(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    Icon(Icons.rate_review_rounded, size: 56, color: Colors.grey.shade300),
+                    const SizedBox(height: 12),
+                    const Text('Chưa có đánh giá nào',
+                        style: TextStyle(color: AppColors.textGrey, fontSize: 15)),
+                    const SizedBox(height: 4),
+                    const Text('Hãy đặt sân và chia sẻ trải nghiệm của bạn!',
+                        style: TextStyle(color: AppColors.textLight, fontSize: 13)),
+                  ],
+                ),
+              )
+            else
+              // --- Review List ---
+              ...reviews.map((r) => _ReviewCard(review: r)).toList(),
           ]),
         ),
       ),
     ];
+  }
+
+  List<Widget> _buildRatingSummary(CourtLocationModel court, List<ReviewModel> reviews) {
+    final avg = reviews.fold(0.0, (s, r) => s + r.rating) / reviews.length;
+    // count per star
+    final counts = List.generate(5, (i) => reviews.where((r) => r.rating == 5 - i).length);
+    return [
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Column(
+            children: [
+              Text(
+                avg.toStringAsFixed(1),
+                style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: AppColors.textBlack),
+              ),
+              Row(
+                children: List.generate(5, (i) => Icon(
+                  i < avg.floor() ? Icons.star_rounded : (i < avg ? Icons.star_half_rounded : Icons.star_border_rounded),
+                  color: Colors.amber, size: 18,
+                )),
+              ),
+              const SizedBox(height: 4),
+              Text('${reviews.length} đánh giá', style: const TextStyle(color: AppColors.textGrey, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              children: List.generate(5, (i) {
+                final star = 5 - i;
+                final count = counts[i];
+                final ratio = reviews.isEmpty ? 0.0 : count / reviews.length;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      Text('$star', style: const TextStyle(fontSize: 12, color: AppColors.textGrey)),
+                      const Icon(Icons.star_rounded, color: Colors.amber, size: 12),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: ratio,
+                            minHeight: 8,
+                            backgroundColor: AppColors.borderColor,
+                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      SizedBox(width: 20, child: Text('$count', style: const TextStyle(fontSize: 12, color: AppColors.textGrey))),
+                    ],
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+      const Divider(height: 24),
+    ];
+  }
+
+  List<Widget> _buildWriteReviewButton(CourtLocationModel court, String userId) {
+    return [
+      const SizedBox(height: 4),
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          icon: const Icon(Icons.edit_rounded, size: 18),
+          label: const Text('Viết đánh giá'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            side: const BorderSide(color: AppColors.primary),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          onPressed: () => _showReviewDialog(court, userId),
+        ),
+      ),
+      const SizedBox(height: 8),
+    ];
+  }
+
+  void _showReviewDialog(CourtLocationModel court, String userId) {
+    int selectedRating = 5;
+    final commentController = TextEditingController();
+    bool submitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20, right: 20, top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text('Viết đánh giá',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  Text(court.name,
+                      style: const TextStyle(color: AppColors.textGrey, fontSize: 14)),
+                  const SizedBox(height: 20),
+
+                  // Star selector
+                  const Text('Chất lượng sân',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (i) {
+                      final star = i + 1;
+                      return GestureDetector(
+                        onTap: () => setModalState(() => selectedRating = star),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Icon(
+                            star <= selectedRating ? Icons.star_rounded : Icons.star_border_rounded,
+                            color: Colors.amber,
+                            size: 40,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  Center(
+                    child: Text(
+                      _ratingLabel(selectedRating),
+                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Comment
+                  const Text('Nhận xét của bạn',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: commentController,
+                    maxLines: 3,
+                    maxLength: 300,
+                    decoration: InputDecoration(
+                      hintText: 'Chia sẻ trải nghiệm của bạn...',
+                      hintStyle: const TextStyle(color: AppColors.textLight),
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.borderColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.borderColor),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Submit
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: submitting
+                          ? null
+                          : () async {
+                              setModalState(() => submitting = true);
+                              try {
+                                final review = ReviewModel(
+                                  id: '',
+                                  courtId: court.id,
+                                  userId: userId,
+                                  rating: selectedRating,
+                                  comment: commentController.text.trim(),
+                                  createdAt: DateTime.now(),
+                                );
+                                await SupabaseRepository().submitReview(review);
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                // Reload reviews
+                                _loadReviews();
+                              } catch (e) {
+                                setModalState(() => submitting = false);
+                              }
+                            },
+                      child: submitting
+                          ? const SizedBox(width: 20, height: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Gửi đánh giá', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _ratingLabel(int rating) {
+    switch (rating) {
+      case 1: return 'Rất tệ';
+      case 2: return 'Tệ';
+      case 3: return 'Bình thường';
+      case 4: return 'Tốt';
+      case 5: return 'Tuyệt vời!';
+      default: return '';
+    }
   }
 } // End of _CourtDetailSheetState
 
@@ -807,4 +1083,100 @@ class _ServiceItem {
   final IconData icon;
   final String label;
   const _ServiceItem({required this.icon, required this.label});
+}
+
+// ── Review Card ───────────────────────────────────────────────────────────────
+
+class _ReviewCard extends StatelessWidget {
+  final ReviewModel review;
+  const _ReviewCard({required this.review});
+
+  @override
+  Widget build(BuildContext context) {
+    final reviewer = review.reviewer;
+    final initials = (reviewer?.displayName != null && reviewer!.displayName!.isNotEmpty)
+        ? reviewer.displayName!.substring(0, 1).toUpperCase()
+        : '?';
+    final dateStr = DateFormat('dd/MM/yyyy').format(review.createdAt.toLocal());
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Avatar + name + date
+          Row(
+            children: [
+              // Avatar
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: AppColors.primaryLight,
+                backgroundImage: reviewer?.photoUrl != null
+                    ? NetworkImage(reviewer!.photoUrl!)
+                    : null,
+                child: reviewer?.photoUrl == null
+                    ? Text(initials,
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold))
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      reviewer?.displayName ?? 'Người dùng',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                    Text(
+                      dateStr,
+                      style: const TextStyle(
+                          color: AppColors.textGrey, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              // Stars
+              Row(
+                children: List.generate(
+                  5,
+                  (i) => Icon(
+                    i < review.rating
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
+                    color: Colors.amber,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Comment
+          if (review.comment != null && review.comment!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              review.comment!,
+              style: const TextStyle(
+                  fontSize: 14, color: AppColors.textBlack, height: 1.5),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

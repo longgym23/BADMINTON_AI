@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:badminton_ai/widgets/app_toast.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -31,9 +32,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     final user = context.read<AppAuthProvider>().userModel;
-    _nameController  = TextEditingController(text: user?.displayName ?? '');
-    _phoneController = TextEditingController(text: user?.phoneNumber  ?? '');
-    _emailController = TextEditingController(text: user?.email        ?? '');
+    _nameController = TextEditingController(text: user?.displayName ?? '');
+    _phoneController = TextEditingController(text: user?.phoneNumber ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
   }
 
   @override
@@ -47,19 +48,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // ─── Actions ─────────────────────────────────────────────────────────────────
 
   Future<void> _pickAndUploadImage() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final pickedFile = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+    );
     if (pickedFile == null || !mounted) return;
 
     final authProvider = context.read<AppAuthProvider>();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đang tải ảnh lên...')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Đang tải ảnh lên...')));
 
     final success = await authProvider.updateUserAvatar(File(pickedFile.path));
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(success ? 'Cập nhật ảnh đại diện thành công!' : 'Thất bại khi cập nhật ảnh đại diện.'),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Cập nhật ảnh đại diện thành công!'
+              : 'Thất bại khi cập nhật ảnh đại diện.',
+        ),
+      ),
+    );
   }
 
   Future<void> _deleteAvatar() async {
@@ -67,9 +78,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final authProvider = context.read<AppAuthProvider>();
     final success = await authProvider.deleteUserAvatar();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(success ? 'Xóa ảnh thành công.' : 'Xóa ảnh thất bại.'),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? 'Xóa ảnh thành công.' : 'Xóa ảnh thất bại.'),
+      ),
+    );
   }
 
   Future<void> _selectDate() async {
@@ -85,33 +98,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  CupertinoButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: const Text('Hủy', style: TextStyle(color: AppColors.textGrey)),
+              children: [
+                CupertinoButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text(
+                    'Hủy',
+                    style: TextStyle(color: AppColors.textGrey),
                   ),
-                  CupertinoButton(
-                    onPressed: () {
-                      setState(() => _selectedDate = temp);
-                      Navigator.of(ctx).pop();
-                    },
-                    child: const Text('Xong', style: TextStyle(color: AppColors.brandOrange)),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: CupertinoDatePicker(
-                  initialDateTime: _selectedDate ?? DateTime.now(),
-                  mode: CupertinoDatePickerMode.date,
-                  minimumYear: 1900,
-                  maximumDate: DateTime.now(),
-                  onDateTimeChanged: (dt) => temp = dt,
                 ),
+                CupertinoButton(
+                  onPressed: () {
+                    setState(() => _selectedDate = temp);
+                    Navigator.of(ctx).pop();
+                  },
+                  child: const Text(
+                    'Xong',
+                    style: TextStyle(color: AppColors.brandOrange),
+                  ),
+                ),
+              ],
+            ),
+            Expanded(
+              child: CupertinoDatePicker(
+                initialDateTime: _selectedDate ?? DateTime.now(),
+                mode: CupertinoDatePickerMode.date,
+                minimumYear: 1900,
+                maximumDate: DateTime.now(),
+                onDateTimeChanged: (dt) => temp = dt,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 
   Future<void> _saveChanges() async {
@@ -124,9 +143,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(success ? 'Cập nhật thông tin thành công!' : 'Cập nhật thất bại, vui lòng thử lại.'),
-    ));
+    AppToast.show(context, 'Cập nhật thành công!', type: ToastType.success);
     if (success) Navigator.pop(context);
   }
 
@@ -139,8 +156,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: const Text('Chỉnh sửa thông tin cá nhân',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text(
+          'Chỉnh sửa thông tin cá nhân',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         centerTitle: true,
         elevation: 0,
         leading: IconButton(
@@ -156,12 +175,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Thông tin tài khoản',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
+              const Text(
+                'Thông tin tài khoản',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
               const SizedBox(height: 16),
 
-              const Text('Ảnh đại diện',
-                  style: TextStyle(color: AppColors.textBlack, fontWeight: FontWeight.w500)),
+              const Text(
+                'Ảnh đại diện',
+                style: TextStyle(
+                  color: AppColors.textBlack,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 8),
               _buildAvatarCard(user, authProvider),
               const SizedBox(height: 16),
@@ -171,7 +201,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               _buildTextField(
                 controller: _nameController,
                 hintText: 'Nhập tên đầy đủ',
-                validator: (val) => (val == null || val.isEmpty) ? 'Vui lòng nhập tên' : null,
+                validator: (val) =>
+                    (val == null || val.isEmpty) ? 'Vui lòng nhập tên' : null,
               ),
               const SizedBox(height: 16),
 
@@ -212,10 +243,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   side: const BorderSide(color: AppColors.primary),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text('Huỷ',
-                    style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Huỷ',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -227,10 +266,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 child: authProvider.isUpdatingProfile
                     ? const SizedBox(
-                        width: 24, height: 24,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Lưu',
-                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Lưu',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -240,7 +290,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildAvatarCard(user, AppAuthProvider authProvider) {
-    final initials = (user?.displayName != null && user!.displayName!.isNotEmpty)
+    final initials =
+        (user?.displayName != null && user!.displayName!.isNotEmpty)
         ? user.displayName!.substring(0, 2).toUpperCase()
         : 'U';
 
@@ -262,20 +313,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               color: AppColors.primaryLight,
               borderRadius: BorderRadius.circular(12),
               image: user?.photoUrl != null
-                  ? DecorationImage(image: NetworkImage(user!.photoUrl!), fit: BoxFit.cover)
+                  ? DecorationImage(
+                      image: NetworkImage(user!.photoUrl!),
+                      fit: BoxFit.cover,
+                    )
                   : null,
             ),
             child: user?.photoUrl == null
                 ? Center(
-                    child: Text(initials,
-                        style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)))
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
                 : null,
           ),
           if (authProvider.isUpdatingProfile)
             Container(
-              width: 90, height: 90,
-              decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(12)),
-              child: const Center(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                color: Colors.black45,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              ),
             ),
           Positioned(
             top: -24,
@@ -284,12 +354,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.camera_alt_sharp, color: AppColors.primary),
+                  icon: const Icon(
+                    Icons.camera_alt_sharp,
+                    color: AppColors.primary,
+                  ),
                   tooltip: 'Đổi ảnh đại diện',
                   onPressed: _pickAndUploadImage,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                  icon: const Icon(
+                    Icons.delete_forever,
+                    color: Colors.redAccent,
+                  ),
                   tooltip: 'Xoá ảnh',
                   onPressed: () => _confirmDeleteAvatar(user),
                 ),
@@ -346,7 +422,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               children: [
                 Image.asset('assets/images/vietnam.png', width: 24, height: 24),
                 const SizedBox(width: 8),
-                const Text('+ 84', style: TextStyle(color: AppColors.textGrey, fontSize: 14)),
+                const Text(
+                  '+ 84',
+                  style: TextStyle(color: AppColors.textGrey, fontSize: 14),
+                ),
               ],
             ),
           ),
@@ -382,7 +461,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               InkWell(
                 onTap: _selectDate,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.borderColor),
                     borderRadius: BorderRadius.circular(12),
@@ -395,11 +477,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ? DateFormat('dd/MM/yyyy').format(_selectedDate!)
                             : 'dd/MM/yyyy',
                         style: TextStyle(
-                          color: _selectedDate != null ? AppColors.textBlack : AppColors.textLight,
+                          color: _selectedDate != null
+                              ? AppColors.textBlack
+                              : AppColors.textLight,
                           fontSize: 14,
                         ),
                       ),
-                      const Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.textGrey),
+                      const Icon(
+                        Icons.calendar_month_rounded,
+                        size: 18,
+                        color: AppColors.textGrey,
+                      ),
                     ],
                   ),
                 ),
@@ -415,7 +503,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               _buildLabel('Giới tính', isRequired: true),
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 2,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: AppColors.borderColor),
                   borderRadius: BorderRadius.circular(12),
@@ -424,10 +515,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: DropdownButton<String>(
                     isExpanded: true,
                     value: _selectedGender,
-                    hint: const Text('Chọn giới tính',
-                        style: TextStyle(color: AppColors.textGrey, fontSize: 14)),
-                    icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textGrey),
-                    style: const TextStyle(color: AppColors.textGrey, fontSize: 14),
+                    hint: const Text(
+                      'Chọn giới tính',
+                      style: TextStyle(color: AppColors.textGrey, fontSize: 14),
+                    ),
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppColors.textGrey,
+                    ),
+                    style: const TextStyle(
+                      color: AppColors.textGrey,
+                      fontSize: 14,
+                    ),
                     items: ['Nam', 'Nữ', 'Khác']
                         .map((v) => DropdownMenuItem(value: v, child: Text(v)))
                         .toList(),
@@ -445,7 +544,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget _buildLabel(String text, {required bool isRequired}) {
     return Row(
       children: [
-        Text(text, style: const TextStyle(color: AppColors.textBlack, fontWeight: FontWeight.w500)),
+        Text(
+          text,
+          style: const TextStyle(
+            color: AppColors.textBlack,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         if (isRequired) ...[
           const SizedBox(width: 4),
           const Text('*', style: TextStyle(color: AppColors.primaryDark)),
@@ -467,13 +572,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return TextFormField(
       controller: controller,
       enabled: enabled,
-      style: TextStyle(color: enabled ? AppColors.textBlack : AppColors.textGrey),
+      style: TextStyle(
+        color: enabled ? AppColors.textBlack : AppColors.textGrey,
+      ),
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: const TextStyle(color: AppColors.textLight, fontSize: 14),
         fillColor: enabled ? Colors.white : AppColors.background,
         filled: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: border,
         enabledBorder: border,
         focusedBorder: OutlineInputBorder(

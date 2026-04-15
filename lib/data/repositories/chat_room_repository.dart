@@ -254,6 +254,9 @@ class ChatRoomRepository {
     return newRoomId;
   }
 
+  /// Cache profile người gửi để không phải fetch lại mỗi lần stream emit
+  final Map<String, UserModel> _senderCache = {};
+
   /// Lắng nghe tin nhắn của 1 phòng
   Stream<List<Message>> getMessagesStream(String roomId) {
     return _client
@@ -266,15 +269,22 @@ class ChatRoomRepository {
           for (var msgData in messagesData) {
             final msg = Message.fromSupabase(msgData);
 
-            try {
-              final senderData = await _client
-                  .from('profiles')
-                  .select()
-                  .eq('id', msg.senderId)
-                  .single();
-              msg.sender = UserModel.fromSupabase(senderData);
-            } catch (e) {
-              print("Lỗi load người gửi $e");
+            // Dùng cache để tránh fetch lại profile đã biết
+            if (_senderCache.containsKey(msg.senderId)) {
+              msg.sender = _senderCache[msg.senderId];
+            } else {
+              try {
+                final senderData = await _client
+                    .from('profiles')
+                    .select()
+                    .eq('id', msg.senderId)
+                    .single();
+                final user = UserModel.fromSupabase(senderData);
+                _senderCache[msg.senderId] = user;
+                msg.sender = user;
+              } catch (e) {
+                print("Lỗi load người gửi $e");
+              }
             }
             messages.add(msg);
           }
@@ -318,6 +328,7 @@ class ChatRoomRepository {
             'message': content.isNotEmpty
                 ? content
                 : 'Bạn nhận được một hình ảnh mới',
+            'is_read': false,
           });
         }
       }

@@ -218,6 +218,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
             try {
               await notificationProvider.createBookingSuccessNotification(
                 userId: userId,
+                courtId: widget.selectedCourt.id,
                 bookingId: 'group_$startSlot', 
                 courtName: widget.selectedCourt.name,
                 courtAddress: widget.selectedCourt.address,
@@ -238,6 +239,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
         try {
           await notificationProvider.createBookingSuccessNotification(
             userId: userId,
+            courtId: widget.selectedCourt.id,
             bookingId: 'group_$startSlot',
             courtName: widget.selectedCourt.name,
             courtAddress: widget.selectedCourt.address,

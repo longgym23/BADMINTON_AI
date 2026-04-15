@@ -3,14 +3,18 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
     "ingest:kb:file": "node ingest_kb.js --file",
-    "ingest:kb:courts": "node ingest_kb.js --courts --tags courts",
+    "ingest:kb:courts": "node ingest_kb.js --courts --tags courts --upsert",
+    "ingest:dry": "node ingest_kb.js --file",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "version": "2.0.0",
+  "description": "KLOO Chatbot Backend — RAG Phase 1+2+3 (Hybrid BM25 + Vector)",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@sendgrid/mail": "^8.1.6",

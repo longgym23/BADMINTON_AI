@@ -4,7 +4,7 @@ import 'package:badminton_ai/providers/friend_provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:badminton_ai/widgets/app_toast.dart';
 class AddFriendScreen extends StatefulWidget {
   const AddFriendScreen({super.key});
 
@@ -60,9 +60,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Đã gửi lời mời kết bạn.")));
+      AppToast.show(context, 'Đã gửi lời mời kết bạn!', type: ToastType.success);
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;

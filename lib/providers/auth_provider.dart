@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
+import 'package:badminton_ai/services/push_notification_service.dart';
 
 enum AuthState { unknown, loading, authenticated, unauthenticated }
 
@@ -64,6 +65,8 @@ class AppAuthProvider extends ChangeNotifier {
         _authState = AuthState.authenticated;
         // Khởi động PresenceService
         PresenceService().start(user.id);
+        // Start foreground push notification listener
+        PushNotificationService().listenToRealtimeNotifications(user.id);
       }
       notifyListeners();
     });

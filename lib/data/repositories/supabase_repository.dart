@@ -6,6 +6,7 @@ import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/notification_model.dart';
 import 'package:badminton_ai/data/models/user_model.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
+import 'package:badminton_ai/data/models/review_model.dart';
 
 class SupabaseRepository {
   final SupabaseClient _client;
@@ -27,6 +28,20 @@ class SupabaseRepository {
       (data) => data.map((e) => CourtLocationModel.fromSupabase(e)).toList(),
     );
   }
+
+  // Fetch sân 1 lần (dùng làm fallback khi Realtime Stream bị lỗi / timeout)
+  Future<List<CourtLocationModel>> getAllCourtsFallback({String? ownerId}) async {
+    try {
+      dynamic query = _client.from('courts').select();
+      if (ownerId != null) query = query.eq('owner_id', ownerId);
+      final data = await query;
+      return List<CourtLocationModel>.from(data.map((e) => CourtLocationModel.fromSupabase(e)));
+    } catch (e) {
+      print("Fallback get courts error: $e");
+      return [];
+    }
+  }
+
 
   // Thêm sân mới
   Future<void> addCourtLocation(CourtLocationModel court) async {
@@ -314,6 +329,28 @@ class SupabaseRepository {
     await _client.from('notifications').insert(notification.toSupabase());
   }
 
+  // Lấy danh sách ID của admin và chủ sân
+  Future<List<String>> getAdminsAndCourtOwner(String courtId) async {
+    Set<String> userIdsToNotify = {};
+    try {
+      final courtData = await _client.from('courts').select('owner_id').eq('id', courtId).maybeSingle();
+      if (courtData != null && courtData['owner_id'] != null) {
+        userIdsToNotify.add(courtData['owner_id']);
+      }
+    } catch (e) {
+      // Ignored
+    }
+    try {
+      final admins = await _client.from('profiles').select('id').eq('role', 'admin');
+      for (var admin in admins) {
+        userIdsToNotify.add(admin['id']);
+      }
+    } catch (e) {
+      // Ignored
+    }
+    return userIdsToNotify.toList();
+  }
+
   // Lấy stream các notifications của user
   Stream<List<NotificationModel>> getUserNotificationsStream(String userId) {
     return _client
@@ -559,5 +596,68 @@ class SupabaseRepository {
     if (resp is int) return resp;
     if (resp is num) return resp.toInt();
     return 0;
+  }
+
+  // --- Review Functions ---
+
+  /// Lấy danh sách đánh giá của một sân, kèm thông tin người đánh giá
+  Future<List<ReviewModel>> getReviewsForCourt(String courtId) async {
+    try {
+      final data = await _client
+          .from('reviews')
+          .select('*, profiles(id, display_name, avatar_url)')
+          .eq('court_id', courtId)
+          .order('created_at', ascending: false);
+
+      return data.map<ReviewModel>((row) {
+        final review = ReviewModel.fromSupabase(row);
+        if (row['profiles'] != null) {
+          review.reviewer = UserModel.fromSupabase(row['profiles']);
+        }
+        return review;
+      }).toList();
+    } catch (e) {
+      if (kDebugMode) print('getReviewsForCourt error: $e');
+      return [];
+    }
+  }
+
+  /// Kiểm tra xem user đã đánh giá sân chưa
+  Future<bool> hasUserReviewedCourt(String courtId, String userId) async {
+    try {
+      final data = await _client
+          .from('reviews')
+          .select('id')
+          .eq('court_id', courtId)
+          .eq('user_id', userId)
+          .maybeSingle();
+      return data != null;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Kiểm tra xem user đã từng đặt sân này chưa (điều kiện được đánh giá)
+  Future<bool> hasUserBookedCourt(String courtId, String userId) async {
+    try {
+      final data = await _client
+          .from('bookings')
+          .select('id')
+          .eq('court_id', courtId)
+          .eq('user_id', userId)
+          .limit(1)
+          .maybeSingle();
+      return data != null;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Gửi đánh giá mới (insert hoặc upsert nếu đã có)
+  Future<void> submitReview(ReviewModel review) async {
+    await _client.from('reviews').upsert(
+      review.toSupabase(),
+      onConflict: 'court_id,user_id',
+    );
   }
 }

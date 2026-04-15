@@ -21,6 +21,7 @@ import 'package:badminton_ai/blocs/home_filter/home_filter_state.dart';
 import 'package:badminton_ai/screens/user/home/components/home_search_bar.dart';
 import 'package:badminton_ai/screens/user/home/components/home_filter_bar.dart';
 import 'package:badminton_ai/screens/user/home/components/home_filter_modal.dart';
+import 'package:badminton_ai/screens/user/profile/edit_profile_screen.dart';
 import 'package:flutter/cupertino.dart';
 
 class HomeTab extends StatefulWidget {
@@ -249,21 +250,31 @@ class _HomeTabState extends State<HomeTab> {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundImage: user?.photoUrl != null
-                    ? NetworkImage(user!.photoUrl!)
-                    : null,
-                backgroundColor: Colors.orange[100],
-                child: user?.photoUrl == null
-                    ? Text(
-                        user?.displayName?.substring(0, 1).toUpperCase() ?? 'U',
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.orange[800],
-                        ),
-                      )
-                    : null,
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EditProfileScreen(),
+                    ),
+                  );
+                },
+                child: CircleAvatar(
+                  radius: 24,
+                  backgroundImage: user?.photoUrl != null
+                      ? NetworkImage(user!.photoUrl!)
+                      : null,
+                  backgroundColor: Colors.orange[100],
+                  child: user?.photoUrl == null
+                      ? Text(
+                          user?.displayName?.substring(0, 1).toUpperCase() ?? 'U',
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.orange[800],
+                          ),
+                        )
+                      : null,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(

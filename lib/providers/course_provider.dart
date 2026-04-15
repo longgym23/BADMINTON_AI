@@ -1,18 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:badminton_ai/domain/entities/course.dart';
 import 'package:badminton_ai/domain/entities/course_category.dart';
-import 'package:badminton_ai/domain/repositories/course_repository.dart';
+import 'package:badminton_ai/domain/usecases/course/get_categories_usecase.dart';
+import 'package:badminton_ai/domain/usecases/course/get_courses_by_category_usecase.dart';
+import 'package:badminton_ai/domain/usecases/course/get_watched_courses_usecase.dart';
+import 'package:badminton_ai/domain/usecases/course/mark_course_as_watched_usecase.dart';
 
 class CourseProvider extends ChangeNotifier {
-  final ICourseRepository courseRepository;
+  final GetCategoriesUseCase _getCategoriesUseCase;
+  final GetCoursesByCategoryUseCase _getCoursesByCategoryUseCase;
+  final GetWatchedCoursesUseCase _getWatchedCoursesUseCase;
+  final MarkCourseAsWatchedUseCase _markCourseAsWatchedUseCase;
 
-  CourseProvider({required this.courseRepository});
+  CourseProvider({
+    required GetCategoriesUseCase getCategoriesUseCase,
+    required GetCoursesByCategoryUseCase getCoursesByCategoryUseCase,
+    required GetWatchedCoursesUseCase getWatchedCoursesUseCase,
+    required MarkCourseAsWatchedUseCase markCourseAsWatchedUseCase,
+  }) : _getCategoriesUseCase = getCategoriesUseCase,
+       _getCoursesByCategoryUseCase = getCoursesByCategoryUseCase,
+       _getWatchedCoursesUseCase = getWatchedCoursesUseCase,
+       _markCourseAsWatchedUseCase = markCourseAsWatchedUseCase;
 
   List<CourseCategory> _categories = [];
   List<CourseCategory> get categories => _categories;
 
   Map<String, List<Course>> _coursesByCategory = {};
-  List<Course> getCoursesFor(String categoryId) => _coursesByCategory[categoryId] ?? [];
+  List<Course> getCoursesFor(String categoryId) =>
+      _coursesByCategory[categoryId] ?? [];
 
   List<Course> _watchedCourses = [];
   List<Course> get watchedCourses => _watchedCourses;
@@ -31,7 +46,7 @@ class CourseProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _categories = await courseRepository.getCategories();
+      _categories = await _getCategoriesUseCase();
     } catch (e) {
       print('Error loading categories: $e');
     } finally {
@@ -47,7 +62,9 @@ class CourseProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _coursesByCategory[categoryId] = await courseRepository.getCoursesByCategory(categoryId);
+      _coursesByCategory[categoryId] = await _getCoursesByCategoryUseCase(
+        categoryId,
+      );
     } catch (e) {
       print('Error loading courses: $e');
     } finally {
@@ -61,7 +78,7 @@ class CourseProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _watchedCourses = await courseRepository.getWatchedCourses();
+      _watchedCourses = await _getWatchedCoursesUseCase();
     } catch (e) {
       print('Error loading watched courses: $e');
     } finally {
@@ -72,7 +89,7 @@ class CourseProvider extends ChangeNotifier {
 
   Future<void> markAsWatched(Course course) async {
     try {
-      await courseRepository.markCourseAsWatched(course);
+      await _markCourseAsWatchedUseCase(course);
       await loadWatchedCourses(); // Refresh list sau khi lưu
     } catch (e) {
       print('Error marking course as watched: $e');

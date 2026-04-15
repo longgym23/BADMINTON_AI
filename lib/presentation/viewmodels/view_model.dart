@@ -6,24 +6,36 @@ abstract class ViewModel extends ChangeNotifier {
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
+  bool _isDisposed = false;
 
   void setLoading(bool value) {
+    if (_isLoading == value) return;
     _isLoading = value;
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   void setError(String? message) {
+    if (_errorMessage == message) return;
     _errorMessage = message;
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   void clearError() {
+    if (_errorMessage == null) return;
     _errorMessage = null;
-    notifyListeners();
+    safeNotifyListeners();
+  }
+
+  @protected
+  void safeNotifyListeners() {
+    if (!_isDisposed) {
+      notifyListeners();
+    }
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _errorMessage = null;
     super.dispose();
   }

@@ -4,10 +4,12 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { JWT } from "npm:google-auth-library@9";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const FCM_SERVER_KEY = Deno.env.get("FCM_SERVER_KEY")!;
+// Require the developer to store their Service Account JSON string in Vault or .env
+const FIREBASE_SERVICE_ACCOUNT = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
 
 serve(async (req) => {
   try {
@@ -34,6 +36,27 @@ serve(async (req) => {
     if (error || !profile?.fcm_token) {
       console.log(`No FCM token for user ${user_id}`);
       return new Response("No FCM token", { status: 200 });
+    }
+
+    if (!FIREBASE_SERVICE_ACCOUNT) {
+       console.error("Missing FIREBASE_SERVICE_ACCOUNT env var.");
+       return new Response("Missing FIREBASE_SERVICE_ACCOUNT config", { status: 500 });
+    }
+
+    // Thiết lập xác thực Google OAuth 2.0 bằng JWT.
+    const serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT);
+    const jwtClient = new JWT({
+      email: serviceAccount.client_email,
+      key: serviceAccount.private_key,
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+    });
+
+    const tokens = await jwtClient.authorize();
+    const accessToken = tokens.access_token;
+    const projectId = serviceAccount.project_id;
+
+    if (!accessToken || !projectId) {
+      return new Response("Failed to generate Google Access Token", { status: 500 });
     }
 
     // Gửi push notification qua FCM v1 API
@@ -68,12 +91,12 @@ serve(async (req) => {
 
     // Gọi FCM HTTP v1 API
     const fcmRes = await fetch(
-      `https://fcm.googleapis.com/v1/projects/${Deno.env.get("FIREBASE_PROJECT_ID")}/messages:send`,
+      `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${FCM_SERVER_KEY}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(fcmPayload),
       }

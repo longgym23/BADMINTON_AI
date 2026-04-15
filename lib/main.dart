@@ -1,5 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:badminton_ai/data/repositories/chat_rooms_repository_impl.dart';
+import 'package:badminton_ai/data/repositories/home_filter_repository_impl.dart';
 import 'package:badminton_ai/services/push_notification_service.dart';
 import 'package:badminton_ai/data/repositories/auth_repository.dart';
 import 'package:badminton_ai/data/repositories/chat_room_repository.dart';
@@ -24,7 +26,17 @@ import 'package:badminton_ai/data/repositories/friend_repository.dart';
 import 'package:badminton_ai/providers/favorite_courts_provider.dart';
 import 'package:badminton_ai/providers/friend_provider.dart';
 
+import 'package:badminton_ai/domain/repositories/chat_rooms_repository.dart';
 import 'package:badminton_ai/domain/repositories/course_repository.dart';
+import 'package:badminton_ai/domain/repositories/home_filter_repository.dart';
+import 'package:badminton_ai/domain/usecases/chat_rooms/watch_user_chat_rooms_usecase.dart';
+import 'package:badminton_ai/domain/usecases/course/get_categories_usecase.dart';
+import 'package:badminton_ai/domain/usecases/course/get_courses_by_category_usecase.dart';
+import 'package:badminton_ai/domain/usecases/course/get_watched_courses_usecase.dart';
+import 'package:badminton_ai/domain/usecases/course/mark_course_as_watched_usecase.dart';
+import 'package:badminton_ai/domain/usecases/home_filter/get_court_locations_stream_usecase.dart';
+import 'package:badminton_ai/domain/usecases/home_filter/get_events_stream_usecase.dart';
+import 'package:badminton_ai/domain/usecases/home_filter/get_fallback_courts_usecase.dart';
 import 'package:badminton_ai/data/repositories/course_repository_impl.dart';
 import 'package:badminton_ai/providers/course_provider.dart';
 
@@ -69,10 +81,20 @@ class MyApp extends StatelessWidget {
         Provider<SupabaseRepository>(create: (_) => SupabaseRepository()),
         Provider<AuthRepository>(create: (_) => AuthRepository()),
         Provider<ChatRoomRepository>(create: (_) => ChatRoomRepository()),
+        Provider<ChatRoomsRepository>(
+          create: (context) =>
+              ChatRoomsRepositoryImpl(context.read<ChatRoomRepository>()),
+        ),
+        Provider<HomeFilterRepository>(
+          create: (context) =>
+              HomeFilterRepositoryImpl(context.read<SupabaseRepository>()),
+        ),
         Provider<FriendRepository>(create: (_) => FriendRepository()),
 
         // Language (must be first so MaterialApp can read it)
-        ChangeNotifierProvider<LanguageProvider>(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider<LanguageProvider>(
+          create: (_) => LanguageProvider(),
+        ),
 
         // Auth
         ChangeNotifierProvider<AppAuthProvider>(
@@ -86,6 +108,10 @@ class MyApp extends StatelessWidget {
           create: (context) => ChatRepository(
             firestoreRepository: context.read<SupabaseRepository>(),
           ),
+        ),
+        Provider<WatchUserChatRoomsUseCase>(
+          create: (context) =>
+              WatchUserChatRoomsUseCase(context.read<ChatRoomsRepository>()),
         ),
         BlocProvider<ChatBloc>(
           create: (context) =>
@@ -121,13 +147,46 @@ class AppWithProviders extends StatelessWidget {
           create: (_) => FavoriteCourtsProvider(),
         ),
         Provider<ICourseRepository>(
-          create: (_) => CourseRepositoryImpl(
-            supabase: Supabase.instance.client,
+          create: (_) =>
+              CourseRepositoryImpl(supabase: Supabase.instance.client),
+        ),
+        Provider<GetCategoriesUseCase>(
+          create: (context) =>
+              GetCategoriesUseCase(context.read<ICourseRepository>()),
+        ),
+        Provider<GetCoursesByCategoryUseCase>(
+          create: (context) =>
+              GetCoursesByCategoryUseCase(context.read<ICourseRepository>()),
+        ),
+        Provider<GetWatchedCoursesUseCase>(
+          create: (context) =>
+              GetWatchedCoursesUseCase(context.read<ICourseRepository>()),
+        ),
+        Provider<MarkCourseAsWatchedUseCase>(
+          create: (context) =>
+              MarkCourseAsWatchedUseCase(context.read<ICourseRepository>()),
+        ),
+        Provider<GetCourtLocationsStreamUseCase>(
+          create: (context) => GetCourtLocationsStreamUseCase(
+            context.read<HomeFilterRepository>(),
           ),
+        ),
+        Provider<GetFallbackCourtsUseCase>(
+          create: (context) =>
+              GetFallbackCourtsUseCase(context.read<HomeFilterRepository>()),
+        ),
+        Provider<GetEventsStreamUseCase>(
+          create: (context) =>
+              GetEventsStreamUseCase(context.read<HomeFilterRepository>()),
         ),
         ChangeNotifierProvider<CourseProvider>(
           create: (context) => CourseProvider(
-            courseRepository: context.read<ICourseRepository>(),
+            getCategoriesUseCase: context.read<GetCategoriesUseCase>(),
+            getCoursesByCategoryUseCase: context
+                .read<GetCoursesByCategoryUseCase>(),
+            getWatchedCoursesUseCase: context.read<GetWatchedCoursesUseCase>(),
+            markCourseAsWatchedUseCase: context
+                .read<MarkCourseAsWatchedUseCase>(),
           ),
         ),
         ChangeNotifierProxyProvider<AppAuthProvider, UnreadCountProvider>(
@@ -184,7 +243,10 @@ class AppWithProviders extends StatelessWidget {
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),

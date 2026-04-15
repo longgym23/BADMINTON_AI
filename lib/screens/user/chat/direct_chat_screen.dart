@@ -23,13 +23,16 @@ class DirectChatScreen extends StatefulWidget {
 
 class _DirectChatScreenState extends State<DirectChatScreen> {
   final TextEditingController _msgController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
   XFile? _previewImage;
   bool _isUploading = false;
+  late Stream<List<Message>> _messagesStream;
 
   @override
   void initState() {
     super.initState();
+    _messagesStream = context.read<ChatRoomRepository>().getMessagesStream(widget.room.id);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         // Báo provider: phòng này đang mở → bỏ đếm badge ngay
@@ -45,6 +48,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
     // Báo provider: đã thoát phòng → tính lại badge
     context.read<UnreadCountProvider>().leaveRoom();
     _msgController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -297,9 +301,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
         children: [
           Expanded(
             child: StreamBuilder<List<Message>>(
-              stream: context.read<ChatRoomRepository>().getMessagesStream(
-                widget.room.id,
-              ),
+              stream: _messagesStream,
               builder: (context, snapshot) {
                 // Đánh dấu đã đọc bất cứ khi nào có tin nhắn mới stream về
                 WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -317,7 +319,19 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
 
                 final messages = snapshot.data ?? [];
 
+                // Auto-scroll xuống tin mới nhất
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (_scrollController.hasClients) {
+                    _scrollController.animateTo(
+                      _scrollController.position.maxScrollExtent,
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                });
+
                 return ListView.builder(
+                  controller: _scrollController,
                   reverse: false,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,

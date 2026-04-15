@@ -3,9 +3,11 @@ import 'package:badminton_ai/screens/user/friends/friends_main_screen.dart';
 import 'package:badminton_ai/screens/user/home/home_tab.dart';
 import 'package:badminton_ai/screens/user/map/map_tab.dart';
 import 'package:badminton_ai/screens/user/profile/profile_tab.dart';
-import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_event.dart';
+import 'package:badminton_ai/domain/usecases/home_filter/get_court_locations_stream_usecase.dart';
+import 'package:badminton_ai/domain/usecases/home_filter/get_events_stream_usecase.dart';
+import 'package:badminton_ai/domain/usecases/home_filter/get_fallback_courts_usecase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:badminton_ai/screens/user/home/components/glass_bottom_nav_bar.dart';
@@ -31,9 +33,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     _tabs = [
       BlocProvider(
-        create: (context) =>
-            HomeFilterBloc(repository: context.read<SupabaseRepository>())
-              ..add(LoadAllCourts()),
+        create: (context) => HomeFilterBloc(
+          getCourtLocationsStreamUseCase: context
+              .read<GetCourtLocationsStreamUseCase>(),
+          getFallbackCourtsUseCase: context.read<GetFallbackCourtsUseCase>(),
+          getEventsStreamUseCase: context.read<GetEventsStreamUseCase>(),
+        )..add(LoadAllCourts()),
         child: const HomeTab(),
       ), // 0: Trang chủ (Wrapped with Filter BLoC)
       const MapTab(), // 1: Bản đồ

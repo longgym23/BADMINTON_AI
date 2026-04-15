@@ -158,10 +158,6 @@ class ProfileTab extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          GestureDetector(
-                            onTap: () => _pickAndUploadImage(context),
-                            child: Stack(
-                              children: [
                                 CircleAvatar(
                                   radius: 30,
                                   backgroundColor: Colors.white,
@@ -187,9 +183,6 @@ class ProfileTab extends StatelessWidget {
                                       strokeWidth: 2,
                                     ),
                                   ),
-                              ],
-                            ),
-                          ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(

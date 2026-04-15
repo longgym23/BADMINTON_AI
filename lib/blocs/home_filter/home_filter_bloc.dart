@@ -2,17 +2,26 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/filter_criteria.dart';
-import 'package:badminton_ai/data/repositories/supabase_repository.dart';
+import 'package:badminton_ai/domain/usecases/home_filter/get_court_locations_stream_usecase.dart';
+import 'package:badminton_ai/domain/usecases/home_filter/get_events_stream_usecase.dart';
+import 'package:badminton_ai/domain/usecases/home_filter/get_fallback_courts_usecase.dart';
 import 'home_filter_event.dart';
 import 'home_filter_state.dart';
 
 class HomeFilterBloc extends Bloc<HomeFilterEvent, HomeFilterState> {
-  final SupabaseRepository _repository;
+  final GetCourtLocationsStreamUseCase _getCourtLocationsStreamUseCase;
+  final GetFallbackCourtsUseCase _getFallbackCourtsUseCase;
+  final GetEventsStreamUseCase _getEventsStreamUseCase;
   StreamSubscription? _courtsSubscription;
 
-  HomeFilterBloc({required SupabaseRepository repository})
-    : _repository = repository,
-      super(HomeFilterState()) {
+  HomeFilterBloc({
+    required GetCourtLocationsStreamUseCase getCourtLocationsStreamUseCase,
+    required GetFallbackCourtsUseCase getFallbackCourtsUseCase,
+    required GetEventsStreamUseCase getEventsStreamUseCase,
+  }) : _getCourtLocationsStreamUseCase = getCourtLocationsStreamUseCase,
+       _getFallbackCourtsUseCase = getFallbackCourtsUseCase,
+       _getEventsStreamUseCase = getEventsStreamUseCase,
+       super(HomeFilterState()) {
     on<LoadAllCourts>(_onLoadAllCourts);
     on<SearchQueryChanged>(_onSearchQueryChanged);
     on<SportFilterToggled>(_onSportFilterToggled);
@@ -26,28 +35,55 @@ class HomeFilterBloc extends Bloc<HomeFilterEvent, HomeFilterState> {
   ) async {
     emit(state.copyWith(status: HomeFilterStatus.loading));
 
-    await emit.forEach<List<CourtLocationModel>>(
-      _repository.getCourtLocationsStream(),
-      onData: (courts) {
-        // Khi courts thay đổi, mảng filtered giữ nguyên cho đến khi áp dụng lại bộ lọc cụ thể (tránh lỗi sync timeout filter).
-        // Nếu muốn apply ngay lập tức, ta cần sửa lại logic luồng. Tạm thời chỉ filter lại bằng local filter thông thường.
+    try {
+      await emit.forEach<List<CourtLocationModel>>(
+        _getCourtLocationsStreamUseCase(),
+        onData: (courts) {
+          // Khi courts thay đổi, mảng filtered giữ nguyên cho đến khi áp dụng lại bộ lọc cụ thể (tránh lỗi sync timeout filter).
+          List<CourtLocationModel> localFiltered = courts;
+          if (state.filterCriteria.scheduleType != 'event') {
+            localFiltered = _applyFilterLogicSync(courts, state.filterCriteria);
+          }
+          return state.copyWith(
+            status: HomeFilterStatus.success,
+            allCourts: courts,
+            filteredCourts: localFiltered,
+          );
+        },
+        onError: (error, stackTrace) {
+          // Gném lỗi ra catch block bên ngoài thay vì cập nhật trạng thái lỗi ngay để có cơ hội fallback
+          throw Exception(error);
+        },
+      );
+    } catch (e) {
+      // Bắt lỗi stream (thường là lỗi RealtimeSubscribeException timeout)
+      print(
+        "Stream timeout/lỗi: $e. Sử dụng phương thức tải tĩnh dự phòng (Fallback)...",
+      );
+      try {
+        final courts = await _getFallbackCourtsUseCase();
+
         List<CourtLocationModel> localFiltered = courts;
         if (state.filterCriteria.scheduleType != 'event') {
           localFiltered = _applyFilterLogicSync(courts, state.filterCriteria);
         }
-        return state.copyWith(
-          status: HomeFilterStatus.success,
-          allCourts: courts,
-          filteredCourts: localFiltered,
+
+        emit(
+          state.copyWith(
+            status: HomeFilterStatus.success,
+            allCourts: courts,
+            filteredCourts: localFiltered,
+          ),
         );
-      },
-      onError: (error, stackTrace) {
-        return state.copyWith(
-          status: HomeFilterStatus.failure,
-          errorMessage: 'Lỗi tải danh sách sân: $error',
+      } catch (fallbackError) {
+        emit(
+          state.copyWith(
+            status: HomeFilterStatus.failure,
+            errorMessage: 'Lỗi tải danh sách sân: $fallbackError',
+          ),
         );
-      },
-    );
+      }
+    }
   }
 
   void _onSearchQueryChanged(
@@ -58,12 +94,7 @@ class HomeFilterBloc extends Bloc<HomeFilterEvent, HomeFilterState> {
 
     final newCriteria = state.filterCriteria.copyWith(searchQuery: event.query);
     final filtered = await _applyFilterLogic(state.allCourts, newCriteria);
-    emit(
-      state.copyWith(
-        filterCriteria: newCriteria,
-        filteredCourts: filtered,
-      ),
-    );
+    emit(state.copyWith(filterCriteria: newCriteria, filteredCourts: filtered));
   }
 
   void _onSportFilterToggled(
@@ -77,12 +108,7 @@ class HomeFilterBloc extends Bloc<HomeFilterEvent, HomeFilterState> {
       clearSportType: event.sport == null,
     );
     final filtered = await _applyFilterLogic(state.allCourts, newCriteria);
-    emit(
-      state.copyWith(
-        filterCriteria: newCriteria,
-        filteredCourts: filtered,
-      ),
-    );
+    emit(state.copyWith(filterCriteria: newCriteria, filteredCourts: filtered));
   }
 
   void _onFilterCriteriaApplied(
@@ -168,23 +194,25 @@ class HomeFilterBloc extends Bloc<HomeFilterEvent, HomeFilterState> {
     List<CourtLocationModel> allCourts,
     FilterCriteria criteria,
   ) async {
-    List<CourtLocationModel> courts = _applyFilterLogicSync(allCourts, criteria);
+    List<CourtLocationModel> courts = _applyFilterLogicSync(
+      allCourts,
+      criteria,
+    );
 
     // Lọc sự kiện theo scheduleType == 'event'
     if (criteria.scheduleType == 'event') {
-       try {
-         final events = await _repository.getEventsStream().first;
-         final eventCourtIds = events.map((e) => e.courtId).toSet();
-         courts = courts.where((c) => eventCourtIds.contains(c.id)).toList();
-       } catch (e) {
-         print('Lỗi filter events: $e');
-         courts = [];
-       }
+      try {
+        final events = await _getEventsStreamUseCase().first;
+        final eventCourtIds = events.map((e) => e.courtId).toSet();
+        courts = courts.where((c) => eventCourtIds.contains(c.id)).toList();
+      } catch (e) {
+        print('Lỗi filter events: $e');
+        courts = [];
+      }
     }
 
     return courts;
   }
-
 
   @override
   Future<void> close() {

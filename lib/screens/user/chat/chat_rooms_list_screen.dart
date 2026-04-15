@@ -1,4 +1,5 @@
 import 'package:badminton_ai/data/repositories/chat_room_repository.dart';
+import 'package:badminton_ai/domain/usecases/chat_rooms/watch_user_chat_rooms_usecase.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/screens/user/chat/direct_chat_screen.dart';
 import 'package:badminton_ai/screens/user/chat/create_group_screen.dart';
@@ -40,9 +41,9 @@ class _ChatRoomsListScreenState extends State<ChatRoomsListScreen> {
     }
 
     return BlocProvider(
-      create: (context) =>
-          ChatRoomsBloc(chatRoomRepository: context.read<ChatRoomRepository>())
-            ..add(ChatRoomsLoadStarted(userId: userId)),
+      create: (context) => ChatRoomsBloc(
+        watchUserChatRoomsUseCase: context.read<WatchUserChatRoomsUseCase>(),
+      )..add(ChatRoomsLoadStarted(userId: userId)),
       child: Column(
         children: [
           _buildSearchField(),
@@ -270,7 +271,9 @@ class _RoomCard extends StatelessWidget {
                           shape: BoxShape.circle,
                         ),
                         child: Text(
-                          room.unreadCount > 9 ? '9+' : room.unreadCount.toString(),
+                          room.unreadCount > 9
+                              ? '9+'
+                              : room.unreadCount.toString(),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -405,7 +408,7 @@ class _RoomInfo extends StatelessWidget {
         otherUser = null;
       }
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

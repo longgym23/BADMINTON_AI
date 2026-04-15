@@ -115,6 +115,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
     try {
       await notificationProvider.createEventSuccessNotification(
         userId: userId,
+        courtId: widget.event.courtId,
         eventTitle: widget.event.title,
         startTime: widget.event.startTime,
         endTime: widget.event.endTime,

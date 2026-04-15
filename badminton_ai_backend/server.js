@@ -1,19 +1,37 @@
-// Import các thư viện cần thiết
-require('dotenv').config();
-const express = require('express');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const cors = require('cors');
-const multer = require('multer');
-const fs = require('fs-extra');
-const path = require('path');
-const { MailerSend, EmailParams, Sender, Recipient } = require('mailersend');
-const { createClient } = require('@supabase/supabase-js');
-const crypto = require('crypto');
+/**
+ * KLOO Chatbot Backend — Node.js / Express
+ * ═══════════════════════════════════════════════════════════════
+ * RAG Improvements (All 3 Phases):
+ *
+ * Phase 1 — Cơ bản:
+ *   - Embedding cache (in-memory, TTL 5 phút) → giảm API calls
+ *   - Similarity threshold tích hợp vào hybrid SQL → loại bỏ noise
+ *   - Markdown-aware chunking (ở ingest_kb.js)
+ *
+ * Phase 2 — Multi-turn & Intent routing:
+ *   - quickIntent(): phát hiện câu hỏi đơn giản → bỏ qua RAG tốn kém
+ *   - sessionStore: lưu lịch sử hội thoại theo session_id (multi-turn)
+ *
+ * Phase 3 — Hybrid BM25 + Vector:
+ *   - retrieveKnowledge() gọi match_kb_hybrid() thay vì match_kb_chunks()
+ *   - Kết hợp cosine similarity (60%) + ts_rank BM25 (40%)
+ *   - Bắt được tên riêng, mã ID, từ khóa chính xác mà vector bỏ sót
+ * ═══════════════════════════════════════════════════════════════
+ */
 
-// ─── MailerSend Setup ─────────────────────────────────────────────────────────
-const mailerSend = new MailerSend({
-  apiKey: process.env.MAILERSEND_API_KEY,
-});
+require('dotenv').config();
+const express  = require('express');
+const cors     = require('cors');
+const multer   = require('multer');
+const fs       = require('fs-extra');
+const path     = require('path');
+const crypto   = require('crypto');
+const { GoogleGenerativeAI }                      = require('@google/generative-ai');
+const { MailerSend, EmailParams, Sender, Recipient } = require('mailersend');
+const { createClient }                            = require('@supabase/supabase-js');
+
+// ─── MailerSend ───────────────────────────────────────────────────────────────
+const mailerSend = new MailerSend({ apiKey: process.env.MAILERSEND_API_KEY });
 
 // ─── Supabase Admin Client ────────────────────────────────────────────────────
 const supabaseAdmin = createClient(
@@ -23,106 +41,215 @@ const supabaseAdmin = createClient(
 );
 
 // ─── OTP Store (in-memory) ────────────────────────────────────────────────────
-// Map: email -> { otp, expiresAt, verified, resetToken }
-const otpStore = new Map();
+const otpStore = new Map(); // email → { otp, expiresAt, verified, resetToken }
 
-// Cấu hình multer để lưu file tạm
-const upload = multer({
-  dest: 'uploads/',
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
-  },
-});
-
-// Đảm bảo thư mục uploads tồn tại
+// ─── Multer ───────────────────────────────────────────────────────────────────
+const upload = multer({ dest: 'uploads/', limits: { fileSize: 10 * 1024 * 1024 } });
 fs.ensureDirSync('uploads');
 
-// Kiểm tra API Key
+// ─── Gemini AI Setup ──────────────────────────────────────────────────────────
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_API_KEY_PLACEHOLDER') {
-  console.error('Gemini API Key không được tìm thấy hoặc chưa được cấu hình trong biến môi trường!');
+  console.error('[ERROR] Gemini API Key chưa được cấu hình trong .env!');
 }
 
-let genAI;
-let model;
-let visionModel;
-let embedModel;
+let genAI, model, visionModel, embedModel;
 try {
-  genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  // Embedding model for RAG retrieval (default dimension expected 768)
-  const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2-preview'; // 3072 dim – khớp với migration 0005
-  embedModel = genAI.getGenerativeModel({ model: embeddingModelName });
-} catch (error) {
-  console.error('Lỗi khởi tạo Gemini (kiểm tra API Key?):', error);
+  genAI        = new GoogleGenerativeAI(GEMINI_API_KEY);
+  model        = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  visionModel  = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2-preview';
+  embedModel   = genAI.getGenerativeModel({ model: embeddingModelName });
+  console.log(`[INFO] Gemini models loaded. Embedding: ${embeddingModelName}`);
+} catch (err) {
+  console.error('[ERROR] Khởi tạo Gemini thất bại:', err.message);
 }
 
-// Định nghĩa System Prompt - Tối ưu Token với RAG & JSON format
-const systemPrompt =
-  `Bạn là trợ lý AI chuyên nghiệp của Hệ thống quản lý đặt sân cầu lông 'KLOO'.
+// ─── System Prompt ────────────────────────────────────────────────────────────
+const SYSTEM_PROMPT =
+`Bạn là trợ lý AI chuyên nghiệp của Hệ thống quản lý đặt sân cầu lông 'KLOO'.
 Nhiệm vụ của bạn là giải đáp các thắc mắc về hệ thống đặt sân, nội quy, chính sách hoàn tiền, giá cả sân bãi và các câu hỏi thường gặp.
-ĐẶC BIỆT LƯU Ý: 
-1. CHÍNH SÁCH HỦY SÂN MỚI (ƯU TIÊN TUYỆT ĐỐI GHI ĐÈ KẾT QUẢ TỪ NGUỒN): 
+ĐẶC BIỆT LƯU Ý:
+1. CHÍNH SÁCH HỦY SÂN MỚI (ƯU TIÊN TUYỆT ĐỐI GHI ĐÈ KẾT QUẢ TỪ NGUỒN):
    - Hủy trước 2 tiếng so với giờ chơi: Hoàn tiền 100% vào Số Dư Ví.
    - Hủy trong vòng 2 tiếng trước giờ chơi: Hoàn tiền 50% vào Số Dư Ví.
    - Đã tới hoặc quá giờ chơi: Cấm hủy, KHÔNG hoàn tiền.
 2. Chỉ dựa vào kiến thức cung cấp trong phần SOURCES để trả lời các nội quy, giá cả khác. Tuyệt đối KHÔNG tự bịa ra thông tin.
 3. Ứng dụng chuyên môn về môn CẦU LÔNG. Từ chối trả lời lịch sự nếu câu hỏi hoàn toàn nằm ngoài nghiệp vụ thể thao hoặc đặt sân.
 4. KHÔNG sử dụng Markdown (như *, **, #) trong nội dung answer. Nội dung phải là dạng text thuần (plain text).
-4. Tự động nhận diện Action mà người dùng có ý định muốn thực hiện:
- - "search_courts": Khi user muốn tìm sân, xem danh sách sân, đặt lịch.
- - "view_schedule": Khi user muốn xem lịch hẹn trình, quản lý lịch đã đặt của tôi.
- - "cancel_booking": Khi user muốn hủy lịch đã đặt.
- - "view_expense": Khi user muốn xem số dư, nạp ví, chi tiêu.
- - "none": Hỏi đáp thông thường.`;
+5. Tự động nhận diện Action mà người dùng có ý định muốn thực hiện:
+   - "search_courts": Khi user muốn tìm sân, xem danh sách sân, đặt lịch.
+   - "view_schedule": Khi user muốn xem lịch hẹn, quản lý lịch đã đặt.
+   - "cancel_booking": Khi user muốn hủy lịch đã đặt.
+   - "view_expense": Khi user muốn xem số dư, nạp ví, chi tiêu.
+   - "none": Hỏi đáp thông thường.`;
 
-// Khởi tạo Express app
-const app = express();
-const port = process.env.PORT || 3000;
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE 1 — EMBEDDING CACHE (TTL 5 phút, max 300 entries)
+// Mục đích: tránh gọi Embedding API lặp lại cho cùng một câu hỏi
+// ═══════════════════════════════════════════════════════════════════════════════
+const _embCache = new Map(); // key: text_prefix → { vec: number[], expireAt: number }
+const EMBED_CACHE_TTL  = 5 * 60 * 1000; // 5 phút
+const EMBED_CACHE_MAX  = 300;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+async function embedText(text) {
+  if (!embedModel) throw new Error('Embedding model chưa sẵn sàng.');
 
-// Hàm helper để xóa file tạm
-const cleanupFile = (filePath) => {
-  if (filePath && fs.existsSync(filePath)) {
-    fs.unlink(filePath).catch(err => console.error('Lỗi xóa file:', err));
+  // Cache key: dùng 250 ký tự đầu (đủ phân biệt, không tốn bộ nhớ)
+  const cacheKey = text.slice(0, 250);
+  const cached   = _embCache.get(cacheKey);
+  if (cached && Date.now() < cached.expireAt) {
+    return cached.vec; // Cache HIT — bỏ qua API call
   }
-};
 
-// Hàm helper để loại bỏ markdown formatting (dấu *)
-const removeMarkdown = (text) => {
-  if (!text || typeof text !== 'string') return text;
+  // Cache MISS — gọi API
+  const res = await embedModel.embedContent({
+    content: { parts: [{ text }], role: 'user' },
+    outputDimensionality: 1536,
+  });
+  const v =
+    res?.embedding?.values ||
+    res?.embedding?.value  ||
+    res?.embedding         ||
+    res?.data?.[0]?.embedding;
+  if (!Array.isArray(v)) throw new Error('Embedding API trả về dữ liệu không hợp lệ.');
 
-  // Loại bỏ các dấu markdown phổ biến
-  return text
-    .replace(/\*\*/g, '') // Loại bỏ ** (bold)
-    .replace(/\*/g, '')   // Loại bỏ * (italic hoặc list)
-    .replace(/#{1,6}\s/g, '') // Loại bỏ # (headings)
-    .replace(/`/g, '')    // Loại bỏ ` (code)
-    .replace(/~~/g, '')   // Loại bỏ ~~ (strikethrough)
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Chuyển [text](url) thành text
-    .trim();
-};
+  // Lưu cache, tự dọn khi đầy (LRU đơn giản: xóa entry đầu tiên)
+  if (_embCache.size >= EMBED_CACHE_MAX) {
+    _embCache.delete(_embCache.keys().next().value);
+  }
+  _embCache.set(cacheKey, { vec: v, expireAt: Date.now() + EMBED_CACHE_TTL });
 
-// Hàm RAG: Lấy ngữ cảnh người dùng từ Supabase để tiết kiệm token
+  return v;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE 2 — INTENT PRE-ROUTING
+// Phát hiện nhanh ý định câu hỏi để bỏ qua RAG khi không cần thiết
+// Tiết kiệm: ~150ms latency + 1 Embedding API call cho mỗi câu chào/đơn giản
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Phân loại nhanh intent từ text (không dùng AI — heuristic thuần).
+ * @returns {'greeting'|'cancel_booking'|'pricing'|'search'|'schedule'|'general'}
+ */
+function quickIntent(prompt) {
+  if (!prompt || typeof prompt !== 'string') return 'general';
+  const p = prompt.toLowerCase().trim();
+
+  // Chào hỏi, cảm ơn — không cần RAG
+  if (/^(xin chào|chào|hi\b|hello|hey|alo|cảm ơn|thanks|thank you)/.test(p)) return 'greeting';
+  if (/^(ok|oke|okay|được|rồi|vâng|dạ|ừ|uhm)$/.test(p))                      return 'greeting';
+
+  // Hủy lịch
+  if (/(hủy|cancel).*(lịch|đặt|sân|booking)/i.test(p))  return 'cancel_booking';
+
+  // Giá cả / phí
+  if (/(giá|bao nhiêu|tiền|phí|cost|giờ|price)/.test(p)) return 'pricing';
+
+  // Tìm / đặt sân
+  if (/(tìm|đặt|sân nào|có sân|book|search)/.test(p))    return 'search';
+
+  // Lịch của tôi
+  if (/(lịch|schedule|booking|đã đặt|sắp tới)/.test(p))  return 'schedule';
+
+  return 'general'; // Cần RAG đầy đủ
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE 2 — MULTI-TURN CONVERSATION HISTORY
+// Lưu lịch sử hội thoại theo session (user_id hoặc session_id)
+// Gemini nhớ được context của 3 cặp Q&A gần nhất
+// ═══════════════════════════════════════════════════════════════════════════════
+const sessionStore = new Map(); // sessionId → Gemini history[]
+const SESSION_MAX_TURNS = 6;    // Tối đa 6 lượt (3 cặp user/model)
+const SESSION_TTL       = 30 * 60 * 1000; // Session tự hết hạn sau 30 phút không dùng
+const _sessionTTLMap    = new Map(); // sessionId → expireAt
+
+function getSession(sessionId) {
+  if (!sessionId) return [];
+  const expireAt = _sessionTTLMap.get(sessionId);
+  if (expireAt && Date.now() > expireAt) {
+    sessionStore.delete(sessionId);
+    _sessionTTLMap.delete(sessionId);
+    return [];
+  }
+  return sessionStore.get(sessionId) || [];
+}
+
+function saveSession(sessionId, history) {
+  if (!sessionId) return;
+  // Chỉ giữ N lượt gần nhất
+  const trimmed = history.slice(-SESSION_MAX_TURNS);
+  sessionStore.set(sessionId, trimmed);
+  _sessionTTLMap.set(sessionId, Date.now() + SESSION_TTL);
+
+  // Giới hạn tổng số session trong memory (tránh leak)
+  if (sessionStore.size > 500) {
+    sessionStore.delete(sessionStore.keys().next().value);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE 3 — HYBRID RETRIEVAL (BM25 + Vector Cosine Similarity)
+// Gọi Supabase RPC match_kb_hybrid() thay vì match_kb_chunks()
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Lấy các knowledge chunks liên quan nhất theo hybrid score.
+ * Hybrid score = 0.6 × vector_similarity + 0.4 × bm25_ts_rank
+ *
+ * @param {string} userPrompt - Câu hỏi gốc của user
+ * @param {string} intentHint - Intent từ quickIntent() để điều chỉnh trọng số
+ * @returns {Array} rows - Danh sách chunks, mỗi chunk có { content, title, source, similarity, bm25_score, hybrid_score }
+ */
+async function retrieveKnowledge(userPrompt, intentHint = 'general') {
+  if (!supabaseAdmin || !userPrompt) return [];
+  try {
+    const queryEmbedding = await embedText(userPrompt);
+
+    // Điều chỉnh trọng số theo intent:
+    // - "pricing"/"search": từ ngữ semantic quan trọng → tăng vector weight
+    // - "cancel_booking": tên riêng/thời gian quan trọng → tăng bm25 weight
+    let vectorWeight = 0.6;
+    let bm25Weight   = 0.4;
+    if (intentHint === 'cancel_booking' || intentHint === 'schedule') {
+      vectorWeight = 0.5; bm25Weight = 0.5; // cân bằng hơn
+    }
+
+    const { data, error } = await supabaseAdmin.rpc('match_kb_hybrid', {
+      query_text:           userPrompt,
+      query_embedding:      queryEmbedding,
+      match_count:          6,
+      vector_weight:        vectorWeight,
+      bm25_weight:          bm25Weight,
+      similarity_threshold: 0.45,
+    });
+
+    if (error) {
+      console.error('[RAG] Hybrid retrieve error:', error.message);
+      return [];
+    }
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error('[RAG] Hybrid retrieve exception:', e.message);
+    return [];
+  }
+}
+
+// ─── User Context (không đổi) ─────────────────────────────────────────────────
 async function getUserContext(userId) {
   if (!userId || !supabaseAdmin) return '';
-  
   try {
-    const now = new Date().toISOString();
-    
-    // Lấy 2 lịch đặt sắp tới
+    const today = new Date().toISOString().split('T')[0];
     const { data: bookings } = await supabaseAdmin
       .from('bookings')
       .select('booking_date, time_slot, court_name, status')
       .eq('user_id', userId)
-      .gte('booking_date', now.split('T')[0])
+      .gte('booking_date', today)
       .order('booking_date', { ascending: true })
       .limit(2);
-    
+
     let context = 'USER_CONTEXT:\n';
     if (!bookings || bookings.length === 0) {
       context += '- Lịch đặt sắp tới: Không có\n';
@@ -133,299 +260,246 @@ async function getUserContext(userId) {
       });
       context += '\n';
     }
-    
     return context;
   } catch (e) {
-    console.error('RAG Error:', e);
+    console.error('[RAG] getUserContext error:', e.message);
     return '';
   }
 }
 
-async function embedText(text) {
-  if (!embedModel) throw new Error('Embedding model chưa sẵn sàng.');
-  // outputDimensionality: 1536 – khớp với vector(1536) trong Supabase
-  const res = await embedModel.embedContent({
-    content: { parts: [{ text }], role: 'user' },
-    outputDimensionality: 1536,
-  });
-  const v =
-    res?.embedding?.values ||
-    res?.embedding?.value ||
-    res?.embedding ||
-    res?.data?.[0]?.embedding;
-  if (!Array.isArray(v)) {
-    throw new Error('Embedding API trả về dữ liệu không hợp lệ.');
-  }
-  return v;
-}
-
-async function retrieveKnowledge({ userPrompt, tags }) {
-  if (!supabaseAdmin) return [];
-  try {
-    const queryEmbedding = await embedText(userPrompt);
-    const { data, error } = await supabaseAdmin.rpc('match_kb_chunks', {
-      query_embedding: queryEmbedding,
-      match_count: 6,
-      filter_tags: tags && tags.length ? tags : null,
-    });
-    if (error) {
-      console.error('RAG retrieve error:', error);
-      return [];
-    }
-    return Array.isArray(data) ? data : [];
-  } catch (e) {
-    console.error('RAG retrieve exception:', e);
-    return [];
-  }
-}
-
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function buildSourcesBlock(rows) {
   if (!rows || rows.length === 0) return '';
   const lines = rows.map((r, idx) => {
     const source = r.source || r.title || 'KB';
-    const id = `S${idx + 1}`;
-    return `${id} | ${source} | ${String(r.content || '').replace(/\s+/g, ' ').trim()}`;
+    const score  = r.hybrid_score != null
+      ? ` [hybrid=${r.hybrid_score.toFixed(3)}]`
+      : '';
+    return `S${idx + 1} | ${source}${score} | ${String(r.content || '').replace(/\s+/g, ' ').trim()}`;
   });
   return `SOURCES:\n${lines.join('\n')}\n`;
 }
 
+function removeMarkdown(text) {
+  if (!text || typeof text !== 'string') return text;
+  return text
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '')
+    .replace(/#{1,6}\s/g, '')
+    .replace(/`/g, '')
+    .replace(/~~/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .trim();
+}
+
 function safeJsonParse(text) {
   if (!text || typeof text !== 'string') return null;
-  try {
-    return JSON.parse(text);
-  } catch (_) {
-    // try to extract JSON from a larger text blob
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      try {
-        return JSON.parse(text.slice(start, end + 1));
-      } catch (_) {}
-    }
-    return null;
+  try { return JSON.parse(text); } catch (_) {}
+  const start = text.indexOf('{');
+  const end   = text.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try { return JSON.parse(text.slice(start, end + 1)); } catch (_) {}
   }
+  return null;
 }
 
 function normalizeAction(action) {
-  const a = action && typeof action === 'object' ? action : {};
+  const a    = action && typeof action === 'object' ? action : {};
   const type = typeof a.type === 'string' ? a.type : 'none';
-  const allowed = new Set([
-    'search_courts',
-    'view_schedule',
-    'view_expense',
-    'cancel_booking',
-    'none',
-  ]);
+  const allowed = new Set(['search_courts', 'view_schedule', 'view_expense', 'cancel_booking', 'none']);
   if (!allowed.has(type)) return { type: 'none' };
   const out = { type };
   if (type === 'search_courts' && typeof a.sport === 'string') out.sport = a.sport;
   return out;
 }
 
-// Định nghĩa Endpoint '/ask' - xử lý cả text và ảnh với RAG
-app.post('/ask', upload.single('image'), async (req, res) => {
-  const imageFile = req.file;
-  const userId = req.body.user_id || '';
-  const userPrompt = req.body.prompt || (imageFile ? 'Phân tích ảnh này và trả lời câu hỏi liên quan đến ứng dụng đặt sân cầu lông.' : '');
+const cleanupFile = (filePath) => {
+  if (filePath && fs.existsSync(filePath)) {
+    fs.unlink(filePath).catch(err => console.error('[WARN] Lỗi xóa file tạm:', err));
+  }
+};
 
-  // Lấy ngữ cảnh người dùng qua RAG
-  const userContext = await getUserContext(userId);
-  const kbRows = await retrieveKnowledge({ userPrompt, tags: null });
+// ─── Express App ──────────────────────────────────────────────────────────────
+const app  = express();
+const port = process.env.PORT || 3000;
+app.use(cors());
+app.use(express.json());
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// POST /ask — Main chatbot endpoint (text + optional image)
+// ═══════════════════════════════════════════════════════════════════════════════
+app.post('/ask', upload.single('image'), async (req, res) => {
+  const imageFile  = req.file;
+  const userId     = req.body.user_id    || '';
+  // Phase 2: lấy session_id (ưu tiên), fallback về user_id
+  const sessionId  = req.body.session_id || userId || null;
+  const userPrompt = req.body.prompt     || (imageFile ? 'Phân tích ảnh này.' : '');
+
+  // ── Phase 2: Kiểm tra intent để quyết định có gọi RAG không ──
+  const intent     = quickIntent(userPrompt);
+  const needsRAG   = !['greeting'].includes(intent);
+
+  // ── Parallel fetch: RAG + user context ──
+  const [kbRows, userContext] = await Promise.all([
+    needsRAG ? retrieveKnowledge(userPrompt, intent) : Promise.resolve([]),
+    getUserContext(userId),
+  ]);
+
   const sourcesBlock = buildSourcesBlock(kbRows);
 
+  // ── Phase 2: Lấy lịch sử hội thoại ──
+  const sessionHistory = getSession(sessionId);
+
   const fullPrompt =
-    `${systemPrompt}\n\n` +
+    `${SYSTEM_PROMPT}\n\n` +
     `Bạn PHẢI trả về JSON hợp lệ theo schema sau (KHÔNG thêm text ngoài JSON):\n` +
     `{\n` +
     `  "answer": "string (plain text, không markdown)",\n` +
-    `  "action": { "type": "search_courts|view_schedule|view_expense|cancel_booking|none", "sport": "badminton|football|tennis|pickleball (optional)" },\n` +
+    `  "action": { "type": "search_courts|view_schedule|view_expense|cancel_booking|none", "sport": "optional" },\n` +
     `  "used_sources": ["S1","S2"]\n` +
     `}\n\n` +
     `${sourcesBlock}\n` +
-    `${userContext}\n\n` +
+    `${userContext}\n` +
     `USER_ASK: ${userPrompt}`;
 
-  // Nếu có ảnh, xử lý với Vision API
+  // ─── Xử lý ảnh ────────────────────────────────────────────────────────────
   if (imageFile) {
-    const userPromptImg = req.body.prompt || 'Phân tích ảnh này và trả lời câu hỏi liên quan đến ứng dụng đặt sân cầu lông.';
-
     if (!visionModel) {
       cleanupFile(imageFile.path);
-      return res.status(500).json({ error: 'Lỗi khởi tạo AI vision model.' });
+      return res.status(500).json({ error: 'Vision model chưa sẵn sàng.' });
     }
-
     try {
-      // Đọc file ảnh
-      const imageData = await fs.readFile(imageFile.path);
+      const imageData   = await fs.readFile(imageFile.path);
       const base64Image = imageData.toString('base64');
-      const mimeType = imageFile.mimetype || 'image/jpeg';
+      const mimeType    = imageFile.mimetype || 'image/jpeg';
 
-      // Gửi ảnh và prompt lên Gemini Vision với RAG
       const result = await visionModel.generateContent([
-        {
-          text: `${systemPrompt}\n\n${userContext}\n\nUSER_ASK: ${userPromptImg}`,
-        },
-        {
-          inlineData: {
-            data: base64Image,
-            mimeType: mimeType,
-          },
-        },
+        { text: `${SYSTEM_PROMPT}\n\n${userContext}\nUSER_ASK: ${req.body.prompt || 'Phân tích ảnh này.'}` },
+        { inlineData: { data: base64Image, mimeType } },
       ]);
 
-      const response = result.response;
-      if (!response) {
-        cleanupFile(imageFile.path);
-        return res.json({
-          answer: 'Xin lỗi bạn, mình chưa thể phân tích được ảnh này ạ. Bạn có thể gửi lại hoặc hỏi mình bằng tin nhắn nhé!',
-          action: { type: 'none' },
-          citations: []
-        });
-      }
-
-      let text = response.text();
       cleanupFile(imageFile.path);
+      const text   = result.response?.text() || '';
+      const parsed = safeJsonParse(removeMarkdown(text));
 
-      if (!text || text.trim().length === 0) {
-        return res.json({
-          answer: 'Xin lỗi bạn, mình không thể tạo câu trả lời từ ảnh này ạ. Bạn hãy thử gửi ảnh khác hoặc hỏi mình bằng văn bản nhé!',
-          action: { type: 'none' },
-          citations: []
-        });
-      }
-
-      // Loại bỏ markdown formatting
-      text = removeMarkdown(text);
-
-      // Vision path: best-effort JSON parse, but allow legacy plain text.
-      const parsed = safeJsonParse(text);
       if (parsed && typeof parsed.answer === 'string') {
         return res.json({
-          answer: removeMarkdown(parsed.answer),
-          action: normalizeAction(parsed.action),
-          citations: (kbRows || []).map((r, idx) => ({
-            id: `S${idx + 1}`,
-            document_id: r.document_id,
-            chunk_id: r.chunk_id,
-            title: r.title,
-            source: r.source,
-            url: r.url,
-            excerpt: r.content?.slice(0, 240) || '',
-            similarity: r.similarity,
-          })),
+          answer:      removeMarkdown(parsed.answer),
+          action:      normalizeAction(parsed.action),
+          citations:   buildCitations(kbRows),
         });
       }
-
-      res.json({ answer: text, action: { type: 'none' }, citations: [] });
-      return;
-    } catch (error) {
-      cleanupFile(imageFile.path);
-      // Trả lời lịch sự thay vì báo lỗi — ảnh có thể không liên quan hoặc bị Gemini reject
-      res.json({
-        answer: 'Xin lỗi bạn, mình không thể xử lý hình ảnh này ạ. Hình ảnh có vẻ không liên quan đến thể thao hoặc đặt sân cầu lông. Bạn có thể gửi ảnh sân bãi, dụng cụ thể thao hoặc hỏi mình bằng tin nhắn nhé!',
-        action: { type: 'none' },
-        citations: []
+      return res.json({ answer: removeMarkdown(text) || 'Không thể phân tích ảnh này.', action: { type: 'none' }, citations: [] });
+    } catch (err) {
+      cleanupFile(imageFile?.path);
+      return res.json({
+        answer: 'Xin lỗi bạn, mình không thể xử lý hình ảnh này ạ. Bạn có thể hỏi mình bằng tin nhắn nhé!',
+        action: { type: 'none' }, citations: [],
       });
-      return;
     }
   }
 
-  // Nếu không có ảnh, xử lý text thông thường
-  if (!userPrompt || typeof userPrompt !== 'string' || userPrompt.trim().length === 0) {
-    return res.status(400).json({ error: 'Câu hỏi (prompt) không hợp lệ.' });
+  // ─── Xử lý text ───────────────────────────────────────────────────────────
+  if (!userPrompt || userPrompt.trim().length === 0) {
+    return res.status(400).json({ error: 'Câu hỏi không hợp lệ.' });
   }
-
   if (!model) {
-    console.error('Gemini model chưa sẵn sàng (lỗi khởi tạo?).');
-    return res.status(500).json({ error: 'Lỗi khởi tạo AI model.' });
+    return res.status(500).json({ error: 'AI model chưa sẵn sàng.' });
   }
 
   try {
+    // Phase 2: Bắt đầu chat với history của session
     const chat = model.startChat({
-      generationConfig: {
-        maxOutputTokens: 300,
-      },
+      history: sessionHistory,
+      generationConfig: { maxOutputTokens: 400 },
     });
 
-    const result = await chat.sendMessage(fullPrompt);
+    const result   = await chat.sendMessage(fullPrompt);
     const response = result.response;
 
     if (!response) {
-      console.error('Gemini API không trả về response hợp lệ.', { userPrompt });
-      return res.status(500).json({ error: 'AI không thể tạo câu trả lời (response null).' });
+      return res.status(500).json({ error: 'AI không thể tạo câu trả lời.' });
     }
 
     let text = response.text();
     if (!text || text.trim().length === 0) {
-      console.warn('Gemini không trả về nội dung text.', { response });
-      return res.status(500).json({ error: 'AI không thể tạo câu trả lời (text rỗng).' });
+      return res.status(500).json({ error: 'AI trả về nội dung rỗng.' });
     }
 
-    // Loại bỏ markdown formatting
     text = removeMarkdown(text);
-
     const parsed = safeJsonParse(text);
-    if (parsed && typeof parsed.answer === 'string') {
-      const used = Array.isArray(parsed.used_sources) ? parsed.used_sources : [];
-      const citations = (kbRows || []).map((r, idx) => ({
-        id: `S${idx + 1}`,
-        document_id: r.document_id,
-        chunk_id: r.chunk_id,
-        title: r.title,
-        source: r.source,
-        url: r.url,
-        excerpt: r.content?.slice(0, 240) || '',
-        similarity: r.similarity,
-      }));
 
+    // Phase 2: Lưu lịch sử hội thoại vào session
+    if (sessionId) {
+      const newHistory = [
+        ...sessionHistory,
+        { role: 'user',  parts: [{ text: userPrompt }] },
+        { role: 'model', parts: [{ text: text }] },
+      ];
+      saveSession(sessionId, newHistory);
+    }
+
+    if (parsed && typeof parsed.answer === 'string') {
+      const used      = Array.isArray(parsed.used_sources) ? parsed.used_sources : [];
+      const citations = buildCitations(kbRows);
       return res.json({
-        answer: removeMarkdown(parsed.answer),
-        action: normalizeAction(parsed.action),
+        answer:      removeMarkdown(parsed.answer),
+        action:      normalizeAction(parsed.action),
         used_sources: used,
         citations,
+        // Debug info (có thể xóa ở production)
+        _debug: { intent, rag_chunks: kbRows.length, session_turns: sessionHistory.length / 2 },
       });
     }
 
-    // Backward compatible response
+    // Backward compat: plain text response
     res.json({ answer: text, action: { type: 'none' }, citations: [] });
-  } catch (error) {
-    console.error('Lỗi khi gọi Gemini API:', error);
+
+  } catch (err) {
+    console.error('[ERROR] /ask:', err.message);
     res.status(500).json({ error: 'Đã xảy ra lỗi khi kết nối với AI.' });
   }
 });
 
-// ─── FORGOT PASSWORD ENDPOINTS ────────────────────────────────────────────────
+// Helper tạo citations array
+function buildCitations(kbRows) {
+  return (kbRows || []).map((r, idx) => ({
+    id:          `S${idx + 1}`,
+    document_id: r.document_id,
+    chunk_id:    r.chunk_id,
+    title:       r.title,
+    source:      r.source,
+    url:         r.url,
+    excerpt:     r.content?.slice(0, 240) || '',
+    similarity:  r.similarity,
+    bm25_score:  r.bm25_score,
+    hybrid_score: r.hybrid_score,
+  }));
+}
 
-/**
- * POST /forgot-password
- * Body: { email: string }
- */
+// ═══════════════════════════════════════════════════════════════════════════════
+// FORGOT PASSWORD FLOW
+// ═══════════════════════════════════════════════════════════════════════════════
+
 app.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
-  if (!email || typeof email !== 'string' || !email.includes('@')) {
+  if (!email || !email.includes('@')) {
     return res.status(400).json({ error: 'Email không hợp lệ.' });
   }
-
   const normalizedEmail = email.toLowerCase().trim();
 
-  // Kiểm tra email có tồn tại trong Supabase không
   const { data: users, error: fetchError } = await supabaseAdmin.auth.admin.listUsers();
-  if (fetchError) {
-    return res.status(500).json({ error: 'Lỗi kết nối server.' });
-  }
+  if (fetchError) return res.status(500).json({ error: 'Lỗi kết nối server.' });
+
   const userExists = users.users.some(u => u.email?.toLowerCase() === normalizedEmail);
   if (!userExists) {
-    // Trả về success giả để tránh email enumeration attack
     return res.json({ message: 'Nếu email tồn tại, bạn sẽ nhận được mã OTP.' });
   }
 
-  // Tạo OTP 6 số ngẫu nhiên
-  const otp = crypto.randomInt(100000, 999999).toString();
-  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 phút
-
+  const otp       = crypto.randomInt(100000, 999999).toString();
+  const expiresAt = Date.now() + 10 * 60 * 1000;
   otpStore.set(normalizedEmail, { otp, expiresAt, verified: false, resetToken: null });
 
-  // Template email HTML
   const htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -469,49 +543,33 @@ app.post('/forgot-password', async (req, res) => {
 </html>`;
 
   try {
-    const sentFrom = new Sender(process.env.MAILERSEND_FROM_EMAIL, 'KLOO App');
-    const recipients = [new Recipient(normalizedEmail)];
+    const sentFrom    = new Sender(process.env.MAILERSEND_FROM_EMAIL, 'KLOO App');
+    const recipients  = [new Recipient(normalizedEmail)];
     const emailParams = new EmailParams()
-      .setFrom(sentFrom)
-      .setTo(recipients)
+      .setFrom(sentFrom).setTo(recipients)
       .setSubject(`[KLOO] Mã OTP đặt lại mật khẩu: ${otp}`)
       .setHtml(htmlContent);
-
     await mailerSend.email.send(emailParams);
     res.json({ message: 'Mã OTP đã được gửi đến email của bạn.' });
   } catch (err) {
-    console.error('MailerSend error:', JSON.stringify(err?.body || err));
+    console.error('[ERROR] MailerSend:', JSON.stringify(err?.body || err));
     res.status(500).json({ error: 'Không thể gửi email. Vui lòng thử lại.' });
   }
 });
 
-/**
- * POST /verify-otp
- * Body: { email: string, otp: string }
- */
 app.post('/verify-otp', (req, res) => {
   const { email, otp } = req.body;
-  if (!email || !otp) {
-    return res.status(400).json({ error: 'Thiếu email hoặc mã OTP.' });
-  }
+  if (!email || !otp) return res.status(400).json({ error: 'Thiếu email hoặc mã OTP.' });
 
   const normalizedEmail = email.toLowerCase().trim();
-  const record = otpStore.get(normalizedEmail);
+  const record          = otpStore.get(normalizedEmail);
 
-  if (!record) {
-    return res.status(400).json({ error: 'Không tìm thấy yêu cầu OTP. Vui lòng gửi lại.' });
-  }
-  if (Date.now() > record.expiresAt) {
-    otpStore.delete(normalizedEmail);
-    return res.status(400).json({ error: 'Mã OTP đã hết hạn. Vui lòng gửi lại.' });
-  }
-  if (record.otp !== otp.trim()) {
-    return res.status(400).json({ error: 'Mã OTP không đúng. Vui lòng thử lại.' });
-  }
+  if (!record)                           return res.status(400).json({ error: 'Không tìm thấy yêu cầu OTP.' });
+  if (Date.now() > record.expiresAt)   { otpStore.delete(normalizedEmail); return res.status(400).json({ error: 'Mã OTP đã hết hạn.' }); }
+  if (record.otp !== otp.trim())         return res.status(400).json({ error: 'Mã OTP không đúng.' });
 
-  // Tạo resetToken ngắn hạn 15 phút
   const resetToken = crypto.randomBytes(32).toString('hex');
-  record.verified = true;
+  record.verified  = true;
   record.resetToken = resetToken;
   record.resetTokenExpiresAt = Date.now() + 15 * 60 * 1000;
   otpStore.set(normalizedEmail, record);
@@ -519,83 +577,57 @@ app.post('/verify-otp', (req, res) => {
   res.json({ message: 'Xác thực OTP thành công.', resetToken });
 });
 
-/**
- * POST /reset-password
- * Body: { email: string, resetToken: string, newPassword: string }
- */
 app.post('/reset-password', async (req, res) => {
   const { email, resetToken, newPassword } = req.body;
-  if (!email || !resetToken || !newPassword) {
-    return res.status(400).json({ error: 'Dữ liệu không đầy đủ.' });
-  }
-  if (newPassword.length < 6) {
-    return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự.' });
-  }
+  if (!email || !resetToken || !newPassword) return res.status(400).json({ error: 'Dữ liệu không đầy đủ.' });
+  if (newPassword.length < 6)                return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự.' });
 
   const normalizedEmail = email.toLowerCase().trim();
-  const record = otpStore.get(normalizedEmail);
+  const record          = otpStore.get(normalizedEmail);
 
-  if (!record || !record.verified) {
-    return res.status(400).json({ error: 'Phiên đặt lại mật khẩu không hợp lệ.' });
-  }
-  if (record.resetToken !== resetToken) {
-    return res.status(400).json({ error: 'Token không hợp lệ.' });
-  }
-  if (Date.now() > record.resetTokenExpiresAt) {
-    otpStore.delete(normalizedEmail);
-    return res.status(400).json({ error: 'Phiên đã hết hạn. Vui lòng bắt đầu lại.' });
-  }
+  if (!record || !record.verified)                       return res.status(400).json({ error: 'Phiên không hợp lệ.' });
+  if (record.resetToken !== resetToken)                  return res.status(400).json({ error: 'Token không hợp lệ.' });
+  if (Date.now() > record.resetTokenExpiresAt) { otpStore.delete(normalizedEmail); return res.status(400).json({ error: 'Phiên đã hết hạn.' }); }
 
-  // Tìm user trong Supabase
   const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-  if (listError) {
-    return res.status(500).json({ error: 'Lỗi kết nối server.' });
-  }
+  if (listError) return res.status(500).json({ error: 'Lỗi kết nối server.' });
+
   const user = users.users.find(u => u.email?.toLowerCase() === normalizedEmail);
-  if (!user) {
-    return res.status(404).json({ error: 'Không tìm thấy tài khoản.' });
-  }
+  if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản.' });
 
-  // Cập nhật password qua Supabase Admin API
-  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-    user.id,
-    { password: newPassword }
-  );
-
+  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, { password: newPassword });
   if (updateError) {
-    console.error('Supabase update error:', updateError);
-    return res.status(500).json({ error: 'Không thể cập nhật mật khẩu. Vui lòng thử lại.' });
+    console.error('[ERROR] Supabase update password:', updateError);
+    return res.status(500).json({ error: 'Không thể cập nhật mật khẩu.' });
   }
 
   otpStore.delete(normalizedEmail);
   res.json({ message: 'Mật khẩu đã được cập nhật thành công.' });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Audio endpoint (placeholder) ────────────────────────────────────────────
+app.post('/ask/audio', upload.single('audio'), (req, res) => {
+  cleanupFile(req.file?.path);
+  res.json({ answer: 'Tính năng xử lý audio đang được phát triển. Vui lòng dùng nhận diện giọng nói để chuyển sang text nhé!' });
+});
 
-// Endpoint '/ask/audio' để xử lý audio
-app.post('/ask/audio', upload.single('audio'), async (req, res) => {
-  const userPrompt = req.body.prompt || '';
-  const audioFile = req.file;
-
-  if (!audioFile) {
-    return res.status(400).json({ error: 'Không có audio được gửi lên.' });
-  }
-
-  cleanupFile(audioFile.path);
-
-  // Tạm thời trả về thông báo
+// ─── Health check ─────────────────────────────────────────────────────────────
+app.get('/', (req, res) => {
+  const cacheSize   = _embCache.size;
+  const sessionSize = sessionStore.size;
   res.json({
-    answer: 'Tính năng xử lý audio đang được phát triển. Vui lòng sử dụng tính năng nhận diện giọng nói để chuyển giọng nói thành text trước.'
+    status:  'running',
+    version: '2.0.0 (Phase 1+2+3)',
+    rag:     'Hybrid BM25 + Vector (pgvector)',
+    stats:   { embed_cache_entries: cacheSize, active_sessions: sessionSize },
   });
 });
 
-// Endpoint kiểm tra server hoạt động
-app.get('/', (req, res) => {
-  res.send('Badminton AI Backend is running!');
-});
-
-// Chạy server
+// ─── Start Server ─────────────────────────────────────────────────────────────
 app.listen(port, '0.0.0.0', () => {
-  console.log(`Server đang chạy tại http://0.0.0.0:${port}`);
+  console.log(`\n🏸 KLOO Chatbot Backend v2.0 (Phase 1+2+3)`);
+  console.log(`   ✅ Running at http://0.0.0.0:${port}`);
+  console.log(`   ✅ RAG: Hybrid BM25 + Vector (pgvector)`);
+  console.log(`   ✅ Embedding cache: TTL ${EMBED_CACHE_TTL / 60000} min, max ${EMBED_CACHE_MAX}`);
+  console.log(`   ✅ Session history: max ${SESSION_MAX_TURNS} turns, TTL ${SESSION_TTL / 60000} min\n`);
 });
