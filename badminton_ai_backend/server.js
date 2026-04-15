@@ -372,7 +372,13 @@ app.post('/ask', upload.single('image'), async (req, res) => {
     try {
       const imageData   = await fs.readFile(imageFile.path);
       const base64Image = imageData.toString('base64');
-      const mimeType    = imageFile.mimetype || 'image/jpeg';
+      
+      let mimeType = imageFile.mimetype || 'image/jpeg';
+      // Normalize common mimetype issues from multer/flutter
+      if (mimeType === 'image/jpg') mimeType = 'image/jpeg';
+      if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(mimeType)) {
+        mimeType = 'image/jpeg'; // Fallback to jpeg
+      }
 
       const result = await visionModel.generateContent({
         contents: [{
@@ -398,9 +404,15 @@ app.post('/ask', upload.single('image'), async (req, res) => {
       }
       return res.json({ answer: removeMarkdown(text) || 'Không thể phân tích ảnh này.', action: { type: 'none' }, citations: [] });
     } catch (err) {
+      console.error('[ERROR] Lỗi Vision API khi xử lý ảnh:', err);
+      console.error('File info:', { 
+        mimetype: imageFile?.mimetype, 
+        size: imageFile?.size, 
+        originalname: imageFile?.originalname 
+      });
       cleanupFile(imageFile?.path);
       return res.json({
-        answer: 'Xin lỗi bạn, mình không thể xử lý hình ảnh này ạ. Bạn có thể hỏi mình bằng tin nhắn nhé!',
+        answer: `(Lỗi Backend: ${err.message}) Xin lỗi bạn, mình không thể xử lý hình ảnh này ạ.`,
         action: { type: 'none' }, citations: [],
       });
     }
