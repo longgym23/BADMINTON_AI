@@ -375,7 +375,13 @@ app.post('/ask', upload.single('image'), async (req, res) => {
       const mimeType    = imageFile.mimetype || 'image/jpeg';
 
       const result = await visionModel.generateContent({
-        contents: [{ text: `${SYSTEM_PROMPT}\n\n${userContext}\nUSER_ASK: ${req.body.prompt || 'Phân tích ảnh này.'}` }, { inlineData: { data: base64Image, mimeType } }],
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: fullPrompt }, 
+            { inlineData: { data: base64Image, mimeType } }
+          ]
+        }],
         generationConfig: { responseMimeType: "application/json" }
       });
 
