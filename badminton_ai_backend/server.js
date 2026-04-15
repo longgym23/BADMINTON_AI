@@ -294,13 +294,19 @@ function removeMarkdown(text) {
 
 function safeJsonParse(text) {
   if (!text || typeof text !== 'string') return null;
-  try { return JSON.parse(text); } catch (_) {}
-  const start = text.indexOf('{');
-  const end   = text.lastIndexOf('}');
+  
+  // 1. Nếu có Markdown code block (```json ... ```), tách nó ra
+  const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  let cleanText = match ? match[1] : text;
+
+  // 2. Tìm block {} json
+  const start = cleanText.indexOf('{');
+  const end   = cleanText.lastIndexOf('}');
   if (start >= 0 && end > start) {
-    try { return JSON.parse(text.slice(start, end + 1)); } catch (_) {}
+    cleanText = cleanText.slice(start, end + 1);
   }
-  return null;
+
+  try { return JSON.parse(cleanText); } catch (_) { return null; }
 }
 
 function normalizeAction(action) {
@@ -331,23 +337,18 @@ app.use(express.json());
 app.post('/ask', upload.single('image'), async (req, res) => {
   const imageFile  = req.file;
   const userId     = req.body.user_id    || '';
-  // Phase 2: lấy session_id (ưu tiên), fallback về user_id
   const sessionId  = req.body.session_id || userId || null;
   const userPrompt = req.body.prompt     || (imageFile ? 'Phân tích ảnh này.' : '');
 
-  // ── Phase 2: Kiểm tra intent để quyết định có gọi RAG không ──
   const intent     = quickIntent(userPrompt);
   const needsRAG   = !['greeting'].includes(intent);
 
-  // ── Parallel fetch: RAG + user context ──
   const [kbRows, userContext] = await Promise.all([
     needsRAG ? retrieveKnowledge(userPrompt, intent) : Promise.resolve([]),
     getUserContext(userId),
   ]);
 
   const sourcesBlock = buildSourcesBlock(kbRows);
-
-  // ── Phase 2: Lấy lịch sử hội thoại ──
   const sessionHistory = getSession(sessionId);
 
   const fullPrompt =
@@ -373,14 +374,14 @@ app.post('/ask', upload.single('image'), async (req, res) => {
       const base64Image = imageData.toString('base64');
       const mimeType    = imageFile.mimetype || 'image/jpeg';
 
-      const result = await visionModel.generateContent([
-        { text: `${SYSTEM_PROMPT}\n\n${userContext}\nUSER_ASK: ${req.body.prompt || 'Phân tích ảnh này.'}` },
-        { inlineData: { data: base64Image, mimeType } },
-      ]);
+      const result = await visionModel.generateContent({
+        contents: [{ text: `${SYSTEM_PROMPT}\n\n${userContext}\nUSER_ASK: ${req.body.prompt || 'Phân tích ảnh này.'}` }, { inlineData: { data: base64Image, mimeType } }],
+        generationConfig: { responseMimeType: "application/json" }
+      });
 
       cleanupFile(imageFile.path);
       const text   = result.response?.text() || '';
-      const parsed = safeJsonParse(removeMarkdown(text));
+      const parsed = safeJsonParse(text);
 
       if (parsed && typeof parsed.answer === 'string') {
         return res.json({
@@ -408,10 +409,12 @@ app.post('/ask', upload.single('image'), async (req, res) => {
   }
 
   try {
-    // Phase 2: Bắt đầu chat với history của session
     const chat = model.startChat({
       history: sessionHistory,
-      generationConfig: { maxOutputTokens: 400 },
+      generationConfig: { 
+        maxOutputTokens: 600,
+        responseMimeType: "application/json" // Ép buộc Gemini xuất JSON chuẩn
+      },
     });
 
     const result   = await chat.sendMessage(fullPrompt);
@@ -426,10 +429,10 @@ app.post('/ask', upload.single('image'), async (req, res) => {
       return res.status(500).json({ error: 'AI trả về nội dung rỗng.' });
     }
 
-    text = removeMarkdown(text);
+    // Không parse removeMarkdown cho TỪNG JSON string (vì sẽ dễ break JSON parser)
+    // Chỉ parse JSON trước, extract raw JSON ra
     const parsed = safeJsonParse(text);
 
-    // Phase 2: Lưu lịch sử hội thoại vào session
     if (sessionId) {
       const newHistory = [
         ...sessionHistory,
@@ -439,6 +442,7 @@ app.post('/ask', upload.single('image'), async (req, res) => {
       saveSession(sessionId, newHistory);
     }
 
+    // CHỈ CHẠY `removeMarkdown` sau khi ĐÃ parse ra field `answer`
     if (parsed && typeof parsed.answer === 'string') {
       const used      = Array.isArray(parsed.used_sources) ? parsed.used_sources : [];
       const citations = buildCitations(kbRows);
@@ -447,13 +451,12 @@ app.post('/ask', upload.single('image'), async (req, res) => {
         action:      normalizeAction(parsed.action),
         used_sources: used,
         citations,
-        // Debug info (có thể xóa ở production)
         _debug: { intent, rag_chunks: kbRows.length, session_turns: sessionHistory.length / 2 },
       });
     }
 
-    // Backward compat: plain text response
-    res.json({ answer: text, action: { type: 'none' }, citations: [] });
+    // Fallback nếu JSON parse vẫn lỗi (mặc dù đã ép config JSON từ API)
+    res.json({ answer: removeMarkdown(text), action: { type: 'none' }, citations: [] });
 
   } catch (err) {
     console.error('[ERROR] /ask:', err.message);
