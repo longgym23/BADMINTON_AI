@@ -47,124 +47,70 @@ const otpStore = new Map(); // email → { otp, expiresAt, verified, resetToken 
 const upload = multer({ dest: 'uploads/', limits: { fileSize: 10 * 1024 * 1024 } });
 fs.ensureDirSync('uploads');
 
-// ─── Gemini AI Setup ──────────────────────────────────────────────────────────
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_API_KEY_PLACEHOLDER') {
-  console.error('[ERROR] Gemini API Key chưa được cấu hình trong .env!');
-}
-
-let genAI, model, visionModel, embedModel;
-try {
-  genAI        = new GoogleGenerativeAI(GEMINI_API_KEY);
-  model        = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  visionModel  = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2-preview';
-  embedModel   = genAI.getGenerativeModel({ model: embeddingModelName });
-  console.log(`[INFO] Gemini models loaded. Embedding: ${embeddingModelName}`);
-} catch (err) {
-  console.error('[ERROR] Khởi tạo Gemini thất bại:', err.message);
-}
-
-// ─── System Prompt ────────────────────────────────────────────────────────────
+// ─── Gemini AI Setup ──────────// ─── System Prompt ────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT =
-`Bạn là trợ lý AI chuyên nghiệp của Hệ thống quản lý đặt sân cầu lông 'KLOO'.
-Nhiệm vụ của bạn là giải đáp các thắc mắc về hệ thống đặt sân, nội quy, chính sách hoàn tiền, giá cả sân bãi và các câu hỏi thường gặp.
+`Bạn là trợ lý AI thông minh của Hệ thống quản lý đặt sân thể thao 'KLOO'.
+Nhiệm vụ của bạn là giải đáp thắc mắc về hệ thống đặt sân, nội quy, chính sách, giá cả sân bãi và kiến thức thể thao.
 ĐẶC BIỆT LƯU Ý:
 1. CHÍNH SÁCH HỦY SÂN MỚI (ƯU TIÊN TUYỆT ĐỐI GHI ĐÈ KẾT QUẢ TỪ NGUỒN):
    - Hủy trước 2 tiếng so với giờ chơi: Hoàn tiền 100% vào Số Dư Ví.
    - Hủy trong vòng 2 tiếng trước giờ chơi: Hoàn tiền 50% vào Số Dư Ví.
    - Đã tới hoặc quá giờ chơi: Cấm hủy, KHÔNG hoàn tiền.
-2. Chỉ dựa vào kiến thức cung cấp trong phần SOURCES để trả lời các nội quy, giá cả khác. Tuyệt đối KHÔNG tự bịa ra thông tin.
-3. Ứng dụng chuyên môn về môn CẦU LÔNG. Từ chối trả lời lịch sự nếu câu hỏi hoàn toàn nằm ngoài nghiệp vụ thể thao hoặc đặt sân.
-4. KHÔNG sử dụng Markdown (như *, **, #) trong nội dung answer. Nội dung phải là dạng text thuần (plain text).
+2. Chỉ dựa vào kiến thức cung cấp trong phần SOURCES để trả lời nội quy, giá cả. Nếu đọc hóa đơn chụp màn hình, hãy kết hợp với dữ liệu USER_CONTEXT để xác nhận giao dịch.
+3. Chuyên môn của bạn bao gồm 4 bộ môn: CẦU LÔNG, PICKLEBALL, BÓNG ĐÁ, TENNIS.
+   Hãy từ chối trả lời một cách lịch sự, vui vẻ nếu câu hỏi hoặc hình ảnh hoàn toàn không liên quan đến đặt sân hoặc 4 môn thể thao trên (Ví dụ bức ảnh một con thú cưng, xe cộ, đồ ăn...).
+4. KHÔNG sử dụng Markdown (như *, **, #) trong nội dung answer. File JSON xuất ra phải là text thuần cho answer.
 5. Tự động nhận diện Action mà người dùng có ý định muốn thực hiện:
-   - "search_courts": Khi user muốn tìm sân, xem danh sách sân, đặt lịch.
-   - "view_schedule": Khi user muốn xem lịch hẹn, quản lý lịch đã đặt.
-   - "cancel_booking": Khi user muốn hủy lịch đã đặt.
-   - "view_expense": Khi user muốn xem số dư, nạp ví, chi tiêu.
-   - "none": Hỏi đáp thông thường.`;
+   - "search_courts": Khi user tìm sân, hỏi giá, đặt sân.
+   - "view_schedule": Xem lịch đã đặt, check lịch.
+   - "cancel_booking": Hủy lịch.
+   - "view_expense": Xem số dư ví, nạp tiền.
+   - "none": Hỏi đáp thông thường, tư vấn dụng cụ.`;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PHASE 1 — EMBEDDING CACHE (TTL 5 phút, max 300 entries)
-// Mục đích: tránh gọi Embedding API lặp lại cho cùng một câu hỏi
 // ═══════════════════════════════════════════════════════════════════════════════
-const _embCache = new Map(); // key: text_prefix → { vec: number[], expireAt: number }
-const EMBED_CACHE_TTL  = 5 * 60 * 1000; // 5 phút
+const _embCache = new Map();
+const EMBED_CACHE_TTL  = 5 * 60 * 1000;
 const EMBED_CACHE_MAX  = 300;
 
 async function embedText(text) {
   if (!embedModel) throw new Error('Embedding model chưa sẵn sàng.');
-
-  // Cache key: dùng 250 ký tự đầu (đủ phân biệt, không tốn bộ nhớ)
   const cacheKey = text.slice(0, 250);
   const cached   = _embCache.get(cacheKey);
-  if (cached && Date.now() < cached.expireAt) {
-    return cached.vec; // Cache HIT — bỏ qua API call
-  }
+  if (cached && Date.now() < cached.expireAt) return cached.vec;
 
-  // Cache MISS — gọi API
-  const res = await embedModel.embedContent({
-    content: { parts: [{ text }], role: 'user' },
-    outputDimensionality: 1536,
-  });
-  const v =
-    res?.embedding?.values ||
-    res?.embedding?.value  ||
-    res?.embedding         ||
-    res?.data?.[0]?.embedding;
+  const res = await embedModel.embedContent({ content: { parts: [{ text }], role: 'user' }, outputDimensionality: 1536 });
+  const v = res?.embedding?.values || res?.embedding?.value || res?.embedding || res?.data?.[0]?.embedding;
   if (!Array.isArray(v)) throw new Error('Embedding API trả về dữ liệu không hợp lệ.');
 
-  // Lưu cache, tự dọn khi đầy (LRU đơn giản: xóa entry đầu tiên)
-  if (_embCache.size >= EMBED_CACHE_MAX) {
-    _embCache.delete(_embCache.keys().next().value);
-  }
+  if (_embCache.size >= EMBED_CACHE_MAX) _embCache.delete(_embCache.keys().next().value);
   _embCache.set(cacheKey, { vec: v, expireAt: Date.now() + EMBED_CACHE_TTL });
-
   return v;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PHASE 2 — INTENT PRE-ROUTING
-// Phát hiện nhanh ý định câu hỏi để bỏ qua RAG khi không cần thiết
-// Tiết kiệm: ~150ms latency + 1 Embedding API call cho mỗi câu chào/đơn giản
+// Phase 2 — Quick Intent Pre-routing
 // ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Phân loại nhanh intent từ text (không dùng AI — heuristic thuần).
- * @returns {'greeting'|'cancel_booking'|'pricing'|'search'|'schedule'|'general'}
- */
 function quickIntent(prompt) {
   if (!prompt || typeof prompt !== 'string') return 'general';
   const p = prompt.toLowerCase().trim();
-
-  // Chào hỏi, cảm ơn — không cần RAG
   if (/^(xin chào|chào|hi\b|hello|hey|alo|cảm ơn|thanks|thank you)/.test(p)) return 'greeting';
   if (/^(ok|oke|okay|được|rồi|vâng|dạ|ừ|uhm)$/.test(p))                      return 'greeting';
-
-  // Hủy lịch
   if (/(hủy|cancel).*(lịch|đặt|sân|booking)/i.test(p))  return 'cancel_booking';
-
-  // Giá cả / phí
   if (/(giá|bao nhiêu|tiền|phí|cost|giờ|price)/.test(p)) return 'pricing';
-
-  // Tìm / đặt sân
   if (/(tìm|đặt|sân nào|có sân|book|search)/.test(p))    return 'search';
-
-  // Lịch của tôi
   if (/(lịch|schedule|booking|đã đặt|sắp tới)/.test(p))  return 'schedule';
-
-  return 'general'; // Cần RAG đầy đủ
+  return 'general';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PHASE 2 — MULTI-TURN CONVERSATION HISTORY
-// Lưu lịch sử hội thoại theo session (user_id hoặc session_id)
-// Gemini nhớ được context của 3 cặp Q&A gần nhất
+// Phase 2 — Multi-turn Session Stores
 // ═══════════════════════════════════════════════════════════════════════════════
-const sessionStore = new Map(); // sessionId → Gemini history[]
-const SESSION_MAX_TURNS = 6;    // Tối đa 6 lượt (3 cặp user/model)
-const SESSION_TTL       = 30 * 60 * 1000; // Session tự hết hạn sau 30 phút không dùng
-const _sessionTTLMap    = new Map(); // sessionId → expireAt
+const sessionStore = new Map();
+const SESSION_MAX_TURNS = 6;
+const SESSION_TTL       = 30 * 60 * 1000;
+const _sessionTTLMap    = new Map();
 
 function getSession(sessionId) {
   if (!sessionId) return [];
@@ -179,42 +125,23 @@ function getSession(sessionId) {
 
 function saveSession(sessionId, history) {
   if (!sessionId) return;
-  // Chỉ giữ N lượt gần nhất
-  const trimmed = history.slice(-SESSION_MAX_TURNS);
-  sessionStore.set(sessionId, trimmed);
+  sessionStore.set(sessionId, history.slice(-SESSION_MAX_TURNS));
   _sessionTTLMap.set(sessionId, Date.now() + SESSION_TTL);
-
-  // Giới hạn tổng số session trong memory (tránh leak)
-  if (sessionStore.size > 500) {
-    sessionStore.delete(sessionStore.keys().next().value);
-  }
+  if (sessionStore.size > 500) sessionStore.delete(sessionStore.keys().next().value);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PHASE 3 — HYBRID RETRIEVAL (BM25 + Vector Cosine Similarity)
-// Gọi Supabase RPC match_kb_hybrid() thay vì match_kb_chunks()
+// Phase 3 — Hybrid Retrieval
 // ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Lấy các knowledge chunks liên quan nhất theo hybrid score.
- * Hybrid score = 0.6 × vector_similarity + 0.4 × bm25_ts_rank
- *
- * @param {string} userPrompt - Câu hỏi gốc của user
- * @param {string} intentHint - Intent từ quickIntent() để điều chỉnh trọng số
- * @returns {Array} rows - Danh sách chunks, mỗi chunk có { content, title, source, similarity, bm25_score, hybrid_score }
- */
 async function retrieveKnowledge(userPrompt, intentHint = 'general') {
   if (!supabaseAdmin || !userPrompt) return [];
   try {
     const queryEmbedding = await embedText(userPrompt);
-
-    // Điều chỉnh trọng số theo intent:
-    // - "pricing"/"search": từ ngữ semantic quan trọng → tăng vector weight
-    // - "cancel_booking": tên riêng/thời gian quan trọng → tăng bm25 weight
     let vectorWeight = 0.6;
     let bm25Weight   = 0.4;
+    // Tăng trọng số bám keyword nếu người dùng hỏi về thanh toán hóa đơn / mã lịch cụ thể (Từ Two-Pass image keywords)
     if (intentHint === 'cancel_booking' || intentHint === 'schedule') {
-      vectorWeight = 0.5; bm25Weight = 0.5; // cân bằng hơn
+      vectorWeight = 0.5; bm25Weight = 0.5;
     }
 
     const { data, error } = await supabaseAdmin.rpc('match_kb_hybrid', {
@@ -225,19 +152,14 @@ async function retrieveKnowledge(userPrompt, intentHint = 'general') {
       bm25_weight:          bm25Weight,
       similarity_threshold: 0.45,
     });
-
-    if (error) {
-      console.error('[RAG] Hybrid retrieve error:', error.message);
-      return [];
-    }
+    if (error) { console.error('[RAG] Hybrid retrieve error:', error.message); return []; }
     return Array.isArray(data) ? data : [];
   } catch (e) {
-    console.error('[RAG] Hybrid retrieve exception:', e.message);
-    return [];
+    console.error('[RAG] Hybrid exception:', e.message); return [];
   }
 }
 
-// ─── User Context (không đổi) ─────────────────────────────────────────────────
+// ─── User Context ─────────────────────────────────────────────────────────────
 async function getUserContext(userId) {
   if (!userId || !supabaseAdmin) return '';
   try {
@@ -248,64 +170,41 @@ async function getUserContext(userId) {
       .eq('user_id', userId)
       .gte('booking_date', today)
       .order('booking_date', { ascending: true })
-      .limit(2);
+      .limit(5); // Nhìn sâu lịch sử để AI thấy được hóa đơn đặt sân (nếu bị dời ngày/sắp tới dài)
 
     let context = 'USER_CONTEXT:\n';
     if (!bookings || bookings.length === 0) {
       context += '- Lịch đặt sắp tới: Không có\n';
     } else {
-      context += '- Lịch đặt sắp tới: ';
-      bookings.forEach(b => {
-        context += `${b.booking_date} lúc ${b.time_slot}h tại ${b.court_name} (${b.status}). `;
-      });
+      context += '- Lịch đặt 5 lượt sắp tới: ';
+      bookings.forEach(b => context += `${b.booking_date} lúc ${b.time_slot}h tại ${b.court_name} (${b.status}). `);
       context += '\n';
     }
     return context;
   } catch (e) {
-    console.error('[RAG] getUserContext error:', e.message);
-    return '';
+    console.error('[RAG] getUserContext error:', e.message); return '';
   }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function buildSourcesBlock(rows) {
   if (!rows || rows.length === 0) return '';
-  const lines = rows.map((r, idx) => {
-    const source = r.source || r.title || 'KB';
-    const score  = r.hybrid_score != null
-      ? ` [hybrid=${r.hybrid_score.toFixed(3)}]`
-      : '';
-    return `S${idx + 1} | ${source}${score} | ${String(r.content || '').replace(/\s+/g, ' ').trim()}`;
-  });
+  const lines = rows.map((r, idx) => `S${idx + 1} | ${r.source || r.title || 'KB'} | ${String(r.content || '').replace(/\s+/g, ' ').trim()}`);
   return `SOURCES:\n${lines.join('\n')}\n`;
 }
 
 function removeMarkdown(text) {
   if (!text || typeof text !== 'string') return text;
-  return text
-    .replace(/\*\*/g, '')
-    .replace(/\*/g, '')
-    .replace(/#{1,6}\s/g, '')
-    .replace(/`/g, '')
-    .replace(/~~/g, '')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .trim();
+  return text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,6}\s/g, '').replace(/`/g, '').replace(/~~/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').trim();
 }
 
 function safeJsonParse(text) {
   if (!text || typeof text !== 'string') return null;
-  
-  // 1. Nếu có Markdown code block (```json ... ```), tách nó ra
   const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   let cleanText = match ? match[1] : text;
-
-  // 2. Tìm block {} json
   const start = cleanText.indexOf('{');
   const end   = cleanText.lastIndexOf('}');
-  if (start >= 0 && end > start) {
-    cleanText = cleanText.slice(start, end + 1);
-  }
-
+  if (start >= 0 && end > start) cleanText = cleanText.slice(start, end + 1);
   try { return JSON.parse(cleanText); } catch (_) { return null; }
 }
 
@@ -315,14 +214,13 @@ function normalizeAction(action) {
   const allowed = new Set(['search_courts', 'view_schedule', 'view_expense', 'cancel_booking', 'none']);
   if (!allowed.has(type)) return { type: 'none' };
   const out = { type };
+  // Bổ sung các môn thể thao
   if (type === 'search_courts' && typeof a.sport === 'string') out.sport = a.sport;
   return out;
 }
 
 const cleanupFile = (filePath) => {
-  if (filePath && fs.existsSync(filePath)) {
-    fs.unlink(filePath).catch(err => console.error('[WARN] Lỗi xóa file tạm:', err));
-  }
+  if (filePath && fs.existsSync(filePath)) fs.unlink(filePath).catch(err => console.error('[WARN] Lỗi xóa file tạm:', err));
 };
 
 // ─── Express App ──────────────────────────────────────────────────────────────
@@ -332,19 +230,59 @@ app.use(cors());
 app.use(express.json());
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// POST /ask — Main chatbot endpoint (text + optional image)
+// POST /ask — Chatbot Endpoint (KLOO AI)
 // ═══════════════════════════════════════════════════════════════════════════════
 app.post('/ask', upload.single('image'), async (req, res) => {
   const imageFile  = req.file;
   const userId     = req.body.user_id    || '';
   const sessionId  = req.body.session_id || userId || null;
-  const userPrompt = req.body.prompt     || (imageFile ? 'Phân tích ảnh này.' : '');
+  const userPrompt = req.body.prompt     || (imageFile ? 'Trợ giúp tôi với bức ảnh này.' : '');
 
   const intent     = quickIntent(userPrompt);
   const needsRAG   = !['greeting'].includes(intent);
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // NHỊP 1: Tách từ khóa bằng Vision (Two-pass RAG) nếu có ảnh
+  // ────────────────────────────────────────────────────────────────────────────
+  let queryText = userPrompt;
+  let base64Image = null;
+  let safeMime = null;
+
+  if (imageFile) {
+    try {
+      const imageData = await fs.readFile(imageFile.path);
+      base64Image = imageData.toString('base64');
+      safeMime = imageFile.mimetype || 'image/jpeg';
+      if (safeMime === 'image/jpg') safeMime = 'image/jpeg';
+      if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(safeMime)) {
+        safeMime = 'image/jpeg';
+      }
+
+      if (needsRAG && visionModel) {
+        // Gọi LLM cực lẹ không ghi nhớ lịch sử, chỉ lấy 1 câu keyword
+        const extractResult = await visionModel.generateContent({
+          contents: [{
+            role: 'user',
+            parts: [
+              { text: "Nhiệm vụ: Tìm danh từ riêng, thương hiệu, mã ID, loại sân (Bóng đá, Cầu lông, Pickleball, Tennis), hoặc số tiền có trong ảnh. Trả lời đúng từ khóa, không giải thích dài dòng." }, 
+              { inlineData: { data: base64Image, mimeType: safeMime } }
+            ]
+          }]
+        });
+        const extractedKeywords = extractResult.response?.text() || '';
+        queryText = userPrompt + " " + extractedKeywords.replace(/\n|`/g, ' ').trim();
+        console.log('[🚀 TWO-PASS RAG] Nhịp 1 Extracted:', extractedKeywords);
+      }
+    } catch (e) {
+      console.error('[WARN] Lỗi Nhịp 1 Vision bóc tách từ khóa:', e.message);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // RAG RETRIEVAL & DB CONTEXT (Gộp chung Query Text Đã Bóc Tách)
+  // ────────────────────────────────────────────────────────────────────────────
   const [kbRows, userContext] = await Promise.all([
-    needsRAG ? retrieveKnowledge(userPrompt, intent) : Promise.resolve([]),
+    needsRAG ? retrieveKnowledge(queryText, intent) : Promise.resolve([]),
     getUserContext(userId),
   ]);
 
@@ -353,63 +291,55 @@ app.post('/ask', upload.single('image'), async (req, res) => {
 
   const fullPrompt =
     `${SYSTEM_PROMPT}\n\n` +
-    `Bạn PHẢI trả về JSON hợp lệ theo schema sau (KHÔNG thêm text ngoài JSON):\n` +
+    `Cấu trúc JSON bắt buộc:\n` +
     `{\n` +
-    `  "answer": "string (plain text, không markdown)",\n` +
-    `  "action": { "type": "search_courts|view_schedule|view_expense|cancel_booking|none", "sport": "optional" },\n` +
+    `  "answer": "Câu trả lời của bạn, bỏ qua các dấu * tạo in đậm",\n` +
+    `  "action": { "type": "search_courts|view_schedule|view_expense|cancel_booking|none", "sport": "badminton|football|tennis|pickleball" },\n` +
     `  "used_sources": ["S1","S2"]\n` +
     `}\n\n` +
     `${sourcesBlock}\n` +
     `${userContext}\n` +
+    `NHẮC NHỞ QUAN TRỌNG: Nếu ảnh KHÔNG liên quan đến 4 bộ môn thể thao trên, HÃY giữ phép lịch sự và chối từ dễ thương. \n\n` +
     `USER_ASK: ${userPrompt}`;
 
-  // ─── Xử lý ảnh ────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────────
+  // NHỊP 2: Chốt câu trả lời cuối với Full Prompt + Image
+  // ────────────────────────────────────────────────────────────────────────────
   if (imageFile) {
     if (!visionModel) {
       cleanupFile(imageFile.path);
       return res.status(500).json({ error: 'Vision model chưa sẵn sàng.' });
     }
     try {
-      const imageData   = await fs.readFile(imageFile.path);
-      const base64Image = imageData.toString('base64');
-      
-      let mimeType = imageFile.mimetype || 'image/jpeg';
-      // Normalize common mimetype issues from multer/flutter
-      if (mimeType === 'image/jpg') mimeType = 'image/jpeg';
-      if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(mimeType)) {
-        mimeType = 'image/jpeg'; // Fallback to jpeg
-      }
-
       const result = await visionModel.generateContent({
         contents: [{
           role: 'user',
           parts: [
             { text: fullPrompt }, 
-            { inlineData: { data: base64Image, mimeType } }
+            { inlineData: { data: base64Image, mimeType: safeMime } }
           ]
         }],
         generationConfig: { responseMimeType: "application/json" }
       });
 
       cleanupFile(imageFile.path);
-      const text   = result.response?.text() || '';
+      const text = result.response?.text() || '';
       const parsed = safeJsonParse(text);
 
       if (parsed && typeof parsed.answer === 'string') {
+        if (sessionId) { // Lưu lại bộ nhớ Multi-turn để hội thoại lần sau trơn tru
+          saveSession(sessionId, [...sessionHistory, { role: 'user', parts: [{ text: userPrompt }] }, { role: 'model', parts: [{ text: JSON.stringify(parsed) }] }]);
+        }
         return res.json({
           answer:      removeMarkdown(parsed.answer),
           action:      normalizeAction(parsed.action),
           citations:   buildCitations(kbRows),
+          _debug: { two_pass_keywords: queryText.replace(userPrompt, '').trim() }
         });
       }
-      return res.json({ answer: removeMarkdown(text) || 'Không thể phân tích ảnh này.', action: { type: 'none' }, citations: [] });
+      return res.json({ answer: removeMarkdown(text), action: { type: 'none' }, citations: [] });
     } catch (err) {
-      console.error('[ERROR] Lỗi Vision API khi xử lý ảnh:', err);
-      console.error('File info:', { 
-        mimetype: imageFile?.mimetype, 
-        size: imageFile?.size, 
-        originalname: imageFile?.originalname 
-      });
+      console.error('[ERROR] Lỗi Vision API Nhịp 2:', err);
       cleanupFile(imageFile?.path);
       return res.json({
         answer: `(Lỗi Backend: ${err.message}) Xin lỗi bạn, mình không thể xử lý hình ảnh này ạ.`,
@@ -418,12 +348,11 @@ app.post('/ask', upload.single('image'), async (req, res) => {
     }
   }
 
-  // ─── Xử lý text ───────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────────
+  // Xử lý nếu là Text đơn thuần
+  // ────────────────────────────────────────────────────────────────────────────
   if (!userPrompt || userPrompt.trim().length === 0) {
     return res.status(400).json({ error: 'Câu hỏi không hợp lệ.' });
-  }
-  if (!model) {
-    return res.status(500).json({ error: 'AI model chưa sẵn sàng.' });
   }
 
   try {
@@ -431,54 +360,34 @@ app.post('/ask', upload.single('image'), async (req, res) => {
       history: sessionHistory,
       generationConfig: { 
         maxOutputTokens: 600,
-        responseMimeType: "application/json" // Ép buộc Gemini xuất JSON chuẩn
+        responseMimeType: "application/json"
       },
     });
 
-    const result   = await chat.sendMessage(fullPrompt);
-    const response = result.response;
+    const result = await chat.sendMessage(fullPrompt);
+    const text = result.response?.text() || '';
+    if (!text || text.trim().length === 0) return res.status(500).json({ error: 'AI trả về nội dung rỗng.' });
 
-    if (!response) {
-      return res.status(500).json({ error: 'AI không thể tạo câu trả lời.' });
-    }
-
-    let text = response.text();
-    if (!text || text.trim().length === 0) {
-      return res.status(500).json({ error: 'AI trả về nội dung rỗng.' });
-    }
-
-    // Không parse removeMarkdown cho TỪNG JSON string (vì sẽ dễ break JSON parser)
-    // Chỉ parse JSON trước, extract raw JSON ra
     const parsed = safeJsonParse(text);
 
     if (sessionId) {
-      const newHistory = [
-        ...sessionHistory,
-        { role: 'user',  parts: [{ text: userPrompt }] },
-        { role: 'model', parts: [{ text: text }] },
-      ];
-      saveSession(sessionId, newHistory);
+      saveSession(sessionId, [...sessionHistory, { role: 'user', parts: [{ text: userPrompt }] }, { role: 'model', parts: [{ text: text }] }]);
     }
 
-    // CHỈ CHẠY `removeMarkdown` sau khi ĐÃ parse ra field `answer`
     if (parsed && typeof parsed.answer === 'string') {
-      const used      = Array.isArray(parsed.used_sources) ? parsed.used_sources : [];
-      const citations = buildCitations(kbRows);
+      const used = Array.isArray(parsed.used_sources) ? parsed.used_sources : [];
       return res.json({
         answer:      removeMarkdown(parsed.answer),
         action:      normalizeAction(parsed.action),
         used_sources: used,
-        citations,
-        _debug: { intent, rag_chunks: kbRows.length, session_turns: sessionHistory.length / 2 },
+        citations:   buildCitations(kbRows),
       });
     }
 
-    // Fallback nếu JSON parse vẫn lỗi (mặc dù đã ép config JSON từ API)
     res.json({ answer: removeMarkdown(text), action: { type: 'none' }, citations: [] });
-
   } catch (err) {
-    console.error('[ERROR] /ask:', err.message);
-    res.status(500).json({ error: 'Đã xảy ra lỗi khi kết nối với AI.' });
+    console.error('[ERROR] /ask text:', err.message);
+    res.status(500).json({ error: 'Lỗi khi gọi API.' });
   }
 });
 
