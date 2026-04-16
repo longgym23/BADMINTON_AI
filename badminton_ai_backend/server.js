@@ -47,7 +47,25 @@ const otpStore = new Map(); // email → { otp, expiresAt, verified, resetToken 
 const upload = multer({ dest: 'uploads/', limits: { fileSize: 10 * 1024 * 1024 } });
 fs.ensureDirSync('uploads');
 
-// ─── Gemini AI Setup ──────────// ─── System Prompt ────────────────────────────────────────────────────────────
+// ─── Gemini AI Setup ──────────────────────────────────────────────────────────
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_API_KEY_PLACEHOLDER') {
+  console.error('[ERROR] Gemini API Key chưa được cấu hình trong .env!');
+}
+
+let genAI, model, visionModel, embedModel;
+try {
+  genAI        = new GoogleGenerativeAI(GEMINI_API_KEY);
+  model        = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  visionModel  = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2-preview';
+  embedModel   = genAI.getGenerativeModel({ model: embeddingModelName });
+  console.log(`[INFO] Gemini models loaded. Embedding: ${embeddingModelName}`);
+} catch (err) {
+  console.error('[ERROR] Khởi tạo Gemini thất bại:', err.message);
+}
+
+// ─── System Prompt ────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT =
 `Bạn là trợ lý AI thông minh của Hệ thống quản lý đặt sân thể thao 'KLOO'.
 Nhiệm vụ của bạn là giải đáp thắc mắc về hệ thống đặt sân, nội quy, chính sách, giá cả sân bãi và kiến thức thể thao.

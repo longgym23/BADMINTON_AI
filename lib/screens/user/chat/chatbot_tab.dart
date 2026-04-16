@@ -718,6 +718,41 @@ class _MessageBubble extends StatelessWidget {
     return c is List ? c : const [];
   }
 
+  Widget _buildSafeImage(String path) {
+    if (path.isEmpty) return const SizedBox.shrink();
+    try {
+      final file = File(path);
+      if (!file.existsSync()) {
+        return _buildBrokenImagePlaceholder();
+      }
+      return Image.file(
+        file,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildBrokenImagePlaceholder(),
+      );
+    } catch (_) {
+      return _buildBrokenImagePlaceholder();
+    }
+  }
+
+  Widget _buildBrokenImagePlaceholder() {
+    return Container(
+      color: Colors.grey.shade200,
+      width: double.infinity,
+      height: 100,
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.broken_image, color: Colors.grey, size: 24),
+            SizedBox(height: 4),
+            Text('Ảnh đã hết hạn', style: TextStyle(color: Colors.grey, fontSize: 10)),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     bool isUser = message.isUser;
@@ -824,10 +859,7 @@ class _MessageBubble extends StatelessWidget {
                                 maxHeight: 100,
                                 maxWidth: 160,
                               ),
-                              child: Image.file(
-                                File(message.imagePath!),
-                                fit: BoxFit.cover,
-                              ),
+                              child: _buildSafeImage(message.imagePath!),
                             ),
                           ),
                         ),
