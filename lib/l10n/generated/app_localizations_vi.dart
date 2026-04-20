@@ -393,6 +393,59 @@ class AppLocalizationsVi extends AppLocalizations {
   String get chat => 'Trò chuyện';
 
   @override
+  String get community => 'Cộng đồng';
+
+  @override
+  String get account => 'Tài khoản';
+
+  @override
+  String get bookingNow => 'Đặt sân ngay';
+
+  @override
+  String get smartBooking => 'Đặt sân cầu lông thông minh';
+
+  @override
+  String get searchCourtsAroundYou => 'Tìm kiếm sân quanh đây';
+
+  @override
+  String get findCourts => 'Tìm kiếm sân';
+
+  @override
+  String get fastBooking => 'Đặt sân cực nhanh';
+
+  @override
+  String get searchUsersOrGroups => 'Tìm kiếm người dùng hoặc nhóm...';
+
+  @override
+  String get searchNameOrPhone => 'Tìm kiếm tên hoặc số điện thoại...';
+
+  @override
+  String get searchLocation => 'Tìm kiếm sân, địa điểm...';
+
+  @override
+  String get searchNameEmailPhone => 'Tìm kiếm tên, email, sđt...';
+
+  @override
+  String get bookingSuccess => 'Đặt sân thành công!';
+
+  @override
+  String get bookingFailed => 'Đặt sân thất bại';
+
+  @override
+  String get noDataAvailable => 'Không có dữ liệu';
+
+  @override
+  String get active => 'Hoạt động';
+
+  @override
+  String activeTimeAgo(String time) {
+    return 'Hoạt động $time';
+  }
+
+  @override
+  String get appNameKloo => 'KLOO';
+
+  @override
   String get notificationTitle => 'Thông báo';
 
   @override
@@ -406,4 +459,62 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get pushNotifications => 'Thông báo đẩy';
+
+  @override
+  String get updateUser => 'Cập nhật người dùng';
+
+  @override
+  String get displayName => 'Tên hiển thị';
+
+  @override
+  String get cannotBeEmpty => 'Không được bỏ trống';
+
+  @override
+  String get phoneNumber => 'Số điện thoại';
+
+  @override
+  String get role => 'Vai trò';
+
+  @override
+  String get roleUser => 'Người dùng';
+
+  @override
+  String get roleCourtOwner => 'Chủ sân';
+
+  @override
+  String get roleAdmin => 'Quản trị viên';
+
+  @override
+  String get updateSuccess => 'Cập nhật thành công!';
+
+  @override
+  String errorWithDetails(String error) {
+    return 'Lỗi: $error';
+  }
+
+  @override
+  String get confirmDelete => 'Xác nhận xóa';
+
+  @override
+  String deleteUserConfirmText(String name) {
+    return 'Bạn có chắc muốn xóa người dùng \"$name\" không?';
+  }
+
+  @override
+  String get userDeleted => 'Đã xóa người dùng.';
+
+  @override
+  String get adminOnly => 'Chỉ Admin mới có quyền truy cập trang này.';
+
+  @override
+  String get manageUsers => 'Quản lý Người dùng';
+
+  @override
+  String get admin => 'Admin';
+
+  @override
+  String get user => 'User';
+
+  @override
+  String get noUsersFound => 'Không tìm thấy người dùng nào.';
 }

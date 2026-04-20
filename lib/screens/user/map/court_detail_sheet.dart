@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/review_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
+import 'package:badminton_ai/l10n/generated/app_localizations.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/favorite_courts_provider.dart';
 import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
@@ -109,11 +110,13 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
       uri = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
       if (!await canLaunchUrl(uri)) {
         uri = Uri.parse(
-            'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&destination_place_id=$name');
+          'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&destination_place_id=$name',
+        );
       }
     } else {
       uri = Uri.parse(
-          'https://maps.apple.com/?daddr=$lat,$lng&directionsmode=driving');
+        'https://maps.apple.com/?daddr=$lat,$lng&directionsmode=driving',
+      );
     }
 
     if (await canLaunchUrl(uri)) {
@@ -194,7 +197,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                         ),
                       ),
                     ),
-                    
+
                     // The magically swapping active tab content
                     ..._buildActiveTabSlivers(context, court),
                   ],
@@ -234,10 +237,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.45),
-                  Colors.transparent,
-                ],
+                colors: [Colors.black.withOpacity(0.45), Colors.transparent],
               ),
             ),
           ),
@@ -322,8 +322,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.star_rounded,
-                      color: Colors.amber, size: 16),
+                  const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
                   const SizedBox(width: 4),
                   Text(
                     court.rating > 0
@@ -366,13 +365,16 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               ),
               const SizedBox(width: 5),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: _sportColor(court.sportType).withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: _sportColor(court.sportType).withOpacity(0.35)),
+                    color: _sportColor(court.sportType).withOpacity(0.35),
+                  ),
                 ),
                 child: Text(
                   _sportLabel(court.sportType),
@@ -430,13 +432,22 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(14),
+              ),
               elevation: 0,
             ),
             onPressed: _bookCourt,
-            child: const Text(
-              'Đặt sân ngay',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            child: Builder(
+              builder: (context) {
+                final l = AppLocalizations.of(context)!;
+                return Text(
+                  l.bookingNow,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -444,7 +455,10 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
     );
   }
 
-  List<Widget> _buildActiveTabSlivers(BuildContext context, CourtLocationModel court) {
+  List<Widget> _buildActiveTabSlivers(
+    BuildContext context,
+    CourtLocationModel court,
+  ) {
     switch (_tabController.index) {
       case 0:
         return _buildInfoTabSlivers(court);
@@ -476,8 +490,13 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Giá thuê',
-                          style: TextStyle(color: AppColors.textGrey, fontSize: 12)),
+                      const Text(
+                        'Giá thuê',
+                        style: TextStyle(
+                          color: AppColors.textGrey,
+                          fontSize: 12,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         '${_formatPrice(court.pricePerHour)}đ/giờ',
@@ -492,8 +511,13 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text('Số sân',
-                          style: TextStyle(color: AppColors.textGrey, fontSize: 12)),
+                      const Text(
+                        'Số sân',
+                        style: TextStyle(
+                          color: AppColors.textGrey,
+                          fontSize: 12,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         '${court.totalCourts} sân',
@@ -514,7 +538,10 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                 children: const [
                   Text(
                     'Link đặt sân online',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textBlack),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textBlack,
+                    ),
                   ),
                   SizedBox(height: 6),
                   Text(
@@ -531,12 +558,19 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                 children: const [
                   Text(
                     'Mô tả',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textBlack),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textBlack,
+                    ),
                   ),
                   SizedBox(height: 6),
                   Text(
                     'Sân chất lượng cao, hệ thống đèn chiếu sáng đầy đủ, bãi đậu xe rộng rãi. Phù hợp cho các buổi tập luyện và thi đấu.',
-                    style: TextStyle(color: AppColors.textGrey, fontSize: 13, height: 1.5),
+                    style: TextStyle(
+                      color: AppColors.textGrey,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),
@@ -549,7 +583,9 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
 
   String _formatPrice(double price) {
     if (price >= 1000) {
-      return price.toStringAsFixed(0).replaceAllMapped(
+      return price
+          .toStringAsFixed(0)
+          .replaceAllMapped(
             RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
             (m) => '${m[1]}.',
           );
@@ -563,7 +599,9 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
       _ServiceItem(icon: Icons.shower_rounded, label: 'Phòng tắm'),
       _ServiceItem(icon: Icons.sports_rounded, label: 'Cho thuê vợt'),
       _ServiceItem(
-          icon: Icons.local_drink_rounded, label: 'Nước uống / Căn tin'),
+        icon: Icons.local_drink_rounded,
+        label: 'Nước uống / Căn tin',
+      ),
       _ServiceItem(icon: Icons.wifi_rounded, label: 'Wi-Fi miễn phí'),
     ];
     return [
@@ -588,10 +626,13 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                         Icon(s.icon, color: AppColors.primary, size: 22),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(s.label,
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500)),
+                          child: Text(
+                            s.label,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -611,8 +652,10 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
         const SliverFillRemaining(
           hasScrollBody: false,
           child: Center(
-            child: Text('Chưa có hình ảnh',
-                style: TextStyle(color: AppColors.textGrey)),
+            child: Text(
+              'Chưa có hình ảnh',
+              style: TextStyle(color: AppColors.textGrey),
+            ),
           ),
         ),
       ];
@@ -633,7 +676,8 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                 imageUrl: court.imageUrl!,
                 fit: BoxFit.cover,
                 placeholder: (_, __) => Container(color: AppColors.borderColor),
-                errorWidget: (_, __, ___) => Container(color: AppColors.borderColor),
+                errorWidget: (_, __, ___) =>
+                    Container(color: AppColors.borderColor),
               ),
             ),
             childCount: 4,
@@ -656,7 +700,8 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
 
     final reviews = _reviews ?? [];
     final userId = context.read<AppAuthProvider>().userId;
-    final canReview = (_hasBooked == true) && (_hasReviewed == false) && userId != null;
+    final canReview =
+        (_hasBooked == true) && (_hasReviewed == false) && userId != null;
 
     return [
       SliverPadding(
@@ -670,23 +715,32 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
             if (canReview) ..._buildWriteReviewButton(court, userId),
 
             // --- Prompt to book if hasn't booked ---
-            if (_hasBooked == false) ...[  
+            if (_hasBooked == false) ...[
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: AppColors.primaryBg,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 20),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
                         'Bạn cần đặt sân tại đây để có thể viết đánh giá.',
-                        style: TextStyle(color: AppColors.primary, fontSize: 13),
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],
@@ -702,13 +756,24 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                 child: Column(
                   children: [
                     const SizedBox(height: 24),
-                    Icon(Icons.rate_review_rounded, size: 56, color: Colors.grey.shade300),
+                    Icon(
+                      Icons.rate_review_rounded,
+                      size: 56,
+                      color: Colors.grey.shade300,
+                    ),
                     const SizedBox(height: 12),
-                    const Text('Chưa có đánh giá nào',
-                        style: TextStyle(color: AppColors.textGrey, fontSize: 15)),
+                    const Text(
+                      'Chưa có đánh giá nào',
+                      style: TextStyle(color: AppColors.textGrey, fontSize: 15),
+                    ),
                     const SizedBox(height: 4),
-                    const Text('Hãy đặt sân và chia sẻ trải nghiệm của bạn!',
-                        style: TextStyle(color: AppColors.textLight, fontSize: 13)),
+                    const Text(
+                      'Hãy đặt sân và chia sẻ trải nghiệm của bạn!',
+                      style: TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
               )
@@ -721,10 +786,16 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
     ];
   }
 
-  List<Widget> _buildRatingSummary(CourtLocationModel court, List<ReviewModel> reviews) {
+  List<Widget> _buildRatingSummary(
+    CourtLocationModel court,
+    List<ReviewModel> reviews,
+  ) {
     final avg = reviews.fold(0.0, (s, r) => s + r.rating) / reviews.length;
     // count per star
-    final counts = List.generate(5, (i) => reviews.where((r) => r.rating == 5 - i).length);
+    final counts = List.generate(
+      5,
+      (i) => reviews.where((r) => r.rating == 5 - i).length,
+    );
     return [
       Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -733,16 +804,31 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
             children: [
               Text(
                 avg.toStringAsFixed(1),
-                style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: AppColors.textBlack),
+                style: const TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textBlack,
+                ),
               ),
               Row(
-                children: List.generate(5, (i) => Icon(
-                  i < avg.floor() ? Icons.star_rounded : (i < avg ? Icons.star_half_rounded : Icons.star_border_rounded),
-                  color: Colors.amber, size: 18,
-                )),
+                children: List.generate(
+                  5,
+                  (i) => Icon(
+                    i < avg.floor()
+                        ? Icons.star_rounded
+                        : (i < avg
+                              ? Icons.star_half_rounded
+                              : Icons.star_border_rounded),
+                    color: Colors.amber,
+                    size: 18,
+                  ),
+                ),
               ),
               const SizedBox(height: 4),
-              Text('${reviews.length} đánh giá', style: const TextStyle(color: AppColors.textGrey, fontSize: 12)),
+              Text(
+                '${reviews.length} đánh giá',
+                style: const TextStyle(color: AppColors.textGrey, fontSize: 12),
+              ),
             ],
           ),
           const SizedBox(width: 20),
@@ -756,8 +842,18 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(
                     children: [
-                      Text('$star', style: const TextStyle(fontSize: 12, color: AppColors.textGrey)),
-                      const Icon(Icons.star_rounded, color: Colors.amber, size: 12),
+                      Text(
+                        '$star',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textGrey,
+                        ),
+                      ),
+                      const Icon(
+                        Icons.star_rounded,
+                        color: Colors.amber,
+                        size: 12,
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: ClipRRect(
@@ -766,12 +862,23 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                             value: ratio,
                             minHeight: 8,
                             backgroundColor: AppColors.borderColor,
-                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Colors.amber,
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 6),
-                      SizedBox(width: 20, child: Text('$count', style: const TextStyle(fontSize: 12, color: AppColors.textGrey))),
+                      SizedBox(
+                        width: 20,
+                        child: Text(
+                          '$count',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textGrey,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -784,7 +891,10 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
     ];
   }
 
-  List<Widget> _buildWriteReviewButton(CourtLocationModel court, String userId) {
+  List<Widget> _buildWriteReviewButton(
+    CourtLocationModel court,
+    String userId,
+  ) {
     return [
       const SizedBox(height: 4),
       SizedBox(
@@ -795,7 +905,9 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
             side: const BorderSide(color: AppColors.primary),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             padding: const EdgeInsets.symmetric(vertical: 12),
           ),
           onPressed: () => _showReviewDialog(court, userId),
@@ -822,7 +934,9 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
           builder: (ctx, setModalState) {
             return Padding(
               padding: EdgeInsets.only(
-                left: 20, right: 20, top: 20,
+                left: 20,
+                right: 20,
+                top: 20,
                 bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
               ),
               child: Column(
@@ -833,8 +947,13 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   Row(
                     children: [
                       const Expanded(
-                        child: Text('Viết đánh giá',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          'Viết đánh giá',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close_rounded),
@@ -842,13 +961,20 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                       ),
                     ],
                   ),
-                  Text(court.name,
-                      style: const TextStyle(color: AppColors.textGrey, fontSize: 14)),
+                  Text(
+                    court.name,
+                    style: const TextStyle(
+                      color: AppColors.textGrey,
+                      fontSize: 14,
+                    ),
+                  ),
                   const SizedBox(height: 20),
 
                   // Star selector
-                  const Text('Chất lượng sân',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Chất lượng sân',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -859,7 +985,9 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 6),
                           child: Icon(
-                            star <= selectedRating ? Icons.star_rounded : Icons.star_border_rounded,
+                            star <= selectedRating
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
                             color: Colors.amber,
                             size: 40,
                           ),
@@ -870,14 +998,19 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   Center(
                     child: Text(
                       _ratingLabel(selectedRating),
-                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
 
                   // Comment
-                  const Text('Nhận xét của bạn',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Nhận xét của bạn',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: commentController,
@@ -890,11 +1023,15 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                       fillColor: AppColors.background,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.borderColor),
+                        borderSide: const BorderSide(
+                          color: AppColors.borderColor,
+                        ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.borderColor),
+                        borderSide: const BorderSide(
+                          color: AppColors.borderColor,
+                        ),
                       ),
                     ),
                   ),
@@ -908,7 +1045,9 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: submitting
                           ? null
@@ -932,9 +1071,21 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                               }
                             },
                       child: submitting
-                          ? const SizedBox(width: 20, height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Gửi đánh giá', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Gửi đánh giá',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -948,18 +1099,23 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
 
   String _ratingLabel(int rating) {
     switch (rating) {
-      case 1: return 'Rất tệ';
-      case 2: return 'Tệ';
-      case 3: return 'Bình thường';
-      case 4: return 'Tốt';
-      case 5: return 'Tuyệt vời!';
-      default: return '';
+      case 1:
+        return 'Rất tệ';
+      case 2:
+        return 'Tệ';
+      case 3:
+        return 'Bình thường';
+      case 4:
+        return 'Tốt';
+      case 5:
+        return 'Tuyệt vời!';
+      default:
+        return '';
     }
   }
 } // End of _CourtDetailSheetState
 
 // ── Helper Widgets ────────────────────────────────────────────────────────────
-
 
 class _ActionCircleButton extends StatelessWidget {
   final IconData icon;
@@ -1013,7 +1169,10 @@ class _InfoRow extends StatelessWidget {
           child: Text(
             text,
             style: const TextStyle(
-                fontSize: 14, color: AppColors.textGrey, height: 1.4),
+              fontSize: 14,
+              color: AppColors.textGrey,
+              height: 1.4,
+            ),
           ),
         ),
       ],
@@ -1044,11 +1203,10 @@ class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-          BuildContext context, double shrinkOffset, bool overlapsContent) =>
-      Container(
-        color: Colors.white,
-        child: tabBar,
-      );
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) => Container(color: Colors.white, child: tabBar);
 
   @override
   double get maxExtent => tabBar.preferredSize.height;
@@ -1094,7 +1252,8 @@ class _ReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reviewer = review.reviewer;
-    final initials = (reviewer?.displayName != null && reviewer!.displayName!.isNotEmpty)
+    final initials =
+        (reviewer?.displayName != null && reviewer!.displayName!.isNotEmpty)
         ? reviewer.displayName!.substring(0, 1).toUpperCase()
         : '?';
     final dateStr = DateFormat('dd/MM/yyyy').format(review.createdAt.toLocal());
@@ -1128,9 +1287,13 @@ class _ReviewCard extends StatelessWidget {
                     ? NetworkImage(reviewer!.photoUrl!)
                     : null,
                 child: reviewer?.photoUrl == null
-                    ? Text(initials,
+                    ? Text(
+                        initials,
                         style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold))
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
                     : null,
               ),
               const SizedBox(width: 10),
@@ -1141,12 +1304,16 @@ class _ReviewCard extends StatelessWidget {
                     Text(
                       reviewer?.displayName ?? 'Người dùng',
                       style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 14),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
                     ),
                     Text(
                       dateStr,
                       style: const TextStyle(
-                          color: AppColors.textGrey, fontSize: 12),
+                        color: AppColors.textGrey,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -1172,7 +1339,10 @@ class _ReviewCard extends StatelessWidget {
             Text(
               review.comment!,
               style: const TextStyle(
-                  fontSize: 14, color: AppColors.textBlack, height: 1.5),
+                fontSize: 14,
+                color: AppColors.textBlack,
+                height: 1.5,
+              ),
             ),
           ],
         ],

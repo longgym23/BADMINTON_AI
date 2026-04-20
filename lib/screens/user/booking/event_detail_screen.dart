@@ -2,6 +2,7 @@ import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/screens/user/booking/event_checkout_screen.dart';
 import 'package:badminton_ai/utils/notification_utils.dart';
+import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
@@ -11,7 +12,11 @@ class EventDetailScreen extends StatefulWidget {
   final EventModel event;
   final CourtLocationModel court;
 
-  const EventDetailScreen({super.key, required this.event, required this.court});
+  const EventDetailScreen({
+    super.key,
+    required this.event,
+    required this.court,
+  });
 
   @override
   State<EventDetailScreen> createState() => _EventDetailScreenState();
@@ -32,8 +37,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   void _increment() {
+    if (!widget.event.isBookable) return;
     setState(() {
-      final available = widget.event.maxParticipants - widget.event.currentParticipants;
+      final available = widget.event.availableParticipants;
       if (quantity < available) {
         quantity++;
       }
@@ -50,7 +56,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final available = widget.event.maxParticipants - widget.event.currentParticipants;
+    final available = widget.event.availableParticipants;
+    final canBook = widget.event.isBookable;
     final totalPrice = quantity * widget.event.price;
     final formatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
@@ -84,15 +91,41 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               title: "Thông tin sự kiện",
               icon: Icons.event_note,
               children: [
+                if (!canBook) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      widget.event.isEnded
+                          ? 'Sự kiện đã kết thúc, không thể đặt thêm vé.'
+                          : 'Sự kiện đã hết vé.',
+                      style: const TextStyle(
+                        color: AppColors.error,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 _buildRichText('Mã sự kiện: ', widget.event.eventCode),
                 const SizedBox(height: 8),
                 _buildRichText('Tên sự kiện: ', widget.event.title),
                 const SizedBox(height: 8),
-                const Text('Sân & Thời gian:', style: TextStyle(color: AppColors.textBlack)),
+                const Text(
+                  'Sân & Thời gian:',
+                  style: TextStyle(color: AppColors.textBlack),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   '  - ${widget.event.courtArea}: ${widget.event.startTime} - ${widget.event.endTime}',
-                  style: const TextStyle(color: AppColors.textBlack, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: AppColors.textBlack,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 _buildRichText(
@@ -100,11 +133,17 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   DateFormat('dd/MM/yyyy').format(widget.event.dateTime),
                 ),
                 const SizedBox(height: 8),
-                _buildRichText('Giá vé: ', '${(widget.event.price / 1000).toStringAsFixed(0)}k/Người'),
+                _buildRichText(
+                  'Giá vé: ',
+                  '${(widget.event.price / 1000).toStringAsFixed(0)}k/Người',
+                ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Text('Trình độ: ', style: TextStyle(color: AppColors.textBlack)),
+                    const Text(
+                      'Trình độ: ',
+                      style: TextStyle(color: AppColors.textBlack),
+                    ),
                     Container(
                       padding: const EdgeInsets.only(right: 12),
                       decoration: BoxDecoration(
@@ -116,16 +155,26 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         children: [
                           const CircleAvatar(
                             radius: 12,
-                            child: Icon(Icons.sports_tennis, size: 14, color: Colors.white),
+                            child: Icon(
+                              Icons.sports_tennis,
+                              size: 14,
+                              color: Colors.white,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Text(
                             widget.event.sportType,
-                            style: const TextStyle(color: AppColors.textBlack, fontSize: 13),
+                            style: const TextStyle(
+                              color: AppColors.textBlack,
+                              fontSize: 13,
+                            ),
                           ),
                           const SizedBox(width: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.brandOrange,
                               borderRadius: BorderRadius.circular(10),
@@ -170,7 +219,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               children: [
                 const Text(
                   'Số lượng vé muốn đặt',
-                  style: TextStyle(color: AppColors.textBlack, fontSize: 15, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppColors.textBlack,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -187,7 +240,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               color: AppColors.primaryLight,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.remove, color: Colors.white),
+                            child: const Icon(
+                              Icons.remove,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                         Container(
@@ -224,7 +280,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         children: [
                           const TextSpan(
                             text: 'Tổng tiền: ',
-                            style: TextStyle(color: AppColors.textGrey, fontSize: 14),
+                            style: TextStyle(
+                              color: AppColors.textGrey,
+                              fontSize: 14,
+                            ),
                           ),
                           TextSpan(
                             text: formatter.format(totalPrice),
@@ -263,11 +322,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               children: [
                 const Text(
                   'Tên khách hàng',
-                  style: TextStyle(color: AppColors.textBlack, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppColors.textBlack,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _nameController,
+                  onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     hintText: 'Nhập tên',
                     filled: true,
@@ -279,22 +342,30 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.borderColor),
+                      borderSide: const BorderSide(
+                        color: AppColors.borderColor,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.borderColor),
+                      borderSide: const BorderSide(
+                        color: AppColors.borderColor,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 const Text(
                   'Số điện thoại:',
-                  style: TextStyle(color: AppColors.textBlack, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppColors.textBlack,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _phoneController,
+                  onChanged: (_) => setState(() {}),
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
                     hintText: 'Nhập số điện thoại',
@@ -307,11 +378,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.borderColor),
+                      borderSide: const BorderSide(
+                        color: AppColors.borderColor,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.borderColor),
+                      borderSide: const BorderSide(
+                        color: AppColors.borderColor,
+                      ),
                     ),
                   ),
                 ),
@@ -328,8 +403,20 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           width: double.infinity,
           height: 50,
           child: ElevatedButton(
-            onPressed: quantity > 0 && _nameController.text.isNotEmpty && _phoneController.text.isNotEmpty
+            onPressed:
+                canBook &&
+                    quantity > 0 &&
+                    _nameController.text.isNotEmpty &&
+                    _phoneController.text.isNotEmpty
                 ? () {
+                    if (!widget.event.isBookable) {
+                      AppToast.show(
+                        context,
+                        'Sự kiện đã hết hạn hoặc hết vé',
+                        type: ToastType.error,
+                      );
+                      return;
+                    }
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -360,7 +447,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
-  Widget _buildBlock({String? title, IconData? icon, required List<Widget> children}) {
+  Widget _buildBlock({
+    String? title,
+    IconData? icon,
+    required List<Widget> children,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -368,7 +459,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         color: blockColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderColor, width: 0.5),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,10 +495,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return RichText(
       text: TextSpan(
         children: [
-          TextSpan(text: label, style: const TextStyle(color: AppColors.textGrey)),
+          TextSpan(
+            text: label,
+            style: const TextStyle(color: AppColors.textGrey),
+          ),
           TextSpan(
             text: value,
-            style: const TextStyle(color: AppColors.textBlack, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: AppColors.textBlack,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),

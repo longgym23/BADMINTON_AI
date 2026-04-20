@@ -1,3 +1,4 @@
+import 'package:badminton_ai/l10n/generated/app_localizations.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/screens/admin/admin_dashboard_screen.dart';
 import 'package:badminton_ai/screens/auth/login_screen.dart';
@@ -76,28 +77,37 @@ class _SplashScreenState extends State<SplashScreen>
                 // Logo
                 Image.asset(
                   'assets/images/logo1.png',
-                  width: 140,
+                  width: 200,
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 24),
                 // Tên app
-                const Text(
-                  'KLOO',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.primary,
-                    letterSpacing: 4,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Đặt sân cầu lông thông minh',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textGrey,
-                    letterSpacing: 0.5,
-                  ),
+                Builder(
+                  builder: (context) {
+                    final l = AppLocalizations.of(context)!;
+                    return Column(
+                      children: [
+                        Text(
+                          l.appNameKloo,
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.primary,
+                            letterSpacing: 4,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          l.smartBooking,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textGrey,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 48),
                 // Dòng loading mỏng phía dưới

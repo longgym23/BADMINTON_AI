@@ -5,9 +5,9 @@ import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/notification_provider.dart';
 import 'package:badminton_ai/screens/user/booking/booking_method_modal.dart';
 import 'package:badminton_ai/screens/user/booking/event_list_screen.dart';
-import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 import 'package:badminton_ai/screens/user/notifications/notifications_screen.dart';
 import 'package:badminton_ai/screens/user/scanner/qr_scanner_screen.dart';
+import 'package:badminton_ai/screens/user/booking/court_reviews_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -15,6 +15,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
+import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';  
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_state.dart';
@@ -648,7 +649,7 @@ class _CourtListItem extends StatelessWidget {
                 children: [
                   _buildInfoRow(),
                   const SizedBox(height: 8),
-                  _buildRatingAndDistance(),
+                  _buildRatingAndDistance(context),
                   const SizedBox(height: 16),
                   _buildFullWidthButton(),
                 ],
@@ -754,21 +755,37 @@ class _CourtListItem extends StatelessWidget {
     );
   }
 
-  Widget _buildRatingAndDistance() {
+  Widget _buildRatingAndDistance(BuildContext context) {
     final rating = court.rating > 0 ? court.rating : 4.8;
     return Row(
       children: [
-        const Icon(Icons.star, size: 16, color: Colors.amber),
-        const SizedBox(width: 4),
-        Text(
-          '$rating',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-            color: AppColors.textBlack,
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CourtReviewsScreen(court: court),
+              ),
+            );
+          },
+          child: Row(
+            children: [
+              const Icon(Icons.star, size: 16, color: Colors.amber),
+              const SizedBox(width: 4),
+              Text(
+                '$rating',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: AppColors.textBlack,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, size: 16, color: AppColors.textGrey),
+            ],
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         const Text('•', style: TextStyle(color: AppColors.textLight)),
         const SizedBox(width: 8),
         const Icon(Icons.location_on, size: 14, color: AppColors.textGrey),

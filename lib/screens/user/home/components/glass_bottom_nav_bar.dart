@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/providers/unread_count_provider.dart';
+import 'package:badminton_ai/l10n/generated/app_localizations.dart';
 
 class GlassBottomNavBar extends StatefulWidget {
   final int currentIndex;
@@ -42,7 +43,7 @@ class _GlassBottomNavBarState extends State<GlassBottomNavBar> {
   Widget build(BuildContext context) {
     int mappedIndex = _getMappedIndex(widget.currentIndex);
     bool isMainTab = mappedIndex != -1;
-    
+
     // Đọc số tin nhắn chưa đọc
     // Sử dụng _ từ provider nếu import chưa sẵn, nhưng phải listen
     // Tạm chưa có context.watch nên phải thêm import
@@ -246,39 +247,44 @@ class _GlassBottomNavBarState extends State<GlassBottomNavBar> {
                               ),
                             ),
                             // Các Icon nằm ở trên cùng
-                            Row(
-                              children: [
-                                _buildNavItem(
-                                  Icons.home_filled,
-                                  'Trang chủ',
-                                  0,
-                                  itemWidth,
-                                  visualRealIndex,
-                                ),
-                                _buildNavItem(
-                                  Icons.map_rounded,
-                                  'Bản đồ',
-                                  1,
-                                  itemWidth,
-                                  visualRealIndex,
-                                  assetIcon: 'assets/images/map.png',
-                                ),
-                                _buildNavItem(
-                                  Icons.group_rounded,
-                                  'Cộng đồng',
-                                  3,
-                                  itemWidth,
-                                  visualRealIndex,
-                                  badgeCount: unreadCount,
-                                ),
-                                _buildNavItem(
-                                  Icons.person_rounded,
-                                  'Tài khoản',
-                                  4,
-                                  itemWidth,
-                                  visualRealIndex,
-                                ),
-                              ],
+                            Builder(
+                              builder: (context) {
+                                final l = AppLocalizations.of(context)!;
+                                return Row(
+                                  children: [
+                                    _buildNavItem(
+                                      Icons.home_filled,
+                                      l.home,
+                                      0,
+                                      itemWidth,
+                                      visualRealIndex,
+                                    ),
+                                    _buildNavItem(
+                                      Icons.map_rounded,
+                                      l.map,
+                                      1,
+                                      itemWidth,
+                                      visualRealIndex,
+                                      assetIcon: 'assets/images/map.png',
+                                    ),
+                                    _buildNavItem(
+                                      Icons.group_rounded,
+                                      l.community,
+                                      3,
+                                      itemWidth,
+                                      visualRealIndex,
+                                      badgeCount: unreadCount,
+                                    ),
+                                    _buildNavItem(
+                                      Icons.person_rounded,
+                                      l.account,
+                                      4,
+                                      itemWidth,
+                                      visualRealIndex,
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -376,9 +382,7 @@ class _GlassBottomNavBarState extends State<GlassBottomNavBar> {
 
     if (badgeCount > 0) {
       iconWidget = Badge(
-        label: Text(
-          badgeCount > 99 ? '99+' : badgeCount.toString(),
-        ),
+        label: Text(badgeCount > 99 ? '99+' : badgeCount.toString()),
         child: iconWidget,
       );
     }

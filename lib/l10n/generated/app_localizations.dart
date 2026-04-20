@@ -860,6 +860,108 @@ abstract class AppLocalizations {
   /// **'Trò chuyện'**
   String get chat;
 
+  /// No description provided for @community.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cộng đồng'**
+  String get community;
+
+  /// No description provided for @account.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tài khoản'**
+  String get account;
+
+  /// No description provided for @bookingNow.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đặt sân ngay'**
+  String get bookingNow;
+
+  /// No description provided for @smartBooking.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đặt sân cầu lông thông minh'**
+  String get smartBooking;
+
+  /// No description provided for @searchCourtsAroundYou.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tìm kiếm sân quanh đây'**
+  String get searchCourtsAroundYou;
+
+  /// No description provided for @findCourts.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tìm kiếm sân'**
+  String get findCourts;
+
+  /// No description provided for @fastBooking.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đặt sân cực nhanh'**
+  String get fastBooking;
+
+  /// No description provided for @searchUsersOrGroups.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tìm kiếm người dùng hoặc nhóm...'**
+  String get searchUsersOrGroups;
+
+  /// No description provided for @searchNameOrPhone.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tìm kiếm tên hoặc số điện thoại...'**
+  String get searchNameOrPhone;
+
+  /// No description provided for @searchLocation.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tìm kiếm sân, địa điểm...'**
+  String get searchLocation;
+
+  /// No description provided for @searchNameEmailPhone.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tìm kiếm tên, email, sđt...'**
+  String get searchNameEmailPhone;
+
+  /// No description provided for @bookingSuccess.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đặt sân thành công!'**
+  String get bookingSuccess;
+
+  /// No description provided for @bookingFailed.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đặt sân thất bại'**
+  String get bookingFailed;
+
+  /// No description provided for @noDataAvailable.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không có dữ liệu'**
+  String get noDataAvailable;
+
+  /// No description provided for @active.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hoạt động'**
+  String get active;
+
+  /// No description provided for @activeTimeAgo.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hoạt động {time}'**
+  String activeTimeAgo(String time);
+
+  /// No description provided for @appNameKloo.
+  ///
+  /// In vi, this message translates to:
+  /// **'KLOO'**
+  String get appNameKloo;
+
   /// No description provided for @notificationTitle.
   ///
   /// In vi, this message translates to:
@@ -889,6 +991,114 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Thông báo đẩy'**
   String get pushNotifications;
+
+  /// No description provided for @updateUser.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cập nhật người dùng'**
+  String get updateUser;
+
+  /// No description provided for @displayName.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tên hiển thị'**
+  String get displayName;
+
+  /// No description provided for @cannotBeEmpty.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không được bỏ trống'**
+  String get cannotBeEmpty;
+
+  /// No description provided for @phoneNumber.
+  ///
+  /// In vi, this message translates to:
+  /// **'Số điện thoại'**
+  String get phoneNumber;
+
+  /// No description provided for @role.
+  ///
+  /// In vi, this message translates to:
+  /// **'Vai trò'**
+  String get role;
+
+  /// No description provided for @roleUser.
+  ///
+  /// In vi, this message translates to:
+  /// **'Người dùng'**
+  String get roleUser;
+
+  /// No description provided for @roleCourtOwner.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chủ sân'**
+  String get roleCourtOwner;
+
+  /// No description provided for @roleAdmin.
+  ///
+  /// In vi, this message translates to:
+  /// **'Quản trị viên'**
+  String get roleAdmin;
+
+  /// No description provided for @updateSuccess.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cập nhật thành công!'**
+  String get updateSuccess;
+
+  /// No description provided for @errorWithDetails.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lỗi: {error}'**
+  String errorWithDetails(String error);
+
+  /// No description provided for @confirmDelete.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xác nhận xóa'**
+  String get confirmDelete;
+
+  /// No description provided for @deleteUserConfirmText.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn có chắc muốn xóa người dùng \"{name}\" không?'**
+  String deleteUserConfirmText(String name);
+
+  /// No description provided for @userDeleted.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã xóa người dùng.'**
+  String get userDeleted;
+
+  /// No description provided for @adminOnly.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chỉ Admin mới có quyền truy cập trang này.'**
+  String get adminOnly;
+
+  /// No description provided for @manageUsers.
+  ///
+  /// In vi, this message translates to:
+  /// **'Quản lý Người dùng'**
+  String get manageUsers;
+
+  /// No description provided for @admin.
+  ///
+  /// In vi, this message translates to:
+  /// **'Admin'**
+  String get admin;
+
+  /// No description provided for @user.
+  ///
+  /// In vi, this message translates to:
+  /// **'User'**
+  String get user;
+
+  /// No description provided for @noUsersFound.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không tìm thấy người dùng nào.'**
+  String get noUsersFound;
 }
 
 class _AppLocalizationsDelegate

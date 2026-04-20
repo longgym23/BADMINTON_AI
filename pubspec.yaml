@@ -78,6 +78,7 @@ dependencies:
   rxdart: ^0.28.0
   # firebase_storage: ^13.0.5 # Removed
 dev_dependencies:
+  flutter_native_splash: ^2.4.7
   flutter_test:
     sdk: flutter
 
@@ -88,6 +89,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.4
+  image: ^4.8.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -105,8 +107,8 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path_android: "assets/images/logo1_android.png"
-  image_path_ios: "assets/images/logo1_ios.png"
+  image_path_android: "assets/images/logo1_android_large.png"
+  image_path_ios: "assets/images/logo1_ios_large.png"
   min_sdk_android: 21 # android min sdk min:16, default 21
   adaptive_icon_background: "#FFFFFF" # Nền trắng cho adaptive icon (Android)
-  adaptive_icon_foreground: "assets/images/logo1_android.png" # Logo cho adaptive icon
+  adaptive_icon_foreground: "assets/images/logo1_android_large.png" # Logo cho adaptive icon

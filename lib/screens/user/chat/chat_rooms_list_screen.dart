@@ -1,5 +1,6 @@
 import 'package:badminton_ai/data/repositories/chat_room_repository.dart';
 import 'package:badminton_ai/domain/usecases/chat_rooms/watch_user_chat_rooms_usecase.dart';
+import 'package:badminton_ai/l10n/generated/app_localizations.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/screens/user/chat/direct_chat_screen.dart';
 import 'package:badminton_ai/screens/user/chat/create_group_screen.dart';
@@ -68,16 +69,25 @@ class _ChatRoomsListScreenState extends State<ChatRoomsListScreen> {
           color: Colors.grey[200]!.withOpacity(0.8),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: TextField(
-          controller: _searchController,
-          onChanged: (val) => setState(() => _searchQuery = val),
-          decoration: InputDecoration(
-            hintText: 'Tìm kiếm người dùng hoặc nhóm...',
-            hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-            prefixIcon: Icon(Icons.search, color: Colors.grey[500], size: 20),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 10),
-          ),
+        child: Builder(
+          builder: (context) {
+            final l = AppLocalizations.of(context)!;
+            return TextField(
+              controller: _searchController,
+              onChanged: (val) => setState(() => _searchQuery = val),
+              decoration: InputDecoration(
+                hintText: l.searchUsersOrGroups,
+                hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: Colors.grey[500],
+                  size: 20,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -718,13 +728,31 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    bool isTimeout =
+        error.contains('RealtimeSubscribeStatus.timedOut') ||
+        error.toLowerCase().contains('timeout');
+    String displayMessage = isTimeout
+        ? 'Mất kết nối thời gian thực. Bị gián đoạn kết nối...\nVui lòng kiểm tra mạng.'
+        : 'Đã xảy ra lỗi: $error';
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, color: AppColors.error, size: 48),
+          Icon(
+            isTimeout ? Icons.wifi_off_outlined : Icons.error_outline,
+            color: isTimeout ? Colors.orange : AppColors.error,
+            size: 48,
+          ),
           const SizedBox(height: 16),
-          Text('Đã xảy ra lỗi: $error'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              displayMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textGrey, height: 1.5),
+            ),
+          ),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {

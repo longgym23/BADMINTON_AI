@@ -138,11 +138,64 @@
   "map": "Bản đồ",
   "booking": "Đặt sân",
   "chat": "Trò chuyện",
+  "community": "Cộng đồng",
+  "account": "Tài khoản",
+  "bookingNow": "Đặt sân ngay",
+  "smartBooking": "Đặt sân cầu lông thông minh",
+  "searchCourtsAroundYou": "Tìm kiếm sân quanh đây",
+  "findCourts": "Tìm kiếm sân",
+  "fastBooking": "Đặt sân cực nhanh",
+  "searchUsersOrGroups": "Tìm kiếm người dùng hoặc nhóm...",
+  "searchNameOrPhone": "Tìm kiếm tên hoặc số điện thoại...",
+  "searchLocation": "Tìm kiếm sân, địa điểm...",
+  "searchNameEmailPhone": "Tìm kiếm tên, email, sđt...",
+  "bookingSuccess": "Đặt sân thành công!",
+  "bookingFailed": "Đặt sân thất bại",
+
+  "loading": "Đang tải...",
+  "noDataAvailable": "Không có dữ liệu",
+  "active": "Hoạt động",
+  "activeTimeAgo": "Hoạt động {time}",
+  "@activeTimeAgo": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "appNameKloo": "KLOO",
 
   "notificationTitle": "Thông báo",
   "noNotifications": "Không có thông báo nào",
 
   "settingsTitle": "Cài đặt",
   "darkMode": "Chế độ tối",
-  "pushNotifications": "Thông báo đẩy"
+  "pushNotifications": "Thông báo đẩy",
+
+  "updateUser": "Cập nhật người dùng",
+  "displayName": "Tên hiển thị",
+  "cannotBeEmpty": "Không được bỏ trống",
+  "phoneNumber": "Số điện thoại",
+  "role": "Vai trò",
+  "roleUser": "Người dùng",
+  "roleCourtOwner": "Chủ sân",
+  "roleAdmin": "Quản trị viên",
+  "updateSuccess": "Cập nhật thành công!",
+  "errorWithDetails": "Lỗi: {error}",
+  "@errorWithDetails": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "confirmDelete": "Xác nhận xóa",
+  "deleteUserConfirmText": "Bạn có chắc muốn xóa người dùng \"{name}\" không?",
+  "@deleteUserConfirmText": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "userDeleted": "Đã xóa người dùng.",
+  "adminOnly": "Chỉ Admin mới có quyền truy cập trang này.",
+  "manageUsers": "Quản lý Người dùng",
+  "admin": "Admin",
+  "user": "User",
+  "noUsersFound": "Không tìm thấy người dùng nào."
 }

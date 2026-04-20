@@ -20,28 +20,40 @@ class SupabaseRepository {
   // Lấy stream các sân (Realtime)
   Stream<List<CourtLocationModel>> getCourtLocationsStream({String? ownerId}) {
     if (ownerId != null) {
-      return _client.from('courts').stream(primaryKey: ['id']).eq('owner_id', ownerId).map(
-        (data) => data.map((e) => CourtLocationModel.fromSupabase(e)).toList(),
-      );
+      return _client
+          .from('courts')
+          .stream(primaryKey: ['id'])
+          .eq('owner_id', ownerId)
+          .map(
+            (data) =>
+                data.map((e) => CourtLocationModel.fromSupabase(e)).toList(),
+          );
     }
-    return _client.from('courts').stream(primaryKey: ['id']).map<List<CourtLocationModel>>(
-      (data) => data.map((e) => CourtLocationModel.fromSupabase(e)).toList(),
-    );
+    return _client
+        .from('courts')
+        .stream(primaryKey: ['id'])
+        .map<List<CourtLocationModel>>(
+          (data) =>
+              data.map((e) => CourtLocationModel.fromSupabase(e)).toList(),
+        );
   }
 
   // Fetch sân 1 lần (dùng làm fallback khi Realtime Stream bị lỗi / timeout)
-  Future<List<CourtLocationModel>> getAllCourtsFallback({String? ownerId}) async {
+  Future<List<CourtLocationModel>> getAllCourtsFallback({
+    String? ownerId,
+  }) async {
     try {
       dynamic query = _client.from('courts').select();
       if (ownerId != null) query = query.eq('owner_id', ownerId);
       final data = await query;
-      return List<CourtLocationModel>.from(data.map((e) => CourtLocationModel.fromSupabase(e)));
+      return List<CourtLocationModel>.from(
+        data.map((e) => CourtLocationModel.fromSupabase(e)),
+      );
     } catch (e) {
       print("Fallback get courts error: $e");
       return [];
     }
   }
-
 
   // Thêm sân mới
   Future<void> addCourtLocation(CourtLocationModel court) async {
@@ -89,32 +101,36 @@ class SupabaseRepository {
         .eq('court_id', courtId)
         .map<List<BookingModel>>(
           (data) => data
-              .where((e) =>
-                  e['booking_date'] == dateStr &&
-                  // Chỉ loại bỏ cancelled. PENDING_PAYMENT sẽ chiếm chỗ tạm thời để tránh đặt trùng,
-                  // nhưng cần bỏ qua các pending đã hết hạn (timeout client-side nếu DB chưa có expires_at).
-                  e['status'] != 'cancelled' &&
-                  (() {
-                    final status = e['status'];
-                    if (status != 'PENDING_PAYMENT') return true;
+              .where(
+                (e) =>
+                    e['booking_date'] == dateStr &&
+                    // Chỉ loại bỏ cancelled. PENDING_PAYMENT sẽ chiếm chỗ tạm thời để tránh đặt trùng,
+                    // nhưng cần bỏ qua các pending đã hết hạn (timeout client-side nếu DB chưa có expires_at).
+                    e['status'] != 'cancelled' &&
+                    (() {
+                      final status = e['status'];
+                      if (status != 'PENDING_PAYMENT') return true;
 
-                    // Ưu tiên dùng expires_at nếu DB có.
-                    final expiresAtRaw = e['expires_at'];
-                    if (expiresAtRaw != null) {
-                      final expiresAt = DateTime.tryParse(expiresAtRaw.toString());
-                      if (expiresAt == null) return true;
-                      return DateTime.now().isBefore(expiresAt);
-                    }
+                      // Ưu tiên dùng expires_at nếu DB có.
+                      final expiresAtRaw = e['expires_at'];
+                      if (expiresAtRaw != null) {
+                        final expiresAt = DateTime.tryParse(
+                          expiresAtRaw.toString(),
+                        );
+                        if (expiresAt == null) return true;
+                        return DateTime.now().isBefore(expiresAt);
+                      }
 
-                    // Fallback: dùng created_at + 5 phút.
-                    final createdAtRaw = e['created_at'];
-                    final createdAt = createdAtRaw != null
-                        ? DateTime.tryParse(createdAtRaw.toString())
-                        : null;
-                    if (createdAt == null) return true;
-                    return DateTime.now().difference(createdAt) <
-                        const Duration(minutes: 5);
-                  })())
+                      // Fallback: dùng created_at + 5 phút.
+                      final createdAtRaw = e['created_at'];
+                      final createdAt = createdAtRaw != null
+                          ? DateTime.tryParse(createdAtRaw.toString())
+                          : null;
+                      if (createdAt == null) return true;
+                      return DateTime.now().difference(createdAt) <
+                          const Duration(minutes: 5);
+                    })(),
+              )
               .map((e) => BookingModel.fromSupabase(e))
               .toList(),
         );
@@ -131,7 +147,9 @@ class SupabaseRepository {
   }
 
   // Xóa tất cả booking PENDING_PAYMENT của một giao dịch (khi hết giờ thanh toán)
-  Future<void> deletePendingBookingsByTransactionId(String transactionId) async {
+  Future<void> deletePendingBookingsByTransactionId(
+    String transactionId,
+  ) async {
     await _client
         .from('bookings')
         .delete()
@@ -150,30 +168,39 @@ class SupabaseRepository {
   }
 
   // Lấy danh sách booking trong 1 khoảng thời gian (dùng cho thống kê biểu đồ)
-  Future<List<BookingModel>> getBookingsForDateRange(DateTime start, DateTime end, {String? ownerId, String? courtId}) async {
+  Future<List<BookingModel>> getBookingsForDateRange(
+    DateTime start,
+    DateTime end, {
+    String? ownerId,
+    String? courtId,
+  }) async {
     String startStr = start.toIso8601String().split('T')[0];
     String endStr = end.toIso8601String().split('T')[0];
-    
+
     try {
       var query = _client
-            .from('bookings')
-            .select()
-            .gte('booking_date', startStr)
-            .lte('booking_date', endStr);
+          .from('bookings')
+          .select()
+          .gte('booking_date', startStr)
+          .lte('booking_date', endStr);
 
       if (courtId != null) {
         query = query.eq('court_id', courtId);
       } else if (ownerId != null) {
-        final userCourtsResp = await _client.from('courts').select('id').eq('owner_id', ownerId);
-        final List<String> courtIds = (userCourtsResp as List).map((c) => c['id'] as String).toList();
-        
+        final userCourtsResp = await _client
+            .from('courts')
+            .select('id')
+            .eq('owner_id', ownerId);
+        final List<String> courtIds = (userCourtsResp as List)
+            .map((c) => c['id'] as String)
+            .toList();
+
         if (courtIds.isEmpty) return [];
         query = query.inFilter('court_id', courtIds);
       }
-      
+
       final data = await query;
       return data.map((e) => BookingModel.fromSupabase(e)).toList();
-
     } catch (e) {
       print("Lỗi lấy dữ liệu thống kê: $e");
       return [];
@@ -181,7 +208,9 @@ class SupabaseRepository {
   }
 
   // Lấy danh sách Sân cho Dropdown (Chủ sân chỉ thấy sân của họ, Admin thấy all)
-  Future<List<Map<String, dynamic>>> getSimpleCourtsList({String? ownerId}) async {
+  Future<List<Map<String, dynamic>>> getSimpleCourtsList({
+    String? ownerId,
+  }) async {
     try {
       var query = _client.from('courts').select('id, name');
       if (ownerId != null) {
@@ -196,32 +225,44 @@ class SupabaseRepository {
   }
 
   // Lấy TẤT CẢ booking trong ngày (cho Admin / Chủ sân)
-  Stream<List<BookingModel>> getAllBookingsForDay(DateTime date, {String? ownerId}) async* {
+  Stream<List<BookingModel>> getAllBookingsForDay(
+    DateTime date, {
+    String? ownerId,
+  }) async* {
     String dateStr = date.toIso8601String().split('T')[0];
-    
+
     if (ownerId != null) {
-      final userCourtsResp = await _client.from('courts').select('id').eq('owner_id', ownerId);
-      final List<String> courtIds = (userCourtsResp as List).map((c) => c['id'] as String).toList();
-      
+      final userCourtsResp = await _client
+          .from('courts')
+          .select('id')
+          .eq('owner_id', ownerId);
+      final List<String> courtIds = (userCourtsResp as List)
+          .map((c) => c['id'] as String)
+          .toList();
+
       if (courtIds.isEmpty) {
         yield [];
         return;
       }
-      
+
       yield* _client
           .from('bookings')
           .stream(primaryKey: ['id'])
           .eq('booking_date', dateStr)
-          .map<List<BookingModel>>((data) => data
-              .map((e) => BookingModel.fromSupabase(e))
-              .where((b) => courtIds.contains(b.courtId))
-              .toList());
+          .map<List<BookingModel>>(
+            (data) => data
+                .map((e) => BookingModel.fromSupabase(e))
+                .where((b) => courtIds.contains(b.courtId))
+                .toList(),
+          );
     } else {
       yield* _client
           .from('bookings')
           .stream(primaryKey: ['id'])
           .eq('booking_date', dateStr)
-          .map<List<BookingModel>>((data) => data.map((e) => BookingModel.fromSupabase(e)).toList());
+          .map<List<BookingModel>>(
+            (data) => data.map((e) => BookingModel.fromSupabase(e)).toList(),
+          );
     }
   }
 
@@ -244,26 +285,37 @@ class SupabaseRepository {
     if (ownerId != null) {
       // Vì Supabase stream filter .eq() hạn chế, ta sẽ filter thủ công hoặc dùng rpc nếu phức tạp.
       // Ở đây ta lấy danh sách sân của chủ sân trước.
-      final userCourtsResp =
-          await _client.from('courts').select('id').eq('owner_id', ownerId);
-      final List<String> courtIds =
-          (userCourtsResp as List).map((c) => c['id'] as String).toList();
+      final userCourtsResp = await _client
+          .from('courts')
+          .select('id')
+          .eq('owner_id', ownerId);
+      final List<String> courtIds = (userCourtsResp as List)
+          .map((c) => c['id'] as String)
+          .toList();
 
       if (courtIds.isEmpty) {
         yield [];
         return;
       }
 
-      yield* (query as Stream<List<Map<String, dynamic>>>).map<List<BookingModel>>((data) => data
-          .map((e) => BookingModel.fromSupabase(e))
-          .where((b) => courtIds.contains(b.courtId))
-          .toList());
+      yield* (query as Stream<List<Map<String, dynamic>>>)
+          .map<List<BookingModel>>(
+            (data) => data
+                .map((e) => BookingModel.fromSupabase(e))
+                .where((b) => courtIds.contains(b.courtId))
+                .toList(),
+          );
     } else if (courtId != null) {
-      yield* (query as SupabaseStreamFilterBuilder).eq('court_id', courtId).map<List<BookingModel>>(
-          (data) => data.map((e) => BookingModel.fromSupabase(e)).toList());
+      yield* (query as SupabaseStreamFilterBuilder)
+          .eq('court_id', courtId)
+          .map<List<BookingModel>>(
+            (data) => data.map((e) => BookingModel.fromSupabase(e)).toList(),
+          );
     } else {
-      yield* (query as Stream<List<Map<String, dynamic>>>).map<List<BookingModel>>(
-          (data) => data.map((e) => BookingModel.fromSupabase(e)).toList());
+      yield* (query as Stream<List<Map<String, dynamic>>>)
+          .map<List<BookingModel>>(
+            (data) => data.map((e) => BookingModel.fromSupabase(e)).toList(),
+          );
     }
   }
 
@@ -274,7 +326,10 @@ class SupabaseRepository {
 
   // Hủy booking (Admin/Owner)
   Future<void> cancelBooking(String bookingId) async {
-    await _client.from('bookings').update({'status': 'cancelled'}).eq('id', bookingId);
+    await _client
+        .from('bookings')
+        .update({'status': 'cancelled'})
+        .eq('id', bookingId);
   }
 
   // Hủy booking và hoàn tiền vào Balance
@@ -308,7 +363,9 @@ class SupabaseRepository {
           .eq('id', booking.id!)
           .select();
       if (updateRes.isEmpty) {
-        throw Exception("Không thể cập nhật trạng thái hủy (Có thể do sai ID hoặc Quyền)");
+        throw Exception(
+          "Không thể cập nhật trạng thái hủy (Có thể do sai ID hoặc Quyền)",
+        );
       }
 
       // 2. Cập nhật số dư ví nếu có hoàn tiền
@@ -333,7 +390,11 @@ class SupabaseRepository {
   Future<List<String>> getAdminsAndCourtOwner(String courtId) async {
     Set<String> userIdsToNotify = {};
     try {
-      final courtData = await _client.from('courts').select('owner_id').eq('id', courtId).maybeSingle();
+      final courtData = await _client
+          .from('courts')
+          .select('owner_id')
+          .eq('id', courtId)
+          .maybeSingle();
       if (courtData != null && courtData['owner_id'] != null) {
         userIdsToNotify.add(courtData['owner_id']);
       }
@@ -341,7 +402,10 @@ class SupabaseRepository {
       // Ignored
     }
     try {
-      final admins = await _client.from('profiles').select('id').eq('role', 'admin');
+      final admins = await _client
+          .from('profiles')
+          .select('id')
+          .eq('role', 'admin');
       for (var admin in admins) {
         userIdsToNotify.add(admin['id']);
       }
@@ -416,55 +480,146 @@ class SupabaseRepository {
     await _client.from('events').delete().eq('id', eventId);
   }
 
-  Future<void> joinEvent(String eventId, String userId, double priceDeduction) async {
-    // Tạm thời gọi tuần tự do Flutter chưa gọi RPC dễ dàng nếu không viết thủ tục
+  Future<void> createEventPaymentPlaceholder({
+    required EventModel event,
+    required String userId,
+    required String transactionId,
+    required int totalPrice,
+    int holdMinutes = 5,
+  }) async {
+    final existing = await _client
+        .from('bookings')
+        .select('id')
+        .eq('transaction_id', transactionId)
+        .maybeSingle();
+    if (existing != null) return;
+
+    final startTimeStr = event.startTime.toString();
+    final matchStart = RegExp(r'\d+').firstMatch(startTimeStr);
+    final startTimeNum = matchStart != null
+        ? int.parse(matchStart.group(0)!)
+        : 0;
+
+    final courtAreaStr = event.courtArea.toString();
+    final matchArea = RegExp(r'\d+').firstMatch(courtAreaStr);
+    final courtAreaNum = matchArea != null ? int.parse(matchArea.group(0)!) : 0;
+
+    await _client.from('bookings').insert({
+      'user_id': userId,
+      'court_id': event.courtId,
+      'court_name': 'Sự kiện',
+      'court_number': courtAreaNum,
+      'booking_date': event.dateTime.toIso8601String().split('T')[0],
+      'time_slot': startTimeNum,
+      'price': totalPrice,
+      'status': 'PENDING_PAYMENT',
+      'transaction_id': transactionId,
+      'expires_at': DateTime.now()
+          .add(Duration(minutes: holdMinutes))
+          .toIso8601String(),
+    });
+  }
+
+  Future<void> joinEvent(
+    String eventId,
+    String userId,
+    double priceDeduction, {
+    int quantity = 1,
+    String? paymentTransactionId,
+  }) async {
+    final safeQuantity = quantity < 1 ? 1 : quantity;
+
+    // Tạm thời gọi tuần tự do Flutter chưa gọi RPC dễ dàng nếu không viết thủ tục.
+    final ev = await _client
+        .from('events')
+        .select(
+          'current_participants, max_participants, court_id, court_area, date_time, start_time, price',
+        )
+        .eq('id', eventId)
+        .single();
+
+    final cur = (ev['current_participants'] as num?)?.toInt() ?? 0;
+    final maxP = (ev['max_participants'] as num?)?.toInt() ?? 0;
+    final remaining = maxP - cur;
+    if (remaining <= 0) {
+      throw Exception("Sự kiện đã đầy, không thể tham gia!");
+    }
+    if (safeQuantity > remaining) {
+      throw Exception("Sự kiện chỉ còn $remaining vé trống.");
+    }
+
     if (priceDeduction > 0) {
-      final profile = await _client.from('profiles').select('balance').eq('id', userId).single();
-      final currentBalance = profile['balance'] as int;
+      final profile = await _client
+          .from('profiles')
+          .select('balance')
+          .eq('id', userId)
+          .single();
+      final currentBalance = (profile['balance'] as num?)?.toInt() ?? 0;
       if (currentBalance < priceDeduction.toInt()) {
         throw Exception("Số dư không đủ. Vui lòng nạp thêm!");
       }
-      await _client.from('profiles').update({
-        'balance': currentBalance - priceDeduction.toInt()
-      }).eq('id', userId);
+      await _client
+          .from('profiles')
+          .update({'balance': currentBalance - priceDeduction.toInt()})
+          .eq('id', userId);
     }
 
-    await _client.from('event_participants').insert({
-      'event_id': eventId,
-      'user_id': userId,
-    });
-
-    // Cập nhật số lượng tham gia (có thể xảy ra race condition, lý tưởng dùng RPC)
-    final ev = await _client.from('events').select('current_participants, max_participants, court_id, court_area, date_time, start_time, price').eq('id', eventId).single();
-    final cur = ev['current_participants'] as int;
-    final maxP = ev['max_participants'] as int;
-    if (cur >= maxP) {
-      throw Exception("Sự kiện đã đầy, không thể tham gia!");
+    try {
+      await _client.from('event_participants').insert({
+        'event_id': eventId,
+        'user_id': userId,
+      });
+    } on PostgrestException catch (e) {
+      if (e.code != '23505') rethrow;
     }
-    await _client.from('events').update({'current_participants': cur + 1}).eq('id', eventId);
+
+    await _client
+        .from('events')
+        .update({'current_participants': cur + safeQuantity})
+        .eq('id', eventId);
 
     // Ghi nhận hóa đơn ảo (Virtual Booking) cho Event để đồng bộ thống kê và doanh thu
     try {
-      final courtData = await _client.from('courts').select('name').eq('id', ev['court_id']).single();
+      final courtData = await _client
+          .from('courts')
+          .select('name')
+          .eq('id', ev['court_id'])
+          .single();
       String startTimeStr = ev['start_time'].toString();
       final matchStart = RegExp(r'\d+').firstMatch(startTimeStr);
-      int startTimeNum = matchStart != null ? int.parse(matchStart.group(0)!) : 0;
-      
+      int startTimeNum = matchStart != null
+          ? int.parse(matchStart.group(0)!)
+          : 0;
+
       String courtAreaStr = ev['court_area'].toString();
       final matchArea = RegExp(r'\d+').firstMatch(courtAreaStr);
       int courtAreaNum = matchArea != null ? int.parse(matchArea.group(0)!) : 0;
 
-      await _client.from('bookings').insert({
+      final bookingPayload = {
         'user_id': userId,
         'court_id': ev['court_id'],
         'court_name': courtData['name'] ?? 'Sự Kiện',
         'court_number': courtAreaNum,
         'booking_date': (ev['date_time'] as String).split('T')[0],
         'time_slot': startTimeNum,
-        'price': (ev['price'] as num).toInt(),
+        'price': (ev['price'] as num).toInt() * safeQuantity,
         'status': 'PAID',
-        'transaction_id': 'EVENT_${eventId}_${DateTime.now().millisecondsSinceEpoch}',
-      });
+        'expires_at': null,
+      };
+
+      if (paymentTransactionId != null &&
+          paymentTransactionId.trim().isNotEmpty) {
+        await _client
+            .from('bookings')
+            .update(bookingPayload)
+            .eq('transaction_id', paymentTransactionId);
+      } else {
+        await _client.from('bookings').insert({
+          ...bookingPayload,
+          'transaction_id':
+              'EVENT_${eventId}_${DateTime.now().millisecondsSinceEpoch}',
+        });
+      }
     } catch (e) {
       debugPrint('Lỗi tạo hóa đơn sự kiện: $e');
     }
@@ -477,7 +632,9 @@ class SupabaseRepository {
     return _client
         .from('profiles')
         .stream(primaryKey: ['id'])
-        .map<List<UserModel>>((data) => data.map((e) => UserModel.fromSupabase(e)).toList());
+        .map<List<UserModel>>(
+          (data) => data.map((e) => UserModel.fromSupabase(e)).toList(),
+        );
   }
 
   // Cập nhật thông tin user (admin)
@@ -498,7 +655,9 @@ class SupabaseRepository {
         .eq('id', user.id)
         .select();
     if (response.isEmpty) {
-      throw Exception("Cập nhật thất bại. Vui lòng kiểm tra quyền RLS trên bảng profiles.");
+      throw Exception(
+        "Cập nhật thất bại. Vui lòng kiểm tra quyền RLS trên bảng profiles.",
+      );
     }
   }
 
@@ -544,21 +703,40 @@ class SupabaseRepository {
   // --- Balance & Payment Helpers ---
   Future<void> deductBalance(String userId, int amount) async {
     if (amount <= 0) return;
-    final r = await _client.from('profiles').select('balance').eq('id', userId).single();
+    final r = await _client
+        .from('profiles')
+        .select('balance')
+        .eq('id', userId)
+        .single();
     final currentBalance = (r['balance'] as num?)?.toInt() ?? 0;
-    final newBalance = (currentBalance - amount) < 0 ? 0 : currentBalance - amount;
-    await _client.from('profiles').update({'balance': newBalance}).eq('id', userId);
+    final newBalance = (currentBalance - amount) < 0
+        ? 0
+        : currentBalance - amount;
+    await _client
+        .from('profiles')
+        .update({'balance': newBalance})
+        .eq('id', userId);
   }
 
   Future<void> addBalance(String userId, int amount) async {
     if (amount <= 0) return;
-    final r = await _client.from('profiles').select('balance').eq('id', userId).single();
+    final r = await _client
+        .from('profiles')
+        .select('balance')
+        .eq('id', userId)
+        .single();
     final newBalance = ((r['balance'] as num?)?.toInt() ?? 0) + amount;
-    await _client.from('profiles').update({'balance': newBalance}).eq('id', userId);
+    await _client
+        .from('profiles')
+        .update({'balance': newBalance})
+        .eq('id', userId);
   }
 
   Future<void> markBookingsAsPaid(String transactionId) async {
-    await _client.from('bookings').update({'status': 'PAID'}).eq('transaction_id', transactionId);
+    await _client
+        .from('bookings')
+        .update({'status': 'PAID'})
+        .eq('transaction_id', transactionId);
   }
 
   // --- Atomic hold / reserve helpers (RPC) ---
@@ -655,9 +833,8 @@ class SupabaseRepository {
 
   /// Gửi đánh giá mới (insert hoặc upsert nếu đã có)
   Future<void> submitReview(ReviewModel review) async {
-    await _client.from('reviews').upsert(
-      review.toSupabase(),
-      onConflict: 'court_id,user_id',
-    );
+    await _client
+        .from('reviews')
+        .upsert(review.toSupabase(), onConflict: 'court_id,user_id');
   }
 }

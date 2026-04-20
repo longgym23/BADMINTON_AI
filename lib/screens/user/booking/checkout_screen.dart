@@ -12,7 +12,6 @@ import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 import 'package:badminton_ai/viewmodels/checkout_viewmodel.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
-import 'package:flutter/cupertino.dart';
 
 class CheckoutScreen extends StatelessWidget {
   final CourtLocationModel selectedCourt;
@@ -111,8 +110,9 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     // Nếu slot đã được reserve từ màn grid, chỉ khởi động đồng hồ đếm ngược.
     // QR sẽ chỉ hiện sau khi user kiểm tra thông tin và bấm Xác nhận.
     if (widget.reservedExpiresAt != null) {
-      final remaining =
-          widget.reservedExpiresAt!.difference(DateTime.now()).inSeconds;
+      final remaining = widget.reservedExpiresAt!
+          .difference(DateTime.now())
+          .inSeconds;
       if (remaining > 0) {
         vm.startCountdown(() {
           final authProvider = context.read<AppAuthProvider>();
@@ -123,10 +123,14 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
       } else {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           await context.read<SupabaseRepository>().releaseBookingTransaction(
-                vm.transactionId,
-              );
+            vm.transactionId,
+          );
           if (mounted) {
-            AppToast.show(context, '⏰ Hết thời gian giữ chỗ. Vui lòng chọn lại slot.', type: ToastType.error);
+            AppToast.show(
+              context,
+              '⏰ Hết thời gian giữ chỗ. Vui lòng chọn lại slot.',
+              type: ToastType.error,
+            );
             Navigator.pop(context);
           }
         });
@@ -171,7 +175,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     for (var entry in slotsByCourt.entries) {
       int courtNum = entry.key;
       List<int> slots = entry.value;
-      
+
       for (int slot in slots) {
         final bookingId = await provider.createBooking(
           courtId: widget.selectedCourt.id,
@@ -197,7 +201,9 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
 
     Map<int, List<int>> slotsByCourt = {};
     for (var slot in widget.selectedSlots) {
-      slotsByCourt.putIfAbsent(slot.courtNumber, () => []).add(slot.timeSlot.toInt());
+      slotsByCourt
+          .putIfAbsent(slot.courtNumber, () => [])
+          .add(slot.timeSlot.toInt());
     }
 
     for (var entry in slotsByCourt.entries) {
@@ -219,7 +225,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
               await notificationProvider.createBookingSuccessNotification(
                 userId: userId,
                 courtId: widget.selectedCourt.id,
-                bookingId: 'group_$startSlot', 
+                bookingId: 'group_$startSlot',
                 courtName: widget.selectedCourt.name,
                 courtAddress: widget.selectedCourt.address,
                 courtNumber: courtNum,
@@ -256,6 +262,16 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     }
   }
 
+  Future<void> _finishRegularBookingSuccess() async {
+    if (!mounted) return;
+    final l = AppLocalizations.of(context);
+    AppToast.show(context, l.paymentSuccess, type: ToastType.success);
+    await Future.delayed(const Duration(milliseconds: 250));
+    if (!mounted) return;
+    Navigator.pop(context);
+    Navigator.pop(context);
+  }
+
   void _onConfirmPayment() async {
     final vm = context.read<CheckoutViewModel>();
 
@@ -288,7 +304,10 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
       if (!isCreated) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Lỗi tạo đơn hàng, vui lòng thử lại!"), backgroundColor: AppColors.error),
+            const SnackBar(
+              content: Text("Lỗi tạo đơn hàng, vui lòng thử lại!"),
+              backgroundColor: AppColors.error,
+            ),
           );
         }
         return;
@@ -319,7 +338,10 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
       if (!vm.isExpired) {
         // Chỉ start countdown nếu chưa chạy (flow không pre-reserved)
         if (widget.reservedExpiresAt == null) {
-          vm.startCountdown(() => _onPaymentExpired(vm.transactionId, vm.appliedBalance, userId));
+          vm.startCountdown(
+            () =>
+                _onPaymentExpired(vm.transactionId, vm.appliedBalance, userId),
+          );
         }
       }
       _listenForPayment();
@@ -331,36 +353,38 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
   void _processZeroPayment(String transactionId) async {
     final vm = context.read<CheckoutViewModel>();
     final repo = context.read<SupabaseRepository>();
-    
+
     // Đánh dấu Paid trong db
     await repo.markBookingsAsPaid(transactionId);
-    
+
     final success = await vm.processZeroPayment();
 
     if (success && mounted) {
       await _sendSuccessNotifications();
-      if (mounted) {
-        final l = AppLocalizations.of(context);
-        AppToast.show(context, l.paymentSuccess, type: ToastType.success);
-        Navigator.pop(context);
-        Navigator.pop(context);
-      }
+      await _finishRegularBookingSuccess();
     }
   }
 
   /// Gọi khi hết 5 phút chưa thanh toán: xóa booking PENDING rồi về Home
-  Future<void> _onPaymentExpired(String transactionId, int refundedBalance, String? userId) async {
+  Future<void> _onPaymentExpired(
+    String transactionId,
+    int refundedBalance,
+    String? userId,
+  ) async {
     try {
       final repo = context.read<SupabaseRepository>();
       await repo.releaseBookingTransaction(transactionId);
-      
+
       // Hoàn lại tiền ví nếu đã trừ
       if (refundedBalance > 0 && userId != null) {
         await repo.addBalance(userId, refundedBalance);
         final authProvider = context.read<AppAuthProvider>();
         if (authProvider.userModel != null) {
-          authProvider.updateUserModel(authProvider.userModel!.copyWith(
-              balance: authProvider.userModel!.balance + refundedBalance));
+          authProvider.updateUserModel(
+            authProvider.userModel!.copyWith(
+              balance: authProvider.userModel!.balance + refundedBalance,
+            ),
+          );
         }
       }
     } catch (e) {
@@ -368,7 +392,11 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     }
 
     if (mounted) {
-      AppToast.show(context, '⏰ Hết thời gian thanh toán. Đơn đặt sân đã bị huỷ.', type: ToastType.error);
+      AppToast.show(
+        context,
+        '⏰ Hết thời gian thanh toán. Đơn đặt sân đã bị huỷ.',
+        type: ToastType.error,
+      );
       // Về màn trước (court selection) rồi về Home
       Navigator.pop(context);
       Navigator.pop(context);
@@ -377,18 +405,13 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
 
   void _listenForPayment() async {
     final vm = context.read<CheckoutViewModel>();
-    
+
     // Bắt đầu chờ Webhook cập nhật Database thành PAID qua Supabase Realtime
     final success = await vm.startListeningForPayment();
 
     if (success) {
       await _sendSuccessNotifications();
-      if (mounted) {
-        final l = AppLocalizations.of(context);
-        AppToast.show(context, l.paymentSuccess, type: ToastType.success);
-        Navigator.pop(context);
-        Navigator.pop(context);
-      }
+      await _finishRegularBookingSuccess();
     } else {
       // Nghe thất bại hoặc Timeout
       if (mounted && vm.errorMessage != null) {
@@ -401,11 +424,12 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final vm = context.watch<CheckoutViewModel>();
-    
+
     // Sort slots for display
     final sortedSlots = List<SelectedSlot>.from(widget.selectedSlots)
       ..sort((a, b) {
-        if (a.courtNumber != b.courtNumber) return a.courtNumber.compareTo(b.courtNumber);
+        if (a.courtNumber != b.courtNumber)
+          return a.courtNumber.compareTo(b.courtNumber);
         return a.timeSlot.compareTo(b.timeSlot);
       });
 
@@ -413,13 +437,19 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
       canPop: true,
       onPopInvokedWithResult: (bool didPop, _) {
         if (didPop) {
-          context.read<SupabaseRepository>().releaseBookingTransaction(vm.transactionId);
+          context.read<SupabaseRepository>().releaseBookingTransaction(
+            vm.transactionId,
+          );
         }
       },
       child: Scaffold(
         appBar: CustomGradientAppBar(
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+            icon: const Icon(
+              Icons.arrow_back_ios,
+              color: Colors.white,
+              size: 20,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
@@ -452,7 +482,10 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                     ),
                     child: Text(
                       l.createPayment,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),
@@ -477,26 +510,57 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                 title: l.bookingInfo,
                 icon: Icons.calendar_month_outlined,
                 children: [
-                  _buildInfoRow(l.date, DateFormat('dd/MM/yyyy').format(widget.selectedDate)),
+                  _buildInfoRow(
+                    l.date,
+                    DateFormat('dd/MM/yyyy').format(widget.selectedDate),
+                  ),
                   const SizedBox(height: 8),
-                  ...sortedSlots.map((slot) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4.0),
-                    child: Text(
-                      "- ${l.court} ${slot.courtNumber}: ${_formatTime(slot.timeSlot)} - ${_formatTime(slot.timeSlot + 1)} | ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(widget.selectedCourt.pricePerHour)}",
-                      style: const TextStyle(color: AppColors.textBlack, fontSize: 14, fontWeight: FontWeight.w500),
+                  ...sortedSlots.map(
+                    (slot) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4.0),
+                      child: Text(
+                        "- ${l.court} ${slot.courtNumber}: ${_formatTime(slot.timeSlot)} - ${_formatTime(slot.timeSlot + 1)} | ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(widget.selectedCourt.pricePerHour)}",
+                        style: const TextStyle(
+                          color: AppColors.textBlack,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
-                  )),
+                  ),
                   const SizedBox(height: 8),
                   _buildInfoRow(l.sport, l.badminton),
                   const SizedBox(height: 8),
-                  _buildInfoRow(l.totalHours, _displayTotalHours(widget.totalHours)),
+                  _buildInfoRow(
+                    l.totalHours,
+                    _displayTotalHours(widget.totalHours),
+                  ),
                   const SizedBox(height: 8),
-                  _buildInfoRow(l.totalPrice, NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(widget.totalPrice), isTotal: true),
+                  _buildInfoRow(
+                    l.totalPrice,
+                    NumberFormat.simpleCurrency(
+                      locale: 'vi_VN',
+                      decimalDigits: 0,
+                    ).format(widget.totalPrice),
+                    isTotal: true,
+                  ),
                   if (vm.appliedBalance > 0) ...[
                     const SizedBox(height: 8),
-                    _buildInfoRow('Trừ Số Dư Ví', '- ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(vm.appliedBalance)}', color: Colors.green),
+                    _buildInfoRow(
+                      'Trừ Số Dư Ví',
+                      '- ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(vm.appliedBalance)}',
+                      color: Colors.green,
+                    ),
                     const SizedBox(height: 8),
-                    _buildInfoRow('Cần thanh toán', NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(vm.finalAmount), isTotal: true, color: Colors.red),
+                    _buildInfoRow(
+                      'Cần thanh toán',
+                      NumberFormat.simpleCurrency(
+                        locale: 'vi_VN',
+                        decimalDigits: 0,
+                      ).format(vm.finalAmount),
+                      isTotal: true,
+                      color: Colors.red,
+                    ),
                   ],
                 ],
               ),
@@ -504,32 +568,50 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
 
               Text(
                 l.customerName,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textGrey),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textGrey,
+                ),
               ),
               const SizedBox(height: 4),
               TextField(
                 controller: _nameController,
                 onChanged: vm.setCustomerName,
-                decoration: _inputDecoration(l.customerNameHint, Icons.person_outline),
+                decoration: _inputDecoration(
+                  l.customerNameHint,
+                  Icons.person_outline,
+                ),
               ),
               const SizedBox(height: 16),
 
               Text(
                 l.customerPhone,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textGrey),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textGrey,
+                ),
               ),
               const SizedBox(height: 4),
               TextField(
                 controller: _phoneController,
                 onChanged: vm.setCustomerPhone,
                 keyboardType: TextInputType.phone,
-                decoration: _inputDecoration(l.customerPhoneHint, Icons.phone_outlined),
+                decoration: _inputDecoration(
+                  l.customerPhoneHint,
+                  Icons.phone_outlined,
+                ),
               ),
               const SizedBox(height: 16),
 
               Text(
                 l.noteForOwner,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textGrey),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textGrey,
+                ),
               ),
               const SizedBox(height: 4),
               TextField(
@@ -559,7 +641,10 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.qr_code_2, color: AppColors.primaryDark),
+                          const Icon(
+                            Icons.qr_code_2,
+                            color: AppColors.primaryDark,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             l.scanVietQR,
@@ -587,15 +672,25 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                             fit: BoxFit.contain,
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) return child;
-                              return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: AppColors.primary,
+                                ),
+                              );
                             },
                             errorBuilder: (context, error, stackTrace) {
                               return const Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.error_outline, color: Colors.red),
-                                    Text('Lỗi tải QR', style: TextStyle(fontSize: 12)),
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red,
+                                    ),
+                                    Text(
+                                      'Lỗi tải QR',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
                                   ],
                                 ),
                               );
@@ -607,7 +702,11 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                       Text(
                         l.waitingPayment,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.textBlack, fontSize: 13, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: AppColors.textBlack,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 10),
                       // Đồng hồ đếm ngược (không có loading spinner)
@@ -620,7 +719,9 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                               Icon(
                                 Icons.timer_outlined,
                                 size: 18,
-                                color: isLow ? Colors.red : AppColors.primaryDark,
+                                color: isLow
+                                    ? Colors.red
+                                    : AppColors.primaryDark,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -628,7 +729,9 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: isLow ? Colors.red : AppColors.primaryDark,
+                                  color: isLow
+                                      ? Colors.red
+                                      : AppColors.primaryDark,
                                 ),
                               ),
                             ],
@@ -646,6 +749,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
       ),
     );
   }
+
   Widget _buildSectionCard({
     required String title,
     required IconData icon,
@@ -691,7 +795,12 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {bool isTotal = false, Color? color}) {
+  Widget _buildInfoRow(
+    String label,
+    String value, {
+    bool isTotal = false,
+    Color? color,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -707,7 +816,9 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
             value,
             textAlign: TextAlign.end,
             style: TextStyle(
-              color: color ?? (isTotal ? const Color(0xFFFF9800) : AppColors.textBlack),
+              color:
+                  color ??
+                  (isTotal ? const Color(0xFFFF9800) : AppColors.textBlack),
               fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
               fontSize: isTotal ? 16 : 14,
             ),
@@ -720,7 +831,9 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
   InputDecoration _inputDecoration(String hint, IconData? icon) {
     return InputDecoration(
       hintText: hint,
-      prefixIcon: icon != null ? Icon(icon, color: AppColors.textGrey, size: 20) : null,
+      prefixIcon: icon != null
+          ? Icon(icon, color: AppColors.textGrey, size: 20)
+          : null,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),

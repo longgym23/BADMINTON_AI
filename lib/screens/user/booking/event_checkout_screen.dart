@@ -9,7 +9,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
-import 'package:flutter/cupertino.dart';
 
 class EventCheckoutScreen extends StatelessWidget {
   final EventModel event;
@@ -31,7 +30,9 @@ class EventCheckoutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.read<AppAuthProvider>();
     final balance = auth.userModel?.balance ?? 0;
-    final int amountToPayWithSepay = balance >= totalPrice ? 0 : totalPrice - balance;
+    final int amountToPayWithSepay = balance >= totalPrice
+        ? 0
+        : totalPrice - balance;
 
     return ChangeNotifierProvider(
       create: (_) {
@@ -50,6 +51,7 @@ class EventCheckoutScreen extends StatelessWidget {
     );
   }
 }
+
 class EventCheckoutScreenView extends StatefulWidget {
   final EventModel event;
   final int quantity;
@@ -63,10 +65,13 @@ class EventCheckoutScreenView extends StatefulWidget {
   });
 
   @override
-  State<EventCheckoutScreenView> createState() => _EventCheckoutScreenViewState();
+  State<EventCheckoutScreenView> createState() =>
+      _EventCheckoutScreenViewState();
 }
 
 class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
+  bool _paymentPlaceholderCreated = false;
+
   void _showSuccessDialog() {
     showDialog(
       context: context,
@@ -78,7 +83,11 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle, color: AppColors.success, size: 60),
+              const Icon(
+                Icons.check_circle,
+                color: AppColors.success,
+                size: 60,
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Xác nhận thành công!',
@@ -95,11 +104,17 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(ctx); 
+              Navigator.pop(ctx);
               Navigator.pop(context);
               Navigator.pop(context);
             },
-            child: const Text('Hoàn tất', style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Hoàn tất',
+              style: TextStyle(
+                color: Colors.deepOrange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -127,18 +142,64 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
     }
   }
 
+  void _syncWalletInMemory(int deductedAmount) {
+    if (deductedAmount <= 0) return;
+    final auth = context.read<AppAuthProvider>();
+    final currentUser = auth.userModel;
+    if (currentUser == null) return;
+
+    final nextBalance = (currentUser.balance - deductedAmount).clamp(
+      0,
+      1 << 31,
+    );
+    auth.updateUserModel(currentUser.copyWith(balance: nextBalance));
+  }
+
+  Future<void> _ensurePaymentPlaceholder(
+    String userId,
+    String transactionId,
+  ) async {
+    if (_paymentPlaceholderCreated) return;
+    await context.read<SupabaseRepository>().createEventPaymentPlaceholder(
+      event: widget.event,
+      userId: userId,
+      transactionId: transactionId,
+      totalPrice: widget.totalPrice,
+    );
+    _paymentPlaceholderCreated = true;
+  }
+
   void _onConfirmPayment() async {
     final vm = context.read<CheckoutViewModel>();
     final auth = context.read<AppAuthProvider>();
     final balance = auth.userModel?.balance ?? 0;
-    final int amountDeductedFromWallet = balance >= widget.totalPrice ? widget.totalPrice : balance;
+    final int amountDeductedFromWallet = balance >= widget.totalPrice
+        ? widget.totalPrice
+        : balance;
     final repo = context.read<SupabaseRepository>();
+
+    if (!widget.event.isBookable) {
+      AppToast.show(
+        context,
+        widget.event.isEnded
+            ? 'Sự kiện đã kết thúc, không thể thanh toán.'
+            : 'Sự kiện đã hết vé.',
+        type: ToastType.error,
+      );
+      return;
+    }
 
     if (vm.finalAmount == 0) {
       // Thanh toán hoàn toàn bằng ví
       await vm.processZeroPayment();
       try {
-        await repo.joinEvent(widget.event.id, auth.userId!, amountDeductedFromWallet.toDouble());
+        await repo.joinEvent(
+          widget.event.id,
+          auth.userId!,
+          amountDeductedFromWallet.toDouble(),
+          quantity: widget.quantity,
+        );
+        _syncWalletInMemory(amountDeductedFromWallet);
         await _sendSuccessNotifications();
         if (mounted) _showSuccessDialog();
       } catch (e) {
@@ -151,6 +212,19 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
 
     // Nếu còn thiếu tiền, tiến hành tạo QR
     // Bắt đầu tạo pending state
+    try {
+      await _ensurePaymentPlaceholder(auth.userId!, vm.transactionId);
+    } catch (e) {
+      if (mounted) {
+        AppToast.show(
+          context,
+          'Không thể tạo giao dịch thanh toán: $e',
+          type: ToastType.error,
+        );
+      }
+      return;
+    }
+
     vm.setBookingCreated(true);
     // Bắt đầu đếm ngược
     vm.startCountdown(() => _onPaymentExpired(vm.transactionId));
@@ -158,31 +232,51 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
     _listenForPayment();
   }
 
-  void _onPaymentExpired(String transactionId) {
+  void _onPaymentExpired(String transactionId) async {
+    await context.read<SupabaseRepository>().releaseBookingTransaction(
+      transactionId,
+    );
     if (mounted) {
-      AppToast.show(context, '⏰ Hết thời gian thanh toán. Chỗ của bạn đã bị hủy.', type: ToastType.error);
+      AppToast.show(
+        context,
+        '⏰ Hết thời gian thanh toán. Chỗ của bạn đã bị hủy.',
+        type: ToastType.error,
+      );
       Navigator.pop(context);
     }
   }
 
   void _listenForPayment() async {
     final vm = context.read<CheckoutViewModel>();
-    
+
     final success = await vm.startListeningForPayment();
 
     if (success) {
       final auth = context.read<AppAuthProvider>();
       final balance = auth.userModel?.balance ?? 0;
-      final int amountDeductedFromWallet = balance >= widget.totalPrice ? widget.totalPrice : balance;
+      final int amountDeductedFromWallet = balance >= widget.totalPrice
+          ? widget.totalPrice
+          : balance;
       final repo = context.read<SupabaseRepository>();
 
       try {
-        await repo.joinEvent(widget.event.id, auth.userId!, amountDeductedFromWallet.toDouble());
+        await repo.joinEvent(
+          widget.event.id,
+          auth.userId!,
+          amountDeductedFromWallet.toDouble(),
+          quantity: widget.quantity,
+          paymentTransactionId: vm.transactionId,
+        );
+        _syncWalletInMemory(amountDeductedFromWallet);
         await _sendSuccessNotifications();
         if (mounted) _showSuccessDialog();
       } catch (e) {
         if (mounted) {
-          AppToast.show(context, 'Lỗi cập nhật CSDL: $e', type: ToastType.error);
+          AppToast.show(
+            context,
+            'Lỗi cập nhật CSDL: $e',
+            type: ToastType.error,
+          );
         }
       }
     } else {
@@ -235,11 +329,21 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                   const SizedBox(height: 12),
                   _buildRow('Tên sự kiện:', widget.event.title),
                   const SizedBox(height: 8),
-                  _buildRow('Thời gian:', '${widget.event.startTime} - ${widget.event.endTime} | ${DateFormat('dd/MM/yyyy').format(widget.event.dateTime)}'),
+                  _buildRow(
+                    'Thời gian:',
+                    '${widget.event.startTime} - ${widget.event.endTime} | ${DateFormat('dd/MM/yyyy').format(widget.event.dateTime)}',
+                  ),
                   const SizedBox(height: 8),
                   _buildRow('Số lượng vé:', '${widget.quantity} vé'),
                   const SizedBox(height: 8),
-                  _buildRow('Tổng tiền:', NumberFormat.currency(locale: 'vi_VN', symbol: 'đ').format(widget.totalPrice), isTotal: true),
+                  _buildRow(
+                    'Tổng tiền:',
+                    NumberFormat.currency(
+                      locale: 'vi_VN',
+                      symbol: 'đ',
+                    ).format(widget.totalPrice),
+                    isTotal: true,
+                  ),
                 ],
               ),
             ),
@@ -291,7 +395,11 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                           fit: BoxFit.contain,
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
-                            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary,
+                              ),
+                            );
                           },
                         ),
                       ),
@@ -300,7 +408,11 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                     const Text(
                       'Đang chờ hệ thống xác nhận thanh toán...',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textBlack, fontSize: 13, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: AppColors.textBlack,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Consumer<CheckoutViewModel>(
@@ -320,7 +432,9 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: isLow ? Colors.red : AppColors.primaryDark,
+                                color: isLow
+                                    ? Colors.red
+                                    : AppColors.primaryDark,
                               ),
                             ),
                           ],
@@ -350,7 +464,10 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('Tạo QR Thanh Toán', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: const Text(
+                    'Tạo QR Thanh Toán',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                 ),
               ),
       ),

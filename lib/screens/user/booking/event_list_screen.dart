@@ -5,9 +5,7 @@ import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/screens/user/booking/event_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
-import 'package:badminton_ai/screens/user/booking/components/booking_history/calendar_theme.dart';
 import 'package:badminton_ai/widgets/custom_date_range_picker_dialog.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
@@ -175,15 +173,27 @@ class _EventListScreenState extends State<EventListScreen> {
   }
 
   Widget _buildEventCard(BuildContext context, EventModel event) {
+    final isBookable = event.isBookable;
+    final statusText = event.isEnded
+        ? 'Đã kết thúc'
+        : (event.availableParticipants == 0 ? 'Hết vé' : 'Đang mở');
+    final statusColor = event.isEnded
+        ? Colors.grey
+        : (event.availableParticipants == 0
+              ? AppColors.error
+              : const Color(0xFF22B97A));
+
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => EventDetailScreen(event: event, court: widget.court),
-          ),
-        );
-      },
+      onTap: !isBookable
+          ? null
+          : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EventDetailScreen(event: event, court: widget.court),
+                ),
+              );
+            },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
@@ -289,11 +299,11 @@ class _EventListScreenState extends State<EventListScreen> {
                    Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF22B97A), // vibrant green for slots
+                      color: statusColor,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
-                      'Slot: ${event.currentParticipants}/${event.maxParticipants}',
+                      '$statusText · ${event.currentParticipants}/${event.maxParticipants}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -322,6 +332,17 @@ class _EventListScreenState extends State<EventListScreen> {
                   ),
                 ],
               ),
+              if (!isBookable) ...[
+                const SizedBox(height: 10),
+                const Text(
+                  'Sự kiện này không còn khả dụng để đặt vé.',
+                  style: TextStyle(
+                    color: AppColors.textGrey,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

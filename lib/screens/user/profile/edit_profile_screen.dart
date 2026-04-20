@@ -35,6 +35,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController = TextEditingController(text: user?.displayName ?? '');
     _phoneController = TextEditingController(text: user?.phoneNumber ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
+    _selectedDate = user?.dateOfBirth;
+    _selectedGender = user?.gender;
   }
 
   @override
@@ -140,6 +142,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final success = await context.read<AppAuthProvider>().updateUserProfile(
       displayName: _nameController.text.trim(),
       phoneNumber: _phoneController.text.trim(),
+      dob: _selectedDate,
+      gender: _selectedGender,
     );
 
     if (!mounted) return;

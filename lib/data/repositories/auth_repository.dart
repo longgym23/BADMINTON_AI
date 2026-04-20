@@ -35,6 +35,8 @@ class AuthRepository {
     String? displayName,
     String? phoneNumber,
     String? avatarUrl,
+    DateTime? dob,
+    String? gender,
   }) async {
     try {
       final user = _client.auth.currentUser;
@@ -53,6 +55,12 @@ class AuthRepository {
       }
       if (avatarUrl != null) {
         updateData['avatar_url'] = avatarUrl.isEmpty ? null : avatarUrl;
+      }
+      if (dob != null) {
+        updateData['date_of_birth'] = dob.toIso8601String().split('T')[0];
+      }
+      if (gender != null) {
+        updateData['gender'] = gender;
       }
 
       if (updateData.isNotEmpty) {

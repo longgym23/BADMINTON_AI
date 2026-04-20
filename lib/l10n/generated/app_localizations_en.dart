@@ -392,6 +392,59 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chat => 'Chat';
 
   @override
+  String get community => 'Community';
+
+  @override
+  String get account => 'Account';
+
+  @override
+  String get bookingNow => 'Book Now';
+
+  @override
+  String get smartBooking => 'Smart Badminton Court Booking';
+
+  @override
+  String get searchCourtsAroundYou => 'Search courts near you';
+
+  @override
+  String get findCourts => 'Find Courts';
+
+  @override
+  String get fastBooking => 'Fast Booking';
+
+  @override
+  String get searchUsersOrGroups => 'Search users or groups...';
+
+  @override
+  String get searchNameOrPhone => 'Search by name or phone number...';
+
+  @override
+  String get searchLocation => 'Search courts, locations...';
+
+  @override
+  String get searchNameEmailPhone => 'Search name, email, phone...';
+
+  @override
+  String get bookingSuccess => 'Booking successful!';
+
+  @override
+  String get bookingFailed => 'Booking failed';
+
+  @override
+  String get noDataAvailable => 'No data available';
+
+  @override
+  String get active => 'Active';
+
+  @override
+  String activeTimeAgo(String time) {
+    return 'Active $time';
+  }
+
+  @override
+  String get appNameKloo => 'KLOO';
+
+  @override
   String get notificationTitle => 'Notifications';
 
   @override
@@ -405,4 +458,62 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pushNotifications => 'Push Notifications';
+
+  @override
+  String get updateUser => 'Update User';
+
+  @override
+  String get displayName => 'Display Name';
+
+  @override
+  String get cannotBeEmpty => 'Cannot be empty';
+
+  @override
+  String get phoneNumber => 'Phone Number';
+
+  @override
+  String get role => 'Role';
+
+  @override
+  String get roleUser => 'User';
+
+  @override
+  String get roleCourtOwner => 'Court Owner';
+
+  @override
+  String get roleAdmin => 'Admin';
+
+  @override
+  String get updateSuccess => 'Update successful!';
+
+  @override
+  String errorWithDetails(String error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String get confirmDelete => 'Confirm Deletion';
+
+  @override
+  String deleteUserConfirmText(String name) {
+    return 'Are you sure you want to delete user \"$name\"?';
+  }
+
+  @override
+  String get userDeleted => 'User deleted.';
+
+  @override
+  String get adminOnly => 'Only Admin can access this page.';
+
+  @override
+  String get manageUsers => 'Manage Users';
+
+  @override
+  String get admin => 'Admin';
+
+  @override
+  String get user => 'User';
+
+  @override
+  String get noUsersFound => 'No users found.';
 }

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
+import 'package:badminton_ai/l10n/generated/app_localizations.dart';
 import 'package:badminton_ai/screens/user/map/court_detail_sheet.dart';
 import 'package:badminton_ai/screens/user/map/map_view_model.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
@@ -10,7 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:badminton_ai/utils/app_colors.dart';
 
 // Tab 2: Bản đồ
 enum SportType { pickleball, badminton, football, tennis }
@@ -55,10 +55,22 @@ class _MapTabContentState extends State<_MapTabContent> {
   // --- Cấu hình Icons ---
   Future<void> _loadCustomMarkers() async {
     try {
-      _customIcons['badminton'] = await _createCustomMarkerBitmapFromAsset('assets/images/caulong.png', AppColors.primary);
-      _customIcons['pickleball'] = await _createCustomMarkerBitmapFromAsset('assets/images/pickleball.png', AppColors.primaryLight);
-      _customIcons['football'] = await _createCustomMarkerBitmap(Icons.sports_soccer, AppColors.primary);
-      _customIcons['tennis'] = await _createCustomMarkerBitmap(Icons.sports_tennis, AppColors.primaryDark);
+      _customIcons['badminton'] = await _createCustomMarkerBitmapFromAsset(
+        'assets/images/caulong.png',
+        AppColors.primary,
+      );
+      _customIcons['pickleball'] = await _createCustomMarkerBitmapFromAsset(
+        'assets/images/pickleball.png',
+        AppColors.primaryLight,
+      );
+      _customIcons['football'] = await _createCustomMarkerBitmap(
+        Icons.sports_soccer,
+        AppColors.primary,
+      );
+      _customIcons['tennis'] = await _createCustomMarkerBitmap(
+        Icons.sports_tennis,
+        AppColors.primaryDark,
+      );
 
       if (mounted) {
         setState(() {
@@ -70,7 +82,10 @@ class _MapTabContentState extends State<_MapTabContent> {
     }
   }
 
-  Future<BitmapDescriptor> _createCustomMarkerBitmapFromAsset(String assetPath, Color color) async {
+  Future<BitmapDescriptor> _createCustomMarkerBitmapFromAsset(
+    String assetPath,
+    Color color,
+  ) async {
     final pictureRecorder = ui.PictureRecorder();
     final canvas = Canvas(pictureRecorder);
     final size = const Size(120, 120);
@@ -91,27 +106,46 @@ class _MapTabContentState extends State<_MapTabContent> {
 
     try {
       final ByteData data = await rootBundle.load(assetPath);
-      final ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List(), targetWidth: 60);
+      final ui.Codec codec = await ui.instantiateImageCodec(
+        data.buffer.asUint8List(),
+        targetWidth: 60,
+      );
       final ui.FrameInfo fi = await codec.getNextFrame();
       final ui.Image image = fi.image;
-      final Offset imageOffset = Offset(radius - (image.width / 2), radius - (image.height / 2));
+      final Offset imageOffset = Offset(
+        radius - (image.width / 2),
+        radius - (image.height / 2),
+      );
       canvas.drawImage(image, imageOffset, Paint());
     } catch (e) {}
 
-    final recordedImage = await pictureRecorder.endRecording().toImage(size.width.toInt(), size.height.toInt());
-    final byteData = await recordedImage.toByteData(format: ui.ImageByteFormat.png);
+    final recordedImage = await pictureRecorder.endRecording().toImage(
+      size.width.toInt(),
+      size.height.toInt(),
+    );
+    final byteData = await recordedImage.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
     return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
   }
 
-  Future<BitmapDescriptor> _createCustomMarkerBitmap(IconData iconData, Color color) async {
+  Future<BitmapDescriptor> _createCustomMarkerBitmap(
+    IconData iconData,
+    Color color,
+  ) async {
     final pictureRecorder = ui.PictureRecorder();
     final canvas = Canvas(pictureRecorder);
-    final size = const Size(120, 120); 
+    final size = const Size(120, 120);
     final radius = size.width / 2;
 
     final paint = Paint()..color = color;
-    final borderPaint = Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 4;
-    final shadowPaint = Paint()..color = Colors.black.withOpacity(0.3)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+    final borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+    final shadowPaint = Paint()
+      ..color = Colors.black.withOpacity(0.3)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
 
     canvas.drawCircle(Offset(radius, radius + 5), radius - 5, shadowPaint);
     canvas.drawCircle(Offset(radius, radius), radius - 10, paint);
@@ -120,12 +154,23 @@ class _MapTabContentState extends State<_MapTabContent> {
     final textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
     textPainter.text = TextSpan(
       text: String.fromCharCode(iconData.codePoint),
-      style: TextStyle(fontSize: 60, fontFamily: iconData.fontFamily, package: iconData.fontPackage, color: Colors.white),
+      style: TextStyle(
+        fontSize: 60,
+        fontFamily: iconData.fontFamily,
+        package: iconData.fontPackage,
+        color: Colors.white,
+      ),
     );
     textPainter.layout();
-    textPainter.paint(canvas, Offset(radius - textPainter.width / 2, radius - textPainter.height / 2));
+    textPainter.paint(
+      canvas,
+      Offset(radius - textPainter.width / 2, radius - textPainter.height / 2),
+    );
 
-    final image = await pictureRecorder.endRecording().toImage(size.width.toInt(), size.height.toInt());
+    final image = await pictureRecorder.endRecording().toImage(
+      size.width.toInt(),
+      size.height.toInt(),
+    );
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
     return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
   }
@@ -135,15 +180,26 @@ class _MapTabContentState extends State<_MapTabContent> {
     String? sportType = court.sportType?.toLowerCase();
     if (sportType == null) {
       final nameLower = court.name.toLowerCase();
-      if (nameLower.contains('pickle')) sportType = 'pickleball';
-      else if (nameLower.contains('bóng đá') || nameLower.contains('football')) sportType = 'football';
-      else if (nameLower.contains('tennis')) sportType = 'tennis';
-      else sportType = 'badminton';
+      if (nameLower.contains('pickle'))
+        sportType = 'pickleball';
+      else if (nameLower.contains('bóng đá') || nameLower.contains('football'))
+        sportType = 'football';
+      else if (nameLower.contains('tennis'))
+        sportType = 'tennis';
+      else
+        sportType = 'badminton';
     }
-    if (sportType == 'pickleball') return _customIcons['pickleball'] ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
-    if (sportType == 'football') return _customIcons['football'] ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
-    if (sportType == 'tennis') return _customIcons['tennis'] ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet);
-    return _customIcons['badminton'] ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+    if (sportType == 'pickleball')
+      return _customIcons['pickleball'] ??
+          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+    if (sportType == 'football')
+      return _customIcons['football'] ??
+          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
+    if (sportType == 'tennis')
+      return _customIcons['tennis'] ??
+          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet);
+    return _customIcons['badminton'] ??
+        BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
   }
 
   @override
@@ -158,7 +214,9 @@ class _MapTabContentState extends State<_MapTabContent> {
     _mapController = controller;
     final vm = context.read<MapViewModel>();
     if (!vm.isLoadingLocation) {
-      controller.animateCamera(CameraUpdate.newLatLngZoom(vm.currentPosition, 14.0));
+      controller.animateCamera(
+        CameraUpdate.newLatLngZoom(vm.currentPosition, 14.0),
+      );
     }
   }
 
@@ -170,14 +228,14 @@ class _MapTabContentState extends State<_MapTabContent> {
           markerId: MarkerId(court.id),
           position: LatLng(court.latitude, court.longitude),
           icon: _getMarkerIcon(court),
-          infoWindow: InfoWindow(
-            title: court.name,
-            snippet: court.address,
-          ),
+          infoWindow: InfoWindow(title: court.name, snippet: court.address),
           onTap: () {
             vm.selectCourt(court);
             _mapController?.animateCamera(
-              CameraUpdate.newLatLngZoom(LatLng(court.latitude, court.longitude), 16.0),
+              CameraUpdate.newLatLngZoom(
+                LatLng(court.latitude, court.longitude),
+                16.0,
+              ),
             );
           },
         ),
@@ -190,7 +248,6 @@ class _MapTabContentState extends State<_MapTabContent> {
   Widget build(BuildContext context) {
     return Consumer<MapViewModel>(
       builder: (context, vm, child) {
-        
         final hasSmallCard = vm.selectedCourt != null;
         final hasListCard = vm.showNearbyList;
 
@@ -198,23 +255,33 @@ class _MapTabContentState extends State<_MapTabContent> {
         const double navBarOffset = 100.0;
 
         int durationMs = 300;
-        double bottomOffset = navBarOffset + 16.0; // Vị trí cơ bản sát trên Navigation Bar
+        double bottomOffset =
+            navBarOffset + 16.0; // Vị trí cơ bản sát trên Navigation Bar
         if (hasListCard) {
-          bottomOffset = navBarOffset + MediaQuery.of(context).size.height * 0.4 + 20; // Float trên danh sách
+          bottomOffset =
+              navBarOffset +
+              MediaQuery.of(context).size.height * 0.4 +
+              20; // Float trên danh sách
         } else if (hasSmallCard) {
-          bottomOffset = MediaQuery.of(context).size.height * vm.sheetExtent + 16.0; // Đi theo khung
+          bottomOffset =
+              MediaQuery.of(context).size.height * vm.sheetExtent +
+              16.0; // Đi theo khung
           if ((vm.sheetExtent - 0.55).abs() > 0.01) {
-             durationMs = 0; // Trượt trực tiếp theo vị trí ngón tay
+            durationMs = 0; // Trượt trực tiếp theo vị trí ngón tay
           }
         }
 
         return Scaffold(
-          resizeToAvoidBottomInset: false, // Bàn phím sẽ trượt đè lên thay vì đẩy các thành phần bottom (BottomSheet, Fab, Map) lên giữa màn hình
+          resizeToAvoidBottomInset:
+              false, // Bàn phím sẽ trượt đè lên thay vì đẩy các thành phần bottom (BottomSheet, Fab, Map) lên giữa màn hình
           body: Stack(
             children: [
               GoogleMap(
                 onMapCreated: _onMapCreated,
-                initialCameraPosition: CameraPosition(target: vm.currentPosition, zoom: 14.0),
+                initialCameraPosition: CameraPosition(
+                  target: vm.currentPosition,
+                  zoom: 14.0,
+                ),
                 markers: _buildMarkers(vm),
                 myLocationEnabled: true,
                 myLocationButtonEnabled: false,
@@ -230,19 +297,41 @@ class _MapTabContentState extends State<_MapTabContent> {
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 76.0), // Canh tương đối dưới Search Bar
+                    padding: const EdgeInsets.only(
+                      top: 76.0,
+                    ), // Canh tương đối dưới Search Bar
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Row(
                         children: [
-                          _buildFilterChip(vm, 'Cầu lông', SportType.badminton, Colors.green),
+                          _buildFilterChip(
+                            vm,
+                            'Cầu lông',
+                            SportType.badminton,
+                            Colors.green,
+                          ),
                           const SizedBox(width: 8),
-                          _buildFilterChip(vm, 'Pickleball', SportType.pickleball, Colors.blue),
+                          _buildFilterChip(
+                            vm,
+                            'Pickleball',
+                            SportType.pickleball,
+                            Colors.blue,
+                          ),
                           const SizedBox(width: 8),
-                          _buildFilterChip(vm, 'Bóng đá', SportType.football, Colors.orange),
+                          _buildFilterChip(
+                            vm,
+                            'Bóng đá',
+                            SportType.football,
+                            Colors.orange,
+                          ),
                           const SizedBox(width: 8),
-                          _buildFilterChip(vm, 'Tennis', SportType.tennis, Colors.purple),
+                          _buildFilterChip(
+                            vm,
+                            'Tennis',
+                            SportType.tennis,
+                            Colors.purple,
+                          ),
                         ],
                       ),
                     ),
@@ -255,53 +344,74 @@ class _MapTabContentState extends State<_MapTabContent> {
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: Column(
-                    mainAxisSize: MainAxisSize.min, // Rất quan trọng để Map bên dưới không bị block touch
+                    mainAxisSize: MainAxisSize
+                        .min, // Rất quan trọng để Map bên dưới không bị block touch
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: Card(
                           elevation: 4,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                          child: TextField(
-                            controller: _searchController,
-                            focusNode: _searchFocusNode,
-                            decoration: InputDecoration(
-                              hintText: "Tìm kiếm sân quanh đây...",
-                              prefixIcon: Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: Image.asset('assets/images/logo1.png', width: 24, height: 24),
-                              ),
-                              suffixIcon: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (_searchController.text.isNotEmpty)
-                                    IconButton(
-                                      icon: const Icon(Icons.close),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                        vm.setSearchQuery('');
-                                        vm.closeBottomCard();
-                                        _searchFocusNode.unfocus();
-                                        FocusScope.of(context).unfocus();
-                                      },
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Builder(
+                            builder: (context) {
+                              final l = AppLocalizations.of(context)!;
+                              return TextField(
+                                controller: _searchController,
+                                focusNode: _searchFocusNode,
+                                decoration: InputDecoration(
+                                  hintText: l.searchCourtsAroundYou,
+                                  prefixIcon: Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: Image.asset(
+                                      'assets/images/logo1.png',
+                                      width: 24,
+                                      height: 24,
                                     ),
-                                  const Padding(
-                                    padding: EdgeInsets.only(right: 16.0),
-                                    child: Icon(Icons.search, color: Colors.black87),
                                   ),
-                                ],
-                              ),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            ),
-                            onChanged: vm.setSearchQuery,
-                            onTap: () {
-                              if (vm.searchQuery.isEmpty) vm.setSearchQuery(''); // trigger update để bật search result list nếu có history
+                                  suffixIcon: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (_searchController.text.isNotEmpty)
+                                        IconButton(
+                                          icon: const Icon(Icons.close),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            vm.setSearchQuery('');
+                                            vm.closeBottomCard();
+                                            _searchFocusNode.unfocus();
+                                            FocusScope.of(context).unfocus();
+                                          },
+                                        ),
+                                      const Padding(
+                                        padding: EdgeInsets.only(right: 16.0),
+                                        child: Icon(
+                                          Icons.search,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
+                                ),
+                                onChanged: vm.setSearchQuery,
+                                onTap: () {
+                                  if (vm.searchQuery.isEmpty) {
+                                    vm.setSearchQuery('');
+                                  }
+                                },
+                              );
                             },
                           ),
                         ),
                       ),
-                      if (_searchFocusNode.hasFocus && vm.searchResults.isNotEmpty)
+                      if (_searchFocusNode.hasFocus &&
+                          vm.searchResults.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12.0),
                           child: Container(
@@ -321,24 +431,39 @@ class _MapTabContentState extends State<_MapTabContent> {
                               borderRadius: BorderRadius.circular(20),
                               child: ListView.builder(
                                 shrinkWrap: true,
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
                                 itemCount: vm.searchResults.length,
                                 itemBuilder: (context, index) {
                                   final court = vm.searchResults[index];
-                                  final isHistory = vm.searchQuery.trim().isEmpty;
+                                  final isHistory = vm.searchQuery
+                                      .trim()
+                                      .isEmpty;
 
-                                  String? inferredSport = court.sportType?.toLowerCase();
-                                  if (inferredSport == null || inferredSport.isEmpty) {
+                                  String? inferredSport = court.sportType
+                                      ?.toLowerCase();
+                                  if (inferredSport == null ||
+                                      inferredSport.isEmpty) {
                                     final nameLower = court.name.toLowerCase();
-                                    if (nameLower.contains('pickle')) inferredSport = 'pickleball';
-                                    else if (nameLower.contains('bóng đá') || nameLower.contains('football')) inferredSport = 'football';
-                                    else if (nameLower.contains('tennis')) inferredSport = 'tennis';
-                                    else inferredSport = 'badminton';
+                                    if (nameLower.contains('pickle'))
+                                      inferredSport = 'pickleball';
+                                    else if (nameLower.contains('bóng đá') ||
+                                        nameLower.contains('football'))
+                                      inferredSport = 'football';
+                                    else if (nameLower.contains('tennis'))
+                                      inferredSport = 'tennis';
+                                    else
+                                      inferredSport = 'badminton';
                                   }
                                   SportType sType = SportType.badminton;
-                                  if (inferredSport.contains('pickle')) sType = SportType.pickleball;
-                                  else if (inferredSport.contains('foot') || inferredSport.contains('bóng')) sType = SportType.football;
-                                  else if (inferredSport.contains('tennis')) sType = SportType.tennis;
+                                  if (inferredSport.contains('pickle'))
+                                    sType = SportType.pickleball;
+                                  else if (inferredSport.contains('foot') ||
+                                      inferredSport.contains('bóng'))
+                                    sType = SportType.football;
+                                  else if (inferredSport.contains('tennis'))
+                                    sType = SportType.tennis;
 
                                   final sportColor = _getSportColor(sType);
                                   final sportLabel = _getSportLabel(sType);
@@ -349,14 +474,23 @@ class _MapTabContentState extends State<_MapTabContent> {
                                       vm.setSearchQuery(court.name);
                                       vm.selectCourt(court);
                                       _mapController?.animateCamera(
-                                        CameraUpdate.newLatLngZoom(LatLng(court.latitude, court.longitude), 16.0),
+                                        CameraUpdate.newLatLngZoom(
+                                          LatLng(
+                                            court.latitude,
+                                            court.longitude,
+                                          ),
+                                          16.0,
+                                        ),
                                       );
                                       _searchFocusNode.unfocus();
                                       FocusScope.of(context).unfocus();
                                     },
                                     borderRadius: BorderRadius.circular(12),
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
                                       child: Row(
                                         children: [
                                           Container(
@@ -365,24 +499,33 @@ class _MapTabContentState extends State<_MapTabContent> {
                                             decoration: BoxDecoration(
                                               color: isHistory
                                                   ? Colors.grey.shade100
-                                                  : sportColor.withOpacity(0.12),
-                                              borderRadius: BorderRadius.circular(12),
+                                                  : sportColor.withOpacity(
+                                                      0.12,
+                                                    ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
                                             child: Icon(
-                                              isHistory ? Icons.history_rounded : Icons.place_rounded,
-                                              color: isHistory ? Colors.grey.shade500 : sportColor,
+                                              isHistory
+                                                  ? Icons.history_rounded
+                                                  : Icons.place_rounded,
+                                              color: isHistory
+                                                  ? Colors.grey.shade500
+                                                  : sportColor,
                                               size: 20,
                                             ),
                                           ),
                                           const SizedBox(width: 12),
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   court.name,
                                                   maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                   style: const TextStyle(
                                                     fontWeight: FontWeight.w600,
                                                     fontSize: 14,
@@ -393,7 +536,8 @@ class _MapTabContentState extends State<_MapTabContent> {
                                                 Text(
                                                   court.address,
                                                   maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                   style: TextStyle(
                                                     fontSize: 12,
                                                     color: Colors.grey.shade500,
@@ -404,11 +548,21 @@ class _MapTabContentState extends State<_MapTabContent> {
                                           ),
                                           const SizedBox(width: 8),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 3,
+                                            ),
                                             decoration: BoxDecoration(
-                                              color: sportColor.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(20),
-                                              border: Border.all(color: sportColor.withOpacity(0.3)),
+                                              color: sportColor.withOpacity(
+                                                0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: sportColor.withOpacity(
+                                                  0.3,
+                                                ),
+                                              ),
                                             ),
                                             child: Text(
                                               sportLabel,
@@ -439,7 +593,9 @@ class _MapTabContentState extends State<_MapTabContent> {
                 curve: Curves.easeOutQuart,
                 left: 16,
                 right: 16,
-                bottom: hasListCard ? navBarOffset + 8.0 : -400, // Trượt lên trên navbar
+                bottom: hasListCard
+                    ? navBarOffset + 8.0
+                    : -400, // Trượt lên trên navbar
                 child: _buildNearbyListCard(vm),
               ),
 
@@ -461,7 +617,7 @@ class _MapTabContentState extends State<_MapTabContent> {
                     ? NotificationListener<DraggableScrollableNotification>(
                         onNotification: (notification) {
                           vm.setSheetExtent(notification.extent);
-                          
+
                           if (notification.extent <= 0.02) {
                             // Người dùng kéo xuống thấp nhất (đóng)
                             Future.microtask(() => vm.closeBottomCard());
@@ -500,10 +656,13 @@ class _MapTabContentState extends State<_MapTabContent> {
                         FloatingActionButton(
                           mini: false,
                           heroTag: 'nearby',
-                          backgroundColor:AppColors.primary,
+                          backgroundColor: AppColors.primary,
                           onPressed: vm.toggleNearbyList,
                           shape: const CircleBorder(),
-                          child: const Icon(Icons.arrow_downward, color: Colors.white),
+                          child: const Icon(
+                            Icons.arrow_downward,
+                            color: Colors.white,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         FloatingActionButton(
@@ -512,17 +671,24 @@ class _MapTabContentState extends State<_MapTabContent> {
                           backgroundColor: AppColors.primary,
                           onPressed: () async {
                             await vm.requestLocationUpdate();
-                            _mapController?.animateCamera(CameraUpdate.newLatLngZoom(vm.currentPosition, 14.0));
+                            _mapController?.animateCamera(
+                              CameraUpdate.newLatLngZoom(
+                                vm.currentPosition,
+                                14.0,
+                              ),
+                            );
                           },
                           shape: const CircleBorder(),
-                          child: const Icon(Icons.my_location, color: Colors.white),
+                          child: const Icon(
+                            Icons.my_location,
+                            color: Colors.white,
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
               ),
-
             ],
           ),
         );
@@ -530,17 +696,27 @@ class _MapTabContentState extends State<_MapTabContent> {
     );
   }
 
-  Widget _buildFilterChip(MapViewModel vm, String label, SportType type, Color color) {
+  Widget _buildFilterChip(
+    MapViewModel vm,
+    String label,
+    SportType type,
+    Color color,
+  ) {
     final isSelected = vm.selectedSport == type;
     return ChoiceChip(
-      label: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.black87)),
+      label: Text(
+        label,
+        style: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+      ),
       selected: isSelected,
       showCheckmark: false,
       selectedColor: color.withOpacity(0.8),
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(30),
-        side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey.shade300),
+        side: BorderSide(
+          color: isSelected ? Colors.transparent : Colors.grey.shade300,
+        ),
       ),
       elevation: 2,
       onSelected: (selected) {
@@ -552,13 +728,31 @@ class _MapTabContentState extends State<_MapTabContent> {
 
   Widget _getAvatarForSport(SportType type, bool isSelected, Color color) {
     if (type == SportType.badminton) {
-      return Image.asset('assets/images/caulong.png', width: 16, height: 16, color: isSelected ? null : const ui.Color.fromARGB(255, 55, 240, 104));
+      return Image.asset(
+        'assets/images/caulong.png',
+        width: 16,
+        height: 16,
+        color: isSelected ? null : const ui.Color.fromARGB(255, 55, 240, 104),
+      );
     } else if (type == SportType.pickleball) {
-      return Image.asset('assets/images/pickleball.png', width: 16, height: 16, color: isSelected ? null : const ui.Color.fromARGB(255, 212, 234, 15));
+      return Image.asset(
+        'assets/images/pickleball.png',
+        width: 16,
+        height: 16,
+        color: isSelected ? null : const ui.Color.fromARGB(255, 212, 234, 15),
+      );
     } else if (type == SportType.football) {
-      return Icon(Icons.sports_soccer, size: 16, color: isSelected ? color : const ui.Color.fromARGB(255, 24, 164, 229));
+      return Icon(
+        Icons.sports_soccer,
+        size: 16,
+        color: isSelected ? color : const ui.Color.fromARGB(255, 24, 164, 229),
+      );
     } else {
-      return Icon(Icons.sports_tennis, size: 16, color: isSelected ? color : const ui.Color.fromARGB(255, 225, 50, 50));
+      return Icon(
+        Icons.sports_tennis,
+        size: 16,
+        color: isSelected ? color : const ui.Color.fromARGB(255, 225, 50, 50),
+      );
     }
   }
 
@@ -566,19 +760,27 @@ class _MapTabContentState extends State<_MapTabContent> {
 
   Color _getSportColor(SportType type) {
     switch (type) {
-      case SportType.pickleball: return const Color(0xFF3B82F6);
-      case SportType.football:   return const Color(0xFFF97316);
-      case SportType.tennis:     return const Color(0xFF8B5CF6);
-      default:                   return AppColors.primary;
+      case SportType.pickleball:
+        return const Color(0xFF3B82F6);
+      case SportType.football:
+        return const Color(0xFFF97316);
+      case SportType.tennis:
+        return const Color(0xFF8B5CF6);
+      default:
+        return AppColors.primary;
     }
   }
 
   String _getSportLabel(SportType type) {
     switch (type) {
-      case SportType.pickleball: return 'Pickleball';
-      case SportType.football:   return 'Bóng đá';
-      case SportType.tennis:     return 'Tennis';
-      default:                   return 'Cầu lông';
+      case SportType.pickleball:
+        return 'Pickleball';
+      case SportType.football:
+        return 'Bóng đá';
+      case SportType.tennis:
+        return 'Tennis';
+      default:
+        return 'Cầu lông';
     }
   }
 
@@ -586,10 +788,14 @@ class _MapTabContentState extends State<_MapTabContent> {
     String? s = court.sportType?.toLowerCase();
     if (s == null || s.isEmpty) {
       final n = court.name.toLowerCase();
-      if (n.contains('pickle')) s = 'pickleball';
-      else if (n.contains('bóng đá') || n.contains('football')) s = 'football';
-      else if (n.contains('tennis')) s = 'tennis';
-      else s = 'badminton';
+      if (n.contains('pickle'))
+        s = 'pickleball';
+      else if (n.contains('bóng đá') || n.contains('football'))
+        s = 'football';
+      else if (n.contains('tennis'))
+        s = 'tennis';
+      else
+        s = 'badminton';
     }
     if (s.contains('pickle')) return SportType.pickleball;
     if (s.contains('foot') || s.contains('bóng')) return SportType.football;
@@ -619,7 +825,8 @@ class _MapTabContentState extends State<_MapTabContent> {
           Padding(
             padding: const EdgeInsets.only(top: 10, bottom: 4),
             child: Container(
-              width: 36, height: 4,
+              width: 36,
+              height: 4,
               decoration: BoxDecoration(
                 color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(2),
@@ -660,8 +867,10 @@ class _MapTabContentState extends State<_MapTabContent> {
                 String distanceStr = '';
                 if (vm.currentPosition.latitude != 21.028511) {
                   final dist = Geolocator.distanceBetween(
-                    vm.currentPosition.latitude, vm.currentPosition.longitude,
-                    court.latitude, court.longitude,
+                    vm.currentPosition.latitude,
+                    vm.currentPosition.longitude,
+                    court.latitude,
+                    court.longitude,
                   );
                   distanceStr = '${(dist / 1000).toStringAsFixed(1)}km';
                 }
@@ -678,11 +887,16 @@ class _MapTabContentState extends State<_MapTabContent> {
                         vm.selectCourt(court);
                         _mapController?.animateCamera(
                           CameraUpdate.newLatLngZoom(
-                            LatLng(court.latitude, court.longitude), 16.0),
+                            LatLng(court.latitude, court.longitude),
+                            16.0,
+                          ),
                         );
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.grey.shade100),
@@ -705,7 +919,11 @@ class _MapTabContentState extends State<_MapTabContent> {
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: Center(
-                                child: _getAvatarForSport(sType, false, sportColor),
+                                child: _getAvatarForSport(
+                                  sType,
+                                  false,
+                                  sportColor,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -744,7 +962,10 @@ class _MapTabContentState extends State<_MapTabContent> {
                               children: [
                                 if (distanceStr.isNotEmpty)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: [
@@ -765,7 +986,10 @@ class _MapTabContentState extends State<_MapTabContent> {
                                   ),
                                 const SizedBox(height: 4),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: sportColor.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(20),

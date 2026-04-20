@@ -1,9 +1,11 @@
 import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
+import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/booking_provider.dart';
 import 'package:badminton_ai/screens/user/booking/checkout_screen.dart';
+import 'package:badminton_ai/screens/user/booking/event_detail_screen.dart';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -12,7 +14,6 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
-import 'package:flutter/cupertino.dart';
 
 class CourtSelectionScreen extends StatefulWidget {
   final CourtLocationModel selectedCourt;
@@ -49,6 +50,7 @@ class SelectedSlot {
 class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
   Set<SelectedSlot> _selectedSlots = {};
   late DateTime _currentDate;
+  late Stream<List<EventModel>> _eventsStream;
 
   // Time slots from 05:00 to 22:00
   final List<double> _timeSlots = List.generate(18, (index) {
@@ -65,6 +67,9 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
     } else {
       _currentDate = widget.selectedDate;
     }
+    _eventsStream = context.read<SupabaseRepository>().getEventsStream(
+      courtId: widget.selectedCourt.id,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchBookingsForCurrentDate();
     });
@@ -97,7 +102,11 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
 
   void _onNext() {
     if (_selectedSlots.isEmpty) {
-      AppToast.show(context, "Vui lòng chọn ít nhất một slot", type: ToastType.error);
+      AppToast.show(
+        context,
+        "Vui lòng chọn ít nhất một slot",
+        type: ToastType.error,
+      );
       return;
     }
 
@@ -107,21 +116,35 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
   Future<void> _reserveAndGoCheckout() async {
     final now = DateTime.now();
     final isToday = isSameDay(_currentDate, now);
-    final isPastDay = _currentDate.isBefore(DateTime(now.year, now.month, now.day));
+    final isPastDay = _currentDate.isBefore(
+      DateTime(now.year, now.month, now.day),
+    );
 
     if (isPastDay) {
-      AppToast.show(context, 'Không thể đặt sân cho ngày trong quá khứ', type: ToastType.error);
+      AppToast.show(
+        context,
+        'Không thể đặt sân cho ngày trong quá khứ',
+        type: ToastType.error,
+      );
       return;
     }
 
     if (_selectedSlots.any((s) => isToday && s.timeSlot <= now.hour)) {
-      AppToast.show(context, 'Một số khung giờ bạn chọn đã trôi qua', type: ToastType.error);
+      AppToast.show(
+        context,
+        'Một số khung giờ bạn chọn đã trôi qua',
+        type: ToastType.error,
+      );
       return;
     }
 
     final auth = context.read<AppAuthProvider>();
     if (auth.authState != AuthState.authenticated) {
-      AppToast.show(context, 'Vui lòng đăng nhập để đặt sân', type: ToastType.error);
+      AppToast.show(
+        context,
+        'Vui lòng đăng nhập để đặt sân',
+        type: ToastType.error,
+      );
       return;
     }
 
@@ -173,8 +196,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
       if (!success) {
         final conflicts = result['conflicts'];
         final msg = conflicts is List && conflicts.isNotEmpty
-                  ? 'Một số khung giờ vừa được người khác giữ/đặt. Vui lòng chọn lại.'
-                  : 'Không thể giữ chỗ. Vui lòng thử lại.';
+            ? 'Một số khung giờ vừa được người khác giữ/đặt. Vui lòng chọn lại.'
+            : 'Không thể giữ chỗ. Vui lòng thử lại.';
         AppToast.show(context, msg, type: ToastType.error);
         _fetchBookingsForCurrentDate();
         return;
@@ -229,7 +252,9 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                       locale: 'vi_VN',
                       firstDay: DateTime.now(),
                       lastDay: DateTime.now().add(const Duration(days: 365)),
-                      focusedDay: tempFocusedDate.isBefore(DateTime.now()) ? DateTime.now() : tempFocusedDate,
+                      focusedDay: tempFocusedDate.isBefore(DateTime.now())
+                          ? DateTime.now()
+                          : tempFocusedDate,
                       currentDay: DateTime.now(),
                       enabledDayPredicate: (day) => !day.isBefore(
                         DateTime(
@@ -381,7 +406,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
+              color: Colors.white.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(6),
             ),
             child: InkWell(
@@ -476,87 +501,109 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
           ),
           // Grid
           Expanded(
-            child: StreamBuilder<List<BookingModel>>(
-              stream: bookingProvider.bookingsStream,
+            child: StreamBuilder<List<EventModel>>(
+              stream: _eventsStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final bookings = snapshot.data ?? [];
-                return SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header Row (Independent from Table to avoid vertical borders)
-                        Container(
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFFF3E0), // Light orange header
-                            border: Border(
-                              bottom: BorderSide(color: Color(0xFFFFCC80)),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 100,
-                                height: 48,
-                                alignment: Alignment.center,
-                                padding: const EdgeInsets.only(
-                                  left: 0,
-                                  right: 20,
-                                  ),
-                                child: const Text(
-                                  'Sân / Giờ',
-                                  style: TextStyle(
-                                    color: AppColors.textBlack,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
+                final allEvents = snapshot.data ?? [];
+                final events = allEvents.where((e) {
+                  return _eventOverlapsSelectedDate(e);
+                }).toList();
+                return StreamBuilder<List<BookingModel>>(
+                  stream: bookingProvider.bookingsStream,
+                  builder: (context, bookingSnapshot) {
+                    if (bookingSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final bookings = bookingSnapshot.data ?? [];
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Header Row (Independent from Table to avoid vertical borders)
+                            Container(
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFFF3E0), // Light orange header
+                                border: Border(
+                                  bottom: BorderSide(color: Color(0xFFFFCC80)),
                                 ),
                               ),
-                              ..._timeSlots.map(
-                                (t) => SizedBox(
-                                  width: 60,
-                                  height: 48,
-                                  child: Stack(
-                                    clipBehavior: Clip.none,
-                                    children: [
-                                      Positioned(
-                                        left: -20,
-                                        bottom: 0,
-                                        width: 40,
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              _formatTime(t),
-                                              style: const TextStyle(
-                                                color: AppColors.textBlack,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 6),
-                                            Container(
-                                              width: 3,
-                                              height: 6,
-                                              decoration: BoxDecoration(
-                                                color: AppColors.primary,
-                                                borderRadius:
-                                                    BorderRadius.circular(2),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 100,
+                                    height: 48,
+                                    alignment: Alignment.center,
+                                    padding: const EdgeInsets.only(
+                                      left: 0,
+                                      right: 20,
+                                    ),
+                                    child: const Text(
+                                      'Sân / Giờ',
+                                      style: TextStyle(
+                                        color: AppColors.textBlack,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
                                       ),
-                                      if (t == _timeSlots.last)
+                                    ),
+                                  ),
+                                  ..._timeSlots.map(
+                                    (t) => SizedBox(
+                                      width: 60,
+                                      height: 48,
+                                      child: Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          Positioned(
+                                            left: -20,
+                                            bottom: 0,
+                                            width: 40,
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  _formatTime(t),
+                                                  style: const TextStyle(
+                                                    color: AppColors.textBlack,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Container(
+                                                  width: 3,
+                                                  height: 6,
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.primary,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          2,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 60,
+                                    height: 48,
+                                    child: Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
                                         Positioned(
-                                          right: -20,
+                                          left: -20,
                                           bottom: 0,
                                           width: 40,
                                           child: Column(
@@ -565,7 +612,9 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                                                 CrossAxisAlignment.center,
                                             children: [
                                               Text(
-                                                _formatTime(t + 1),
+                                                _formatTime(
+                                                  _timeSlots.last + 1,
+                                                ),
                                                 style: const TextStyle(
                                                   color: AppColors.textBlack,
                                                   fontSize: 12,
@@ -585,140 +634,189 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                                             ],
                                           ),
                                         ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // TABLE for cells
-                        Table(
-                          defaultColumnWidth: const FixedColumnWidth(60),
-                          border: const TableBorder(
-                            left: BorderSide(color: AppColors.borderColor),
-                            right: BorderSide(color: AppColors.borderColor),
-                            bottom: BorderSide(color: AppColors.borderColor),
-                            horizontalInside: BorderSide(
-                              color: AppColors.borderColor,
-                            ),
-                            verticalInside: BorderSide(
-                              color: AppColors.borderColor,
-                            ),
-                          ),
-                          columnWidths: const {
-                            0: FixedColumnWidth(100), // Sân column
-                          },
-                          children: [
-                            // Court Rows
-                            ...List.generate(widget.selectedCourt.totalCourts, (
-                              index,
-                            ) {
-                              final courtNum = index + 1;
-                              return TableRow(
-                                children: [
-                                  // Court Name Cell
-                                  Container(
-                                    height: 50,
-                                    color: const Color(
-                                      0xFFFFF8E1,
-                                    ), // Very light yellow-orange for court column
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                      horizontal: 4,
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Sân $courtNum',
-                                          style: const TextStyle(
-                                            color: AppColors.textBlack,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13,
-                                          ),
-                                        ),
                                       ],
                                     ),
                                   ),
-
-                                  // Time Slots
-                                  ..._timeSlots.map((t) {
-                                    final isBooked = _isSlotBooked(
-                                      bookings,
-                                      courtNum,
-                                      t,
-                                    );
-                                    final isSelected = _selectedSlots.contains(
-                                      SelectedSlot(
-                                        courtNumber: courtNum,
-                                        timeSlot: t,
-                                      ),
-                                    );
-
-                                    final now = DateTime.now();
-                                    final isToday = isSameDay(_currentDate, now);
-                                    final isPastDay = _currentDate.isBefore(DateTime(now.year, now.month, now.day));
-                                    final isPastTime = isToday && t <= now.hour;
-                                    final isDisable = isPastDay || isPastTime;
-
-                                    Color bgColor = AppColors.surface;
-                                    Widget? child;
-
-                                    if (isDisable) {
-                                      bgColor = const Color(0xFFE0E0E0); // Grey for past/disabled
-                                      child = const Icon(
-                                        Icons.block,
-                                        color: Colors.white,
-                                        size: 16,
-                                      );
-                                    } else if (isBooked) {
-                                      bgColor = const Color(0xFFEF5350); // Red
-                                      child = null;
-                                    } else if (isSelected) {
-                                      bgColor = AppColors.primary;
-                                      child = const Icon(
-                                        Icons.check,
-                                        color: Colors.white,
-                                        size: 20,
-                                      );
-                                    }
-
-                                    return InkWell(
-                                      onTap: (isBooked || isDisable)
-                                          ? null
-                                          : () {
-                                              setState(() {
-                                                final slot = SelectedSlot(
-                                                  courtNumber: courtNum,
-                                                  timeSlot: t,
-                                                );
-                                                if (isSelected) {
-                                                  _selectedSlots.remove(slot);
-                                                } else {
-                                                  _selectedSlots.add(slot);
-                                                }
-                                              });
-                                            },
-                                      child: Container(
-                                        height: 50,
-                                        color: bgColor,
-                                        alignment: Alignment.center,
-                                        child: child,
-                                      ),
-                                    );
-                                  }),
                                 ],
-                              );
-                            }),
+                              ),
+                            ),
+                            // TABLE for cells
+                            Table(
+                              defaultColumnWidth: const FixedColumnWidth(60),
+                              border: const TableBorder(
+                                left: BorderSide(color: AppColors.borderColor),
+                                right: BorderSide(color: AppColors.borderColor),
+                                bottom: BorderSide(
+                                  color: AppColors.borderColor,
+                                ),
+                                horizontalInside: BorderSide(
+                                  color: AppColors.borderColor,
+                                ),
+                                verticalInside: BorderSide(
+                                  color: AppColors.borderColor,
+                                ),
+                              ),
+                              columnWidths: const {
+                                0: FixedColumnWidth(100), // Sân column
+                              },
+                              children: [
+                                // Court Rows
+                                ...List.generate(widget.selectedCourt.totalCourts, (
+                                  index,
+                                ) {
+                                  final courtNum = index + 1;
+                                  return TableRow(
+                                    children: [
+                                      // Court Name Cell
+                                      Container(
+                                        height: 50,
+                                        color: const Color(
+                                          0xFFFFF8E1,
+                                        ), // Very light yellow-orange for court column
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                          horizontal: 4,
+                                        ),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Sân $courtNum',
+                                              style: const TextStyle(
+                                                color: AppColors.textBlack,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      // Time Slots
+                                      ..._timeSlots.map((t) {
+                                        final isBooked = _isSlotBooked(
+                                          bookings,
+                                          courtNum,
+                                          t,
+                                        );
+                                        final eventForSlot = _getEventForSlot(
+                                          events,
+                                          courtNum,
+                                          t,
+                                        );
+                                        final isEventSlot =
+                                            eventForSlot != null;
+                                        final isSelected = _selectedSlots
+                                            .contains(
+                                              SelectedSlot(
+                                                courtNumber: courtNum,
+                                                timeSlot: t,
+                                              ),
+                                            );
+
+                                        final now = DateTime.now();
+                                        final isToday = isSameDay(
+                                          _currentDate,
+                                          now,
+                                        );
+                                        final isPastDay = _currentDate.isBefore(
+                                          DateTime(
+                                            now.year,
+                                            now.month,
+                                            now.day,
+                                          ),
+                                        );
+                                        final isPastTime =
+                                            isToday && t <= now.hour;
+                                        final isDisable =
+                                            isPastDay || isPastTime;
+
+                                        Color bgColor = AppColors.surface;
+                                        Widget? child;
+
+                                        if (isDisable) {
+                                          bgColor = const Color(
+                                            0xFFE0E0E0,
+                                          ); // Grey for past/disabled
+                                          child = const Icon(
+                                            Icons.block,
+                                            color: Colors.white,
+                                            size: 16,
+                                          );
+                                        } else if (isBooked) {
+                                          bgColor = const Color(
+                                            0xFFEF5350,
+                                          ); // Red
+                                          child = null;
+                                        } else if (isEventSlot) {
+                                          bgColor = const Color(
+                                            0xFFBA68C8,
+                                          ); // Event purple
+                                          child = null;
+                                        } else if (isSelected) {
+                                          bgColor = AppColors.primary;
+                                          child = const Icon(
+                                            Icons.check,
+                                            color: Colors.white,
+                                            size: 20,
+                                          );
+                                        }
+
+                                        return InkWell(
+                                          onTap: (isBooked || isDisable)
+                                              ? null
+                                              : () {
+                                                  if (eventForSlot != null) {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            EventDetailScreen(
+                                                              event:
+                                                                  eventForSlot,
+                                                              court: widget
+                                                                  .selectedCourt,
+                                                            ),
+                                                      ),
+                                                    );
+                                                    return;
+                                                  }
+
+                                                  setState(() {
+                                                    final slot = SelectedSlot(
+                                                      courtNumber: courtNum,
+                                                      timeSlot: t,
+                                                    );
+                                                    if (isSelected) {
+                                                      _selectedSlots.remove(
+                                                        slot,
+                                                      );
+                                                    } else {
+                                                      _selectedSlots.add(slot);
+                                                    }
+                                                  });
+                                                },
+                                          child: Container(
+                                            height: 50,
+                                            color: bgColor,
+                                            alignment: Alignment.center,
+                                            child: child,
+                                          ),
+                                        );
+                                      }),
+                                    ],
+                                  );
+                                }),
+                              ],
+                            ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -790,7 +888,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                     child: ElevatedButton(
                       onPressed: _onNext,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary, // Đổi màu sắc để khớp với Đặt Ngay
+                        backgroundColor: AppColors
+                            .primary, // Đổi màu sắc để khớp với Đặt Ngay
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -826,24 +925,70 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
       (b) => b.courtNumber == courtNum && b.timeSlot == time.floor(),
     );
   }
+
+  bool _eventOverlapsSelectedDate(EventModel event) {
+    final dayStart = DateTime(
+      _currentDate.year,
+      _currentDate.month,
+      _currentDate.day,
+    );
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final eventStart = event.startDateTime;
+    final eventEnd = event.endDateTime;
+
+    if (eventStart == null || eventEnd == null) return false;
+    return eventStart.isBefore(dayEnd) && eventEnd.isAfter(dayStart);
+  }
+
+  EventModel? _getEventForSlot(
+    List<EventModel> events,
+    int courtNum,
+    double time,
+  ) {
+    final slotStart = DateTime(
+      _currentDate.year,
+      _currentDate.month,
+      _currentDate.day,
+      time.floor(),
+      0,
+    );
+    final slotEnd = slotStart.add(const Duration(hours: 1));
+
+    for (final event in events) {
+      final eventCourtNum = _extractCourtNumber(event.courtArea);
+      if (eventCourtNum != null && eventCourtNum != courtNum) continue;
+
+      final eventStart = event.startDateTime;
+      final eventEnd = event.endDateTime;
+      if (eventStart == null || eventEnd == null) continue;
+
+      if (eventStart.isBefore(slotEnd) && eventEnd.isAfter(slotStart)) {
+        return event;
+      }
+    }
+
+    return null;
+  }
+
+  int? _extractCourtNumber(String courtArea) {
+    final match = RegExp(r'\d+').firstMatch(courtArea);
+    if (match == null) return null;
+    return int.tryParse(match.group(0)!);
+  }
 }
 
 class _LegendItem extends StatelessWidget {
   final Color color;
   final String label;
-  final bool border;
   final IconData? icon;
   final double? iconSize;
-  final Color? iconColor;
   final Color? labelColor;
 
   const _LegendItem({
     required this.color,
     required this.label,
-    this.border = false,
     this.icon,
     this.iconSize,
-    this.iconColor,
     this.labelColor,
   });
 
@@ -857,15 +1002,10 @@ class _LegendItem extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(4),
-            border: border ? Border.all(color: AppColors.borderColor) : null,
           ),
           alignment: Alignment.center,
           child: icon != null
-              ? Icon(
-                  icon,
-                  color: iconColor ?? Colors.white,
-                  size: iconSize ?? 14,
-                )
+              ? Icon(icon, color: Colors.white, size: iconSize ?? 14)
               : null,
         ),
         const SizedBox(width: 6),

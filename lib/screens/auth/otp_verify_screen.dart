@@ -137,6 +137,7 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
         controller: _controllers[index],
         focusNode: _focusNodes[index],
         textAlign: TextAlign.center,
+        textAlignVertical: TextAlignVertical.center,
         keyboardType: TextInputType.number,
         maxLength: 1,
         style: const TextStyle(
@@ -146,6 +147,7 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
         ),
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         decoration: InputDecoration(
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
           counterText: '',
           filled: true,
           fillColor: _controllers[index].text.isNotEmpty

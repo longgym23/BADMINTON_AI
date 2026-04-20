@@ -11,6 +11,7 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/utils/dialog_utils.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:badminton_ai/l10n/generated/app_localizations.dart';
 
 class ManageUsersScreen extends StatelessWidget {
   const ManageUsersScreen({super.key});
@@ -41,6 +42,7 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
   }
 
   void _showUserEditDialog(BuildContext context, UserModel user) {
+    final l10n = AppLocalizations.of(context);
     final _formKey = GlobalKey<FormState>();
     final _nameController = TextEditingController(text: user.displayName);
     final _emailController = TextEditingController(text: user.email);
@@ -53,7 +55,7 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Cập nhật người dùng', style: TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(l10n.updateUser, style: const TextStyle(fontWeight: FontWeight.bold)),
               content: Material(
                 color: Colors.transparent,
                 child: Padding(
@@ -66,28 +68,28 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                         children: [
                           TextFormField(
                             controller: _nameController,
-                            decoration: const InputDecoration(labelText: 'Tên hiển thị', filled: true, fillColor: Colors.white),
-                            validator: (value) => value!.isEmpty ? 'Không được bỏ trống' : null,
+                            decoration: InputDecoration(labelText: l10n.displayName, filled: true, fillColor: Colors.white),
+                            validator: (value) => value!.isEmpty ? l10n.cannotBeEmpty : null,
                           ),
                           const SizedBox(height: 12),
                           TextFormField(
                             controller: _emailController,
-                            decoration: const InputDecoration(labelText: 'Email', filled: true, fillColor: Colors.white),
+                            decoration: InputDecoration(labelText: l10n.email, filled: true, fillColor: Colors.white),
                             enabled: false,
                           ),
                           const SizedBox(height: 12),
                           TextFormField(
                             controller: _phoneController,
-                            decoration: const InputDecoration(labelText: 'Số điện thoại', filled: true, fillColor: Colors.white),
+                            decoration: InputDecoration(labelText: l10n.phoneNumber, filled: true, fillColor: Colors.white),
                           ),
                           const SizedBox(height: 12),
                           DropdownButtonFormField<String>(
-                            value: _selectedRole,
-                            decoration: const InputDecoration(labelText: 'Vai trò', filled: true, fillColor: Colors.white),
-                            items: const [
-                              DropdownMenuItem(value: 'user', child: Text('Người dùng')),
-                              DropdownMenuItem(value: 'court_owner', child: Text('Chủ sân')),
-                              DropdownMenuItem(value: 'admin', child: Text('Quản trị viên')),
+                            initialValue: _selectedRole,
+                            decoration: InputDecoration(labelText: l10n.role, filled: true, fillColor: Colors.white),
+                            items: [
+                              DropdownMenuItem(value: 'user', child: Text(l10n.roleUser)),
+                              DropdownMenuItem(value: 'court_owner', child: Text(l10n.roleCourtOwner)),
+                              DropdownMenuItem(value: 'admin', child: Text(l10n.roleAdmin)),
                             ],
                             onChanged: (value) {
                               if (value != null) setDialogState(() => _selectedRole = value);
@@ -100,7 +102,7 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Hủy', style: TextStyle(color: Colors.blue))),
+                TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(l10n.cancel, style: const TextStyle(color: Colors.blue))),
                 TextButton(
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
@@ -114,14 +116,14 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                         await repo.updateUser(updatedUser);
                         if (!ctx.mounted) return;
                         Navigator.of(ctx).pop();
-                        AppToast.show(context, 'Cập nhật thành công!', type: ToastType.success);
+                        AppToast.show(ctx, l10n.updateSuccess, type: ToastType.success);
                         setState(() {});
                       } catch (e) {
-                        AppToast.show(context, 'Lỗi: \$e', type: ToastType.error);
+                        AppToast.show(ctx, l10n.errorWithDetails(e.toString()), type: ToastType.error);
                       }
                     }
                   },
-                  child: const Text('Lưu', style: TextStyle(color: Colors.blue)),
+                  child: Text(l10n.save, style: const TextStyle(color: Colors.blue)),
                 ),
               ],
             );
@@ -132,20 +134,21 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
   }
 
   void _showDeleteConfirmDialog(BuildContext context, UserModel user) {
+    final l10n = AppLocalizations.of(context);
     DialogUtils.showConfirmDialog(
       context,
-      title: 'Xác nhận xóa',
-      content: 'Bạn có chắc muốn xóa người dùng "${user.displayName ?? user.email}" không?',
-      confirmText: 'Xóa',
+      title: l10n.confirmDelete,
+      content: l10n.deleteUserConfirmText(user.displayName ?? user.email ?? ''),
+      confirmText: l10n.delete,
       isDestructive: true,
       onConfirm: () async {
         try {
           await context.read<SupabaseRepository>().deleteUser(user.id);
           if (!context.mounted) return;
-          AppToast.show(context, 'Đã xóa người dùng.', type: ToastType.success);
+          AppToast.show(context, l10n.userDeleted, type: ToastType.success);
           setState(() {});
         } catch (e) {
-          AppToast.show(context, 'Lỗi: $e', type: ToastType.error);
+          AppToast.show(context, l10n.errorWithDetails(e.toString()), type: ToastType.error);
         }
       },
     );
@@ -156,14 +159,15 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
     final vm = context.watch<ManageUsersViewModel>();
     final repo = context.watch<SupabaseRepository>();
     final auth = context.watch<AppAuthProvider>();
+    final l10n = AppLocalizations.of(context);
 
     if (auth.userModel?.role != 'admin') {
-      return const Scaffold(body: Center(child: Text('Chỉ Admin mới có quyền truy cập trang này.')));
+      return Scaffold(body: Center(child: Text(l10n.adminOnly)));
     }
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: CustomGradientAppBar(title: const Text('Quản lý Người dùng')),
+      appBar: CustomGradientAppBar(title: Text(l10n.manageUsers)),
       body: Column(
         children: [
           // Search & Filter Section
@@ -180,7 +184,7 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Tìm kiếm tên, email, sđt...',
+                    hintText: l10n.searchNameEmailPhone,
                     prefixIcon: const Icon(Icons.search, color: AppColors.brandOrange),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(icon: const Icon(Icons.clear), onPressed: () {
@@ -199,13 +203,13 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _FilterChip(label: 'Tất cả', isSelected: vm.selectedRole == 'all', onTap: () => vm.setSelectedRole('all')),
+                      _FilterChip(label: l10n.all, isSelected: vm.selectedRole == 'all', onTap: () => vm.setSelectedRole('all')),
                       const SizedBox(width: 8),
-                      _FilterChip(label: 'Admin', isSelected: vm.selectedRole == 'admin', onTap: () => vm.setSelectedRole('admin')),
+                      _FilterChip(label: l10n.admin, isSelected: vm.selectedRole == 'admin', onTap: () => vm.setSelectedRole('admin')),
                       const SizedBox(width: 8),
-                      _FilterChip(label: 'Chủ sân', isSelected: vm.selectedRole == 'court_owner', onTap: () => vm.setSelectedRole('court_owner')),
+                      _FilterChip(label: l10n.roleCourtOwner, isSelected: vm.selectedRole == 'court_owner', onTap: () => vm.setSelectedRole('court_owner')),
                       const SizedBox(width: 8),
-                      _FilterChip(label: 'User', isSelected: vm.selectedRole == 'user', onTap: () => vm.setSelectedRole('user')),
+                      _FilterChip(label: l10n.user, isSelected: vm.selectedRole == 'user', onTap: () => vm.setSelectedRole('user')),
                     ],
                   ),
                 ),
@@ -219,7 +223,7 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
               stream: repo.getAllUsersStream(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                if (snapshot.hasError) return Center(child: Text('Lỗi: ${snapshot.error}'));
+                if (snapshot.hasError) return Center(child: Text(l10n.errorWithDetails(snapshot.error.toString())));
 
                 final allUsers = snapshot.data ?? [];
                 final filtered = vm.applyFilters(allUsers);
@@ -231,7 +235,7 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                       children: [
                         Icon(Icons.person_search, size: 64, color: Colors.grey[300]),
                         const SizedBox(height: 16),
-                        Text('Không tìm thấy người dùng nào.', style: TextStyle(color: Colors.grey[500])),
+                        Text(l10n.noUsersFound, style: TextStyle(color: Colors.grey[500])),
                       ],
                     ),
                   );
@@ -294,20 +298,21 @@ class _UserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     Color roleColor;
     String roleName;
     switch (user.role) {
       case 'admin':
         roleColor = Colors.red;
-        roleName = 'Admin';
+        roleName = l10n.admin;
         break;
       case 'court_owner':
         roleColor = Colors.orange;
-        roleName = 'Chủ sân';
+        roleName = l10n.roleCourtOwner;
         break;
       default:
         roleColor = AppColors.primary;
-        roleName = 'User';
+        roleName = l10n.user;
     }
 
     return Card(
@@ -346,7 +351,7 @@ class _UserCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(user.displayName ?? 'Chưa có tên', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(user.displayName?.isNotEmpty == true ? user.displayName! : l10n.noName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -377,4 +382,3 @@ class _UserCard extends StatelessWidget {
     );
   }
 }
-

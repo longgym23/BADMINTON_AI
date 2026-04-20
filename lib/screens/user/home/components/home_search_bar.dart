@@ -1,5 +1,6 @@
 import 'package:badminton_ai/blocs/home_filter/home_filter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_event.dart';
+import 'package:badminton_ai/l10n/generated/app_localizations.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -29,17 +30,26 @@ class HomeSearchBar extends StatelessWidget {
           const Icon(Icons.search, color: Colors.grey),
           const SizedBox(width: 8),
           Expanded(
-            child: TextField(
-              controller: controller,
-              onChanged: (value) {
-                // Bắn event SearchQueryChanged lên Bloc
-                context.read<HomeFilterBloc>().add(SearchQueryChanged(value));
+            child: Builder(
+              builder: (context) {
+                final l = AppLocalizations.of(context)!;
+                return TextField(
+                  controller: controller,
+                  onChanged: (value) {
+                    context.read<HomeFilterBloc>().add(
+                      SearchQueryChanged(value),
+                    );
+                  },
+                  decoration: InputDecoration(
+                    hintText: l.searchLocation,
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(
+                      color: AppColors.textLight,
+                      fontSize: 14,
+                    ),
+                  ),
+                );
               },
-              decoration: const InputDecoration(
-                hintText: 'Tìm kiếm sân, địa điểm...',
-                border: InputBorder.none,
-                hintStyle: TextStyle(color: AppColors.textLight, fontSize: 14),
-              ),
             ),
           ),
           IconButton(

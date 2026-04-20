@@ -9,6 +9,8 @@ class UserModel {
   final DateTime? lastActiveAt;
   final int balance;
   final String status; // 'online', 'offline', 'away'
+  final DateTime? dateOfBirth;
+  final String? gender;
 
   UserModel({
     required this.id,
@@ -21,6 +23,8 @@ class UserModel {
     this.lastActiveAt,
     this.balance = 0,
     this.status = 'offline',
+    this.dateOfBirth,
+    this.gender,
   });
 
   UserModel copyWith({
@@ -34,6 +38,8 @@ class UserModel {
     DateTime? lastActiveAt,
     int? balance,
     String? status,
+    DateTime? dateOfBirth,
+    String? gender,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -46,6 +52,8 @@ class UserModel {
       lastActiveAt: lastActiveAt ?? this.lastActiveAt,
       balance: balance ?? this.balance,
       status: status ?? this.status,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      gender: gender ?? this.gender,
     );
   }
 
@@ -63,6 +71,10 @@ class UserModel {
           : null,
       balance: (data['balance'] as num?)?.toInt() ?? 0,
       status: data['status'] ?? 'offline',
+      dateOfBirth: data['date_of_birth'] != null 
+          ? DateTime.parse(data['date_of_birth']) 
+          : null,
+      gender: data['gender'],
     );
   }
 
@@ -77,6 +89,8 @@ class UserModel {
       if (fcmToken != null) 'fcm_token': fcmToken,
       if (photoUrl != null) 'avatar_url': photoUrl,
       'balance': balance,
+      if (dateOfBirth != null) 'date_of_birth': dateOfBirth!.toIso8601String(),
+      if (gender != null) 'gender': gender,
     };
   }
 

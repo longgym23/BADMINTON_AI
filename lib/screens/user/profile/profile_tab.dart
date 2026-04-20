@@ -46,46 +46,72 @@ class ProfileTab extends StatelessWidget {
   void _showLanguageDialog(BuildContext context) {
     final l = AppLocalizations.of(context);
     final langProvider = context.read<LanguageProvider>();
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.selectLanguage, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Material(
-          color: Colors.transparent,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _LangOption(
-                  flag: '🇻🇳',
-                  label: l.languageVietnamese,
-                  isSelected: langProvider.isVietnamese,
-                  onTap: () {
-                    langProvider.setVietnamese();
-                    Navigator.pop(ctx);
-                  },
-                ),
-                const SizedBox(height: 8),
-                _LangOption(
-                  flag: '🇺🇸',
-                  label: l.languageEnglish,
-                  isSelected: !langProvider.isVietnamese,
-                  onTap: () {
-                    langProvider.setEnglish();
-                    Navigator.pop(ctx);
-                  },
-                ),
-              ],
-            ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.only(top: 16, bottom: 32, left: 24, right: 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l.cancel, style: const TextStyle(color: Colors.blue)),
-          ),
-        ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              l.selectLanguage,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textBlack,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Chọn ngôn ngữ ưu tiên của bạn',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textGrey,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _LangOption(
+              flag: '🇻🇳',
+              label: l.languageVietnamese,
+              isSelected: langProvider.isVietnamese,
+              onTap: () {
+                langProvider.setVietnamese();
+                Navigator.pop(ctx);
+              },
+            ),
+            const SizedBox(height: 12),
+            _LangOption(
+              flag: '🇺🇸',
+              label: l.languageEnglish,
+              isSelected: !langProvider.isVietnamese,
+              onTap: () {
+                langProvider.setEnglish();
+                Navigator.pop(ctx);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

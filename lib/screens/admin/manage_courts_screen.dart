@@ -26,10 +26,12 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
     final _formKey = GlobalKey<FormState>();
     final _nameController = TextEditingController(text: court?.name);
     final _addressController = TextEditingController(text: court?.address);
-    final _priceController =
-        TextEditingController(text: court?.pricePerHour.toString());
-    final _totalCourtsController =
-        TextEditingController(text: court?.totalCourts.toString());
+    final _priceController = TextEditingController(
+      text: court?.pricePerHour.toString(),
+    );
+    final _totalCourtsController = TextEditingController(
+      text: court?.totalCourts.toString(),
+    );
     final _linkController = TextEditingController();
 
     LatLng? _selectedLocation = court != null
@@ -138,7 +140,10 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
               ),
-              insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 24,
+              ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(24),
                 child: Container(
@@ -150,7 +155,12 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.only(left: 8, right: 8, top: 8, bottom: 0),
+                        padding: const EdgeInsets.only(
+                          left: 8,
+                          right: 8,
+                          top: 8,
+                          bottom: 0,
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -159,10 +169,17 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                               onPressed: () => Navigator.of(context).pop(),
                             ),
                             Text(
-                              court == null ? 'Trạm Thêm Mới Sân' : 'Sửa Thông Tin Sân',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                              court == null
+                                  ? 'Trạm Thêm Mới Sân'
+                                  : 'Sửa Thông Tin Sân',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
                             ),
-                            const SizedBox(width: 48), // To balance the close button
+                            const SizedBox(
+                              width: 48,
+                            ), // To balance the close button
                           ],
                         ),
                       ),
@@ -174,361 +191,498 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                          // Ảnh minh họa
-                          GestureDetector(
-                            onTap: () async {
-                              final pickedFile = await _imagePicker.pickImage(
-                                source: ImageSource.gallery,
-                              );
-                              if (pickedFile != null) {
-                                setDialogState(() {
-                                  _imageFile = File(pickedFile.path);
-                                });
-                              }
-                            },
-                            child: Container(
-                              height: 180,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade50,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.grey.shade300, width: 1.5, strokeAlign: BorderSide.strokeAlignOutside),
-                                image: _imageFile != null
-                                    ? DecorationImage(
-                                        image: FileImage(_imageFile!),
-                                        fit: BoxFit.cover,
-                                      )
-                                    : (_currentImageUrl != null
-                                        ? DecorationImage(
-                                            image: NetworkImage(_currentImageUrl),
-                                            fit: BoxFit.cover,
+                                // Ảnh minh họa
+                                GestureDetector(
+                                  onTap: () async {
+                                    final pickedFile = await _imagePicker
+                                        .pickImage(source: ImageSource.gallery);
+                                    if (pickedFile != null) {
+                                      setDialogState(() {
+                                        _imageFile = File(pickedFile.path);
+                                      });
+                                    }
+                                  },
+                                  child: Container(
+                                    height: 180,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: Colors.grey.shade300,
+                                        width: 1.5,
+                                        strokeAlign:
+                                            BorderSide.strokeAlignOutside,
+                                      ),
+                                      image: _imageFile != null
+                                          ? DecorationImage(
+                                              image: FileImage(_imageFile!),
+                                              fit: BoxFit.cover,
+                                            )
+                                          : (_currentImageUrl != null
+                                                ? DecorationImage(
+                                                    image: NetworkImage(
+                                                      _currentImageUrl,
+                                                    ),
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                : null),
+                                    ),
+                                    child:
+                                        _imageFile == null &&
+                                            _currentImageUrl == null
+                                        ? Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons
+                                                    .add_photo_alternate_outlined,
+                                                size: 48,
+                                                color: Colors.blue.shade300,
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Text(
+                                                'Tải ảnh bìa lên',
+                                                style: TextStyle(
+                                                  color: Colors.grey.shade600,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
                                           )
-                                        : null),
-                              ),
-                              child: _imageFile == null && _currentImageUrl == null
-                                  ? Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.add_photo_alternate_outlined,
-                                            size: 48, color: Colors.blue.shade300),
-                                        const SizedBox(height: 12),
-                                        Text('Tải ảnh bìa lên',
-                                            style: TextStyle(
-                                                color: Colors.grey.shade600,
-                                                fontWeight: FontWeight.w500)),
-                                      ],
-                                    )
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Tên sân
-                          TextFormField(
-                            controller: _nameController,
-                            decoration: inputDecoration.copyWith(labelText: 'Tên cơ sở sân'),
-                            validator: (value) =>
-                                value!.isEmpty ? 'Không được bỏ trống' : null,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Link & Tính năng get Tọa độ
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _linkController,
-                                  decoration: inputDecoration.copyWith(
-                                    labelText: 'Dán Link Google Maps',
-                                    hintText: 'https://maps.app.goo.gl/...',
-                                    prefixIcon: const Icon(Icons.link),
+                                        : null,
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              SizedBox(
-                                height: 55,
-                                width: 55,
-                                child: ElevatedButton(
-                                  onPressed: _isScanningLink
-                                      ? null
-                                      : () => _scanLocationFromLink(
-                                          _linkController.text.trim(),
-                                          setDialogState,
+                                const SizedBox(height: 24),
+
+                                // Tên sân
+                                TextFormField(
+                                  controller: _nameController,
+                                  decoration: inputDecoration.copyWith(
+                                    labelText: 'Tên cơ sở sân',
+                                  ),
+                                  validator: (value) => value!.isEmpty
+                                      ? 'Không được bỏ trống'
+                                      : null,
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Link & Tính năng get Tọa độ
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _linkController,
+                                        decoration: inputDecoration.copyWith(
+                                          labelText: 'Dán Link Google Maps',
+                                          hintText:
+                                              'https://maps.app.goo.gl/...',
+                                          prefixIcon: const Icon(Icons.link),
                                         ),
-                                  style: ElevatedButton.styleFrom(
-                                    padding: EdgeInsets.zero,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    SizedBox(
+                                      height: 55,
+                                      width: 55,
+                                      child: ElevatedButton(
+                                        onPressed: _isScanningLink
+                                            ? null
+                                            : () => _scanLocationFromLink(
+                                                _linkController.text.trim(),
+                                                setDialogState,
+                                              ),
+                                        style: ElevatedButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          backgroundColor: Theme.of(
+                                            context,
+                                          ).primaryColor,
+                                        ),
+                                        child: _isScanningLink
+                                            ? const Padding(
+                                                padding: EdgeInsets.all(16.0),
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      color: Colors.white,
+                                                      strokeWidth: 2.5,
+                                                    ),
+                                              )
+                                            : const Icon(
+                                                Icons.search,
+                                                color: Colors.white,
+                                              ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Nút bản đồ thủ công
+                                OutlinedButton.icon(
+                                  onPressed: () async {
+                                    final result =
+                                        await Navigator.push<
+                                          Map<String, dynamic>
+                                        >(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                LocationPickerScreen(
+                                                  initialLocation:
+                                                      _selectedLocation,
+                                                  initialAddress:
+                                                      _selectedAddress,
+                                                ),
+                                          ),
+                                        );
+
+                                    if (result != null) {
+                                      _selectedLocation =
+                                          result['location'] as LatLng;
+                                      _selectedAddress =
+                                          result['address'] as String;
+                                      _addressController.text =
+                                          _selectedAddress;
+                                      setDialogState(() {});
+                                    }
+                                  },
+                                  icon: const Icon(Icons.map_outlined),
+                                  label: Text(
+                                    _selectedLocation != null
+                                        ? 'Đã chốt vị trí trên bản đồ'
+                                        : 'Chọn vị trí thủ công',
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    backgroundColor: Theme.of(context).primaryColor,
-                                  ),
-                                  child: _isScanningLink
-                                      ? const Padding(
-                                          padding: EdgeInsets.all(16.0),
-                                          child: CircularProgressIndicator(
-                                              color: Colors.white, strokeWidth: 2.5),
-                                        )
-                                      : const Icon(Icons.search, color: Colors.white),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Nút bản đồ thủ công
-                          OutlinedButton.icon(
-                            onPressed: () async {
-                              final result =
-                                  await Navigator.push<Map<String, dynamic>>(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => LocationPickerScreen(
-                                    initialLocation: _selectedLocation,
-                                    initialAddress: _selectedAddress,
+                                    side: BorderSide(
+                                      color: Theme.of(context).primaryColor,
+                                    ),
                                   ),
                                 ),
-                              );
 
-                              if (result != null) {
-                                _selectedLocation = result['location'] as LatLng;
-                                _selectedAddress = result['address'] as String;
-                                _addressController.text = _selectedAddress;
-                                setDialogState(() {});
-                              }
-                            },
-                            icon: const Icon(Icons.map_outlined),
-                            label: Text(
-                              _selectedLocation != null
-                                  ? 'Đã chốt vị trí trên bản đồ'
-                                  : 'Chọn vị trí thủ công',
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              side: BorderSide(color: Theme.of(context).primaryColor),
-                            ),
-                          ),
-
-                          if (_selectedLocation != null) ...[
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.location_on, size: 16, color: Colors.blue.shade700),
-                                      const SizedBox(width: 4),
-                                      const Text('Đã nhận diện tọa độ',
-                                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                    ],
+                                if (_selectedLocation != null) ...[
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.shade50,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.location_on,
+                                              size: 16,
+                                              color: Colors.blue.shade700,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            const Text(
+                                              'Đã nhận diện tọa độ',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _selectedAddress,
+                                          style: const TextStyle(fontSize: 13),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(_selectedAddress, style: const TextStyle(fontSize: 13)),
                                 ],
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 16),
+                                const SizedBox(height: 16),
 
-                          TextFormField(
-                            controller: _addressController,
-                            decoration: inputDecoration.copyWith(
-                              labelText: 'Địa chỉ cụ thể (có thể sửa)',
-                              suffixIcon: const Icon(Icons.edit_location_alt, size: 20),
-                            ),
-                            validator: (value) =>
-                                value!.isEmpty ? 'Thay đổi địa chỉ' : null,
-                          ),
-                          const SizedBox(height: 16),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _priceController,
+                                TextFormField(
+                                  controller: _addressController,
                                   decoration: inputDecoration.copyWith(
-                                    labelText: 'Giá thuê / giờ',
-                                    suffixText: 'VNĐ',
+                                    labelText: 'Địa chỉ cụ thể (có thể sửa)',
+                                    suffixIcon: const Icon(
+                                      Icons.edit_location_alt,
+                                      size: 20,
+                                    ),
                                   ),
-                                  keyboardType: TextInputType.number,
-                                  validator: (value) =>
-                                      value!.isEmpty ? 'Nhập giá' : null,
+                                  validator: (value) => value!.isEmpty
+                                      ? 'Thay đổi địa chỉ'
+                                      : null,
                                 ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _totalCourtsController,
+                                const SizedBox(height: 16),
+
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _priceController,
+                                        decoration: inputDecoration.copyWith(
+                                          labelText: 'Giá thuê / giờ',
+                                          suffixText: 'VNĐ',
+                                        ),
+                                        keyboardType: TextInputType.number,
+                                        validator: (value) =>
+                                            value!.isEmpty ? 'Nhập giá' : null,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _totalCourtsController,
+                                        decoration: inputDecoration.copyWith(
+                                          labelText: 'Số sân con',
+                                        ),
+                                        keyboardType: TextInputType.number,
+                                        validator: (value) =>
+                                            value!.isEmpty ? 'Nhập số' : null,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+
+                                DropdownButtonFormField<String>(
+                                  value: _selectedSportType,
                                   decoration: inputDecoration.copyWith(
-                                    labelText: 'Số sân con',
+                                    labelText: 'Loại hình kinh doanh',
                                   ),
-                                  keyboardType: TextInputType.number,
-                                  validator: (value) =>
-                                      value!.isEmpty ? 'Nhập số' : null,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          DropdownButtonFormField<String>(
-                            value: _selectedSportType,
-                            decoration: inputDecoration.copyWith(labelText: 'Loại hình kinh doanh'),
-                            items: [
-                              DropdownMenuItem(
-                                value: 'badminton',
-                                child: Row(
-                                  children: [
-                                    Image.asset('assets/images/caulong.png', width: 20, height: 20),
-                                    const SizedBox(width: 8),
-                                    const Text('Cầu lông'),
-                                  ],
-                                ),
-                              ),
-                              DropdownMenuItem(
-                                value: 'pickleball',
-                                child: Row(
-                                  children: [
-                                    Image.asset('assets/images/pickleball.png', width: 20, height: 20),
-                                    const SizedBox(width: 8),
-                                    const Text('Pickleball'),
-                                  ],
-                                ),
-                              ),
-                              const DropdownMenuItem(
-                                value: 'football',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.sports_soccer, color: Colors.orange, size: 20),
-                                    SizedBox(width: 8),
-                                    Text('Bóng đá'),
-                                  ],
-                                ),
-                              ),
-                              const DropdownMenuItem(
-                                value: 'tennis',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.sports_tennis, color: Colors.green, size: 20),
-                                    SizedBox(width: 8),
-                                    Text('Tennis'),
-                                  ],
-                                ),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                _selectedSportType = value;
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 32),
-
-                          ElevatedButton(
-                            onPressed: _isUploading
-                                ? null
-                                : () async {
-                                    if (_formKey.currentState!.validate()) {
-                                      if (_selectedLocation == null) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Vui lòng chọn vị trí trên bản đồ'),
-                                            backgroundColor: Colors.orange,
+                                  items: [
+                                    DropdownMenuItem(
+                                      value: 'badminton',
+                                      child: Row(
+                                        children: [
+                                          Image.asset(
+                                            'assets/images/caulong.png',
+                                            width: 20,
+                                            height: 20,
                                           ),
-                                        );
-                                        return;
-                                      }
-
-                                      setDialogState(() => _isUploading = true);
-                                      final repo = context.read<SupabaseRepository>();
-                                      String? imageUrlToSave = _currentImageUrl;
-
-                                      try {
-                                        if (_imageFile != null) {
-                                          imageUrlToSave = await repo.uploadImage(
-                                            _imageFile!.path,
-                                            'court_images',
-                                          );
-                                        }
-                                      } catch (e) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('Lỗi upload ảnh: $e')),
-                                        );
-                                        setDialogState(() => _isUploading = false);
-                                        return;
-                                      }
-
-                                      final authProvider = context.read<AppAuthProvider>();
-                                      final user = authProvider.userModel;
-                                      final isOwner = user?.role == 'court_owner';
-                                      final newCourt = CourtLocationModel(
-                                        id: court?.id ?? '',
-                                        name: _nameController.text,
-                                        address: _addressController.text.trim().isNotEmpty
-                                            ? _addressController.text.trim()
-                                            : _selectedAddress,
-                                        latitude: _selectedLocation!.latitude,
-                                        longitude: _selectedLocation!.longitude,
-                                        pricePerHour: double.tryParse(_priceController.text) ?? 0.0,
-                                        totalCourts: int.tryParse(_totalCourtsController.text) ?? 0,
-                                        sportType: _selectedSportType,
-                                        imageUrl: imageUrlToSave,
-                                        ownerId: isOwner ? user?.id : court?.ownerId,
-                                      );
-
-                                      try {
-                                        if (court == null) {
-                                          await repo.addCourtLocation(newCourt);
-                                        } else {
-                                          await repo.updateCourtLocation(newCourt);
-                                        }
-                                        Navigator.of(context).pop();
-                                      } catch (e) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Lỗi khi lưu sân: $e'),
-                                            backgroundColor: Colors.red,
+                                          const SizedBox(width: 8),
+                                          const Text('Cầu lông'),
+                                        ],
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'pickleball',
+                                      child: Row(
+                                        children: [
+                                          Image.asset(
+                                            'assets/images/pickleball.png',
+                                            width: 20,
+                                            height: 20,
                                           ),
-                                        );
-                                        setDialogState(() => _isUploading = false);
-                                      }
+                                          const SizedBox(width: 8),
+                                          const Text('Pickleball'),
+                                        ],
+                                      ),
+                                    ),
+                                    const DropdownMenuItem(
+                                      value: 'football',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.sports_soccer,
+                                            color: Colors.orange,
+                                            size: 20,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text('Bóng đá'),
+                                        ],
+                                      ),
+                                    ),
+                                    const DropdownMenuItem(
+                                      value: 'tennis',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.sports_tennis,
+                                            color: Colors.green,
+                                            size: 20,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text('Tennis'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      _selectedSportType = value;
                                     }
                                   },
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              backgroundColor: Theme.of(context).primaryColor,
-                              foregroundColor: Colors.white,
-                              elevation: 2,
+                                ),
+                                const SizedBox(height: 32),
+
+                                ElevatedButton(
+                                  onPressed: _isUploading
+                                      ? null
+                                      : () async {
+                                          if (_formKey.currentState!
+                                              .validate()) {
+                                            if (_selectedLocation == null) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Vui lòng chọn vị trí trên bản đồ',
+                                                  ),
+                                                  backgroundColor:
+                                                      Colors.orange,
+                                                ),
+                                              );
+                                              return;
+                                            }
+
+                                            setDialogState(
+                                              () => _isUploading = true,
+                                            );
+                                            final repo = context
+                                                .read<SupabaseRepository>();
+                                            String? imageUrlToSave =
+                                                _currentImageUrl;
+
+                                            try {
+                                              if (_imageFile != null) {
+                                                imageUrlToSave = await repo
+                                                    .uploadImage(
+                                                      _imageFile!.path,
+                                                      'court_images',
+                                                    );
+                                              }
+                                            } catch (e) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'Lỗi upload ảnh: $e',
+                                                  ),
+                                                ),
+                                              );
+                                              setDialogState(
+                                                () => _isUploading = false,
+                                              );
+                                              return;
+                                            }
+
+                                            final authProvider = context
+                                                .read<AppAuthProvider>();
+                                            final user = authProvider.userModel;
+                                            final isOwner =
+                                                user?.role == 'court_owner';
+                                            final newCourt = CourtLocationModel(
+                                              id: court?.id ?? '',
+                                              name: _nameController.text,
+                                              address:
+                                                  _addressController.text
+                                                      .trim()
+                                                      .isNotEmpty
+                                                  ? _addressController.text
+                                                        .trim()
+                                                  : _selectedAddress,
+                                              latitude:
+                                                  _selectedLocation!.latitude,
+                                              longitude:
+                                                  _selectedLocation!.longitude,
+                                              pricePerHour:
+                                                  double.tryParse(
+                                                    _priceController.text,
+                                                  ) ??
+                                                  0.0,
+                                              totalCourts:
+                                                  int.tryParse(
+                                                    _totalCourtsController.text,
+                                                  ) ??
+                                                  0,
+                                              sportType: _selectedSportType,
+                                              imageUrl: imageUrlToSave,
+                                              ownerId: isOwner
+                                                  ? user?.id
+                                                  : court?.ownerId,
+                                            );
+
+                                            try {
+                                              if (court == null) {
+                                                await repo.addCourtLocation(
+                                                  newCourt,
+                                                );
+                                              } else {
+                                                await repo.updateCourtLocation(
+                                                  newCourt,
+                                                );
+                                              }
+                                              Navigator.of(context).pop();
+                                            } catch (e) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'Lỗi khi lưu sân: $e',
+                                                  ),
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                              );
+                                              setDialogState(
+                                                () => _isUploading = false,
+                                              );
+                                            }
+                                          }
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).primaryColor,
+                                    foregroundColor: Colors.white,
+                                    elevation: 2,
+                                  ),
+                                  child: _isUploading
+                                      ? const SizedBox(
+                                          height: 24,
+                                          width: 24,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Text(
+                                          'Hoàn Tất & Lưu',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                ),
+                              ],
                             ),
-                            child: _isUploading
-                                ? const SizedBox(
-                                    height: 24,
-                                    width: 24,
-                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                  )
-                                : const Text('Hoàn Tất & Lưu', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          ),
-                            ],
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
+            );
           },
         );
       },
@@ -538,10 +692,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
             begin: const Offset(0, 0.1),
             end: Offset.zero,
           ).animate(CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic)),
-          child: FadeTransition(
-            opacity: anim1,
-            child: child,
-          ),
+          child: FadeTransition(opacity: anim1, child: child),
         );
       },
     );
@@ -570,7 +721,11 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color.darken(0.2)),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: color.darken(0.2),
+        ),
       ),
     );
   }
@@ -582,11 +737,16 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
     final isOwner = user?.role == 'court_owner';
     final ownerId = isOwner ? user?.id : null;
 
-    final formatCurrency = NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0);
+    final formatCurrency = NumberFormat.simpleCurrency(
+      locale: 'vi_VN',
+      decimalDigits: 0,
+    );
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-      appBar: CustomGradientAppBar(title: Text(isOwner ? 'Sân Của Tôi' : 'Quản Lý Thuê Sân')),
+      appBar: CustomGradientAppBar(
+        title: Text(isOwner ? 'Sân Của Tôi' : 'Quản Lý Thuê Sân'),
+      ),
       body: StreamBuilder<List<CourtLocationModel>>(
         stream: firestoreRepo.getCourtLocationsStream(ownerId: ownerId),
         builder: (context, snapshot) {
@@ -606,7 +766,12 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset('assets/images/logo1.png', width: 120, height: 120, color: Colors.grey.shade400),
+                  Image.asset(
+                    'assets/images/logo1.png',
+                    width: 180,
+                    height: 180,
+                    color: Colors.grey.shade400,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Chưa có dịch vụ sân nào.\nBấm + để thêm cơ sở đầu tiên.',
@@ -620,7 +785,12 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
 
           final courts = snapshot.data!;
           return ListView.builder(
-            padding: const EdgeInsets.only(top: 16, bottom: 100, left: 16, right: 16),
+            padding: const EdgeInsets.only(
+              top: 16,
+              bottom: 100,
+              left: 16,
+              right: 16,
+            ),
             itemCount: courts.length,
             itemBuilder: (context, index) {
               final court = courts[index];
@@ -634,7 +804,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                       color: Colors.black.withOpacity(0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
-                    )
+                    ),
                   ],
                 ),
                 child: Column(
@@ -643,7 +813,9 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                     // Header Image
                     if (court.imageUrl != null)
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
                         child: Image.network(
                           court.imageUrl!,
                           height: 160,
@@ -651,7 +823,11 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                           errorBuilder: (_, __, ___) => Container(
                             height: 160,
                             color: Colors.grey.shade200,
-                            child: const Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                            child: const Icon(
+                              Icons.broken_image,
+                              color: Colors.grey,
+                              size: 40,
+                            ),
                           ),
                         ),
                       )
@@ -660,9 +836,15 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                         height: 160,
                         decoration: BoxDecoration(
                           color: Colors.grey.shade200,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(16),
+                          ),
                         ),
-                        child: const Icon(Icons.image_not_supported, color: Colors.grey, size: 40),
+                        child: const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
+                          size: 40,
+                        ),
                       ),
 
                     // Content
@@ -693,12 +875,19 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.location_on_outlined, size: 16, color: Colors.grey.shade600),
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 16,
+                                color: Colors.grey.shade600,
+                              ),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
                                   court.address,
-                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 13,
+                                  ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -709,36 +898,56 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.amber.shade50,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.monetization_on_outlined, size: 16, color: Colors.amber),
+                                    const Icon(
+                                      Icons.monetization_on_outlined,
+                                      size: 16,
+                                      color: Colors.amber,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       '${formatCurrency.format(court.pricePerHour)}/giờ',
-                                      style: TextStyle(color: Colors.amber.shade900, fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                        color: Colors.amber.shade900,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.grey.shade100,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.sports_tennis, size: 16, color: Colors.grey.shade700),
+                                    Icon(
+                                      Icons.sports_tennis,
+                                      size: 16,
+                                      color: Colors.grey.shade700,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       '${court.totalCourts} sân',
-                                      style: TextStyle(color: Colors.grey.shade800, fontWeight: FontWeight.w600),
+                                      style: TextStyle(
+                                        color: Colors.grey.shade800,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -754,33 +963,58 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               TextButton.icon(
-                                style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.blue,
+                                ),
                                 icon: const Icon(Icons.edit_outlined, size: 18),
                                 label: const Text('Chỉnh Sửa'),
-                                onPressed: () => _showCourtFormDialog(context, court: court),
+                                onPressed: () =>
+                                    _showCourtFormDialog(context, court: court),
                               ),
                               const SizedBox(width: 8),
                               TextButton.icon(
-                                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                icon: const Icon(Icons.delete_outline, size: 18),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 18,
+                                ),
                                 label: const Text('Xóa'),
                                 onPressed: () {
                                   DialogUtils.showConfirmDialog(
                                     context,
                                     title: 'Xóa Cơ Sở Này?',
-                                    content: 'Bạn có chắc chắn muốn xóa sân "${court.name}"? Tác vụ này không thể hoàn tác.',
+                                    content:
+                                        'Bạn có chắc chắn muốn xóa sân "${court.name}"? Tác vụ này không thể hoàn tác.',
                                     confirmText: 'Xóa Ngay',
                                     cancelText: 'Hủy Vỏ',
                                     isDestructive: true,
                                     onConfirm: () async {
                                       try {
-                                        await firestoreRepo.deleteCourtLocation(court.id);
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Đã xóa cơ sở thành công!'), backgroundColor: Colors.green),
+                                        await firestoreRepo.deleteCourtLocation(
+                                          court.id,
+                                        );
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Đã xóa cơ sở thành công!',
+                                            ),
+                                            backgroundColor: Colors.green,
+                                          ),
                                         );
                                       } catch (e) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('Lỗi khi xóa sân: $e'), backgroundColor: Colors.red),
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Lỗi khi xóa sân: $e',
+                                            ),
+                                            backgroundColor: Colors.red,
+                                          ),
                                         );
                                       }
                                     },
@@ -788,7 +1022,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                 },
                               ),
                             ],
-                          )
+                          ),
                         ],
                       ),
                     ),
@@ -805,7 +1039,10 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
         foregroundColor: Colors.white,
         elevation: 4,
         icon: const Icon(Icons.add_business_rounded),
-        label: const Text('Thêm Sân Mới', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const Text(
+          'Thêm Sân Mới',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }

@@ -136,11 +136,64 @@
   "map": "Map",
   "booking": "Book",
   "chat": "Chat",
+  "community": "Community",
+  "account": "Account",
+  "bookingNow": "Book Now",
+  "smartBooking": "Smart Badminton Court Booking",
+  "searchCourtsAroundYou": "Search courts near you",
+  "findCourts": "Find Courts",
+  "fastBooking": "Fast Booking",
+  "searchUsersOrGroups": "Search users or groups...",
+  "searchNameOrPhone": "Search by name or phone number...",
+  "searchLocation": "Search courts, locations...",
+  "searchNameEmailPhone": "Search name, email, phone...",
+  "bookingSuccess": "Booking successful!",
+  "bookingFailed": "Booking failed",
+
+  "loading": "Loading...",
+  "noDataAvailable": "No data available",
+  "active": "Active",
+  "activeTimeAgo": "Active {time}",
+  "@activeTimeAgo": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "appNameKloo": "KLOO",
 
   "notificationTitle": "Notifications",
   "noNotifications": "No notifications",
 
   "settingsTitle": "Settings",
   "darkMode": "Dark Mode",
-  "pushNotifications": "Push Notifications"
+  "pushNotifications": "Push Notifications",
+
+  "updateUser": "Update User",
+  "displayName": "Display Name",
+  "cannotBeEmpty": "Cannot be empty",
+  "phoneNumber": "Phone Number",
+  "role": "Role",
+  "roleUser": "User",
+  "roleCourtOwner": "Court Owner",
+  "roleAdmin": "Admin",
+  "updateSuccess": "Update successful!",
+  "errorWithDetails": "Error: {error}",
+  "@errorWithDetails": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "confirmDelete": "Confirm Deletion",
+  "deleteUserConfirmText": "Are you sure you want to delete user \"{name}\"?",
+  "@deleteUserConfirmText": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "userDeleted": "User deleted.",
+  "adminOnly": "Only Admin can access this page.",
+  "manageUsers": "Manage Users",
+  "admin": "Admin",
+  "user": "User",
+  "noUsersFound": "No users found."
 }

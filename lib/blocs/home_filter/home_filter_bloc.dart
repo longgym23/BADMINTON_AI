@@ -203,7 +203,34 @@ class HomeFilterBloc extends Bloc<HomeFilterEvent, HomeFilterState> {
     if (criteria.scheduleType == 'event') {
       try {
         final events = await _getEventsStreamUseCase().first;
-        final eventCourtIds = events.map((e) => e.courtId).toSet();
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+
+        bool inEventWindow(DateTime eventDate) {
+          final day = DateTime(eventDate.year, eventDate.month, eventDate.day);
+          switch (criteria.eventTimeFilter) {
+            case 'today':
+              return day == today;
+            case 'tomorrow':
+              return day == today.add(const Duration(days: 1));
+            case '3days':
+              return !day.isBefore(today) &&
+                  !day.isAfter(today.add(const Duration(days: 2)));
+            case '1week':
+              return !day.isBefore(today) &&
+                  !day.isAfter(today.add(const Duration(days: 6)));
+            case '2weeks':
+              return !day.isBefore(today) &&
+                  !day.isAfter(today.add(const Duration(days: 13)));
+            default:
+              return !day.isBefore(today);
+          }
+        }
+
+        final validEvents = events
+            .where((e) => !e.isEnded && inEventWindow(e.dateTime))
+            .toList();
+        final eventCourtIds = validEvents.map((e) => e.courtId).toSet();
         courts = courts.where((c) => eventCourtIds.contains(c.id)).toList();
       } catch (e) {
         print('Lỗi filter events: $e');

@@ -1,4 +1,5 @@
 import 'package:badminton_ai/data/models/user_model.dart';
+import 'package:badminton_ai/l10n/generated/app_localizations.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/friend_provider.dart';
 import 'package:badminton_ai/screens/user/friends/add_friend_screen.dart';
@@ -62,7 +63,11 @@ class _FriendsMainScreenState extends State<FriendsMainScreen> {
                     color: AppColors.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.person_add, color: AppColors.primary, size: 20),
+                  child: const Icon(
+                    Icons.person_add,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
                 ),
                 onPressed: () => Navigator.push(
                   context,
@@ -84,8 +89,16 @@ class _FriendsMainScreenState extends State<FriendsMainScreen> {
                   indicatorWeight: 4,
                   indicatorSize: TabBarIndicatorSize.label,
                   labelPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: -0.4),
-                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, letterSpacing: -0.4),
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: -0.4,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    letterSpacing: -0.4,
+                  ),
                   dividerColor: Colors.transparent,
                   tabs: [
                     Tab(text: "Cá nhân"),
@@ -103,7 +116,9 @@ class _FriendsMainScreenState extends State<FriendsMainScreen> {
                   child: FloatingActionButton(
                     onPressed: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const CreateGroupScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const CreateGroupScreen(),
+                      ),
                     ),
                     backgroundColor: AppColors.primary,
                     elevation: 4,
@@ -135,10 +150,7 @@ class _TabIndexListener extends StatefulWidget {
   final Widget Function(BuildContext context, int currentTab) builder;
   final void Function(int index) onTabChanged;
 
-  const _TabIndexListener({
-    required this.builder,
-    required this.onTabChanged,
-  });
+  const _TabIndexListener({required this.builder, required this.onTabChanged});
 
   @override
   State<_TabIndexListener> createState() => _TabIndexListenerState();
@@ -174,8 +186,7 @@ class _TabIndexListenerState extends State<_TabIndexListener> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      widget.builder(context, _currentTab);
+  Widget build(BuildContext context) => widget.builder(context, _currentTab);
 }
 
 // ─────────────────────────────────────────────
@@ -201,20 +212,24 @@ class _FriendsListTabState extends State<_FriendsListTab> {
 
               if (_searchQuery.isNotEmpty) {
                 final q = _searchQuery.toLowerCase();
-                friends = friends.where((f) => 
-                  (f.displayName ?? '').toLowerCase().contains(q) ||
-                  (f.phoneNumber ?? '').toLowerCase().contains(q)
-                ).toList();
+                friends = friends
+                    .where(
+                      (f) =>
+                          (f.displayName ?? '').toLowerCase().contains(q) ||
+                          (f.phoneNumber ?? '').toLowerCase().contains(q),
+                    )
+                    .toList();
               }
 
               if (friends.isEmpty) {
-                return const Center(
-                  child: Text("Không tìm thấy bạn bè nào."),
-                );
+                return const Center(child: Text("Không tìm thấy bạn bè nào."));
               }
 
               return ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
                 itemCount: friends.length,
                 itemBuilder: (context, index) {
                   final friend = friends[index];
@@ -240,16 +255,25 @@ class _FriendsListTabState extends State<_FriendsListTab> {
           color: Colors.grey[200]!.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: TextField(
-          controller: _searchController,
-          onChanged: (val) => setState(() => _searchQuery = val),
-          decoration: InputDecoration(
-            hintText: 'Tìm kiếm tên hoặc số điện thoại...',
-            hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
-            prefixIcon: Icon(Icons.search, color: Colors.grey[500], size: 20),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 10),
-          ),
+        child: Builder(
+          builder: (context) {
+            final l = AppLocalizations.of(context)!;
+            return TextField(
+              controller: _searchController,
+              onChanged: (val) => setState(() => _searchQuery = val),
+              decoration: InputDecoration(
+                hintText: l.searchNameOrPhone,
+                hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: Colors.grey[500],
+                  size: 20,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -263,7 +287,7 @@ class _FriendCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isOnline = friend.status == 'online';
-    
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
@@ -287,7 +311,10 @@ class _FriendCard extends StatelessWidget {
           child: Material(
             color: Colors.transparent,
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
               leading: Stack(
                 children: [
                   Container(
@@ -302,7 +329,10 @@ class _FriendCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(27),
                       child: friend.photoUrl != null
                           ? Image.network(friend.photoUrl!, fit: BoxFit.cover)
-                          : Icon(Icons.person, color: AppColors.primary.withValues(alpha: 0.7)),
+                          : Icon(
+                              Icons.person,
+                              color: AppColors.primary.withValues(alpha: 0.7),
+                            ),
                     ),
                   ),
                   if (isOnline)
@@ -337,11 +367,17 @@ class _FriendCard extends StatelessWidget {
               ),
               title: Text(
                 friend.displayName ?? 'Người dùng không tên',
-                style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textBlack),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textBlack,
+                ),
               ),
               subtitle: Text(
                 friend.phoneNumber ?? '',
-                style: TextStyle(color: AppColors.textGrey.withValues(alpha: 0.9), fontSize: 12),
+                style: TextStyle(
+                  color: AppColors.textGrey.withValues(alpha: 0.9),
+                  fontSize: 12,
+                ),
               ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -352,21 +388,44 @@ class _FriendCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.message_rounded, color: AppColors.primary, size: 20),
+                      icon: const Icon(
+                        Icons.message_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                       onPressed: () async {
-                        final myId = context.read<AppAuthProvider>().userModel?.id;
+                        final myId = context
+                            .read<AppAuthProvider>()
+                            .userModel
+                            ?.id;
                         if (myId == null) return;
 
                         try {
-                          final roomId = await context.read<ChatRoomRepository>().createDirectRoom(myId, friend.id);
+                          final roomId = await context
+                              .read<ChatRoomRepository>()
+                              .createDirectRoom(myId, friend.id);
                           if (!context.mounted) return;
-                          final room = ChatRoom(id: roomId, isGroup: false, createdAt: DateTime.now());
-                          room.displayTitle = friend.displayName ?? 'Người dùng';
+                          final room = ChatRoom(
+                            id: roomId,
+                            isGroup: false,
+                            createdAt: DateTime.now(),
+                          );
+                          room.displayTitle =
+                              friend.displayName ?? 'Người dùng';
                           room.displayAvatar = friend.photoUrl;
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => DirectChatScreen(room: room)));
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  DirectChatScreen(room: room),
+                            ),
+                          );
                         } catch (e) {
                           if (context.mounted) {
-                            SnackbarUtils.showError(context, 'Lỗi tạo phòng: $e');
+                            SnackbarUtils.showError(
+                              context,
+                              'Lỗi tạo phòng: $e',
+                            );
                           }
                         }
                       },
@@ -379,21 +438,34 @@ class _FriendCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.person_remove, color: AppColors.error, size: 20),
+                      icon: const Icon(
+                        Icons.person_remove,
+                        color: AppColors.error,
+                        size: 20,
+                      ),
                       onPressed: () {
                         DialogUtils.showConfirmDialog(
                           context,
                           title: 'Xóa bạn bè',
-                          content: 'Bạn có chắc chắn muốn xóa ${friend.displayName ?? "người này"} khỏi danh sách bạn bè?',
+                          content:
+                              'Bạn có chắc chắn muốn xóa ${friend.displayName ?? "người này"} khỏi danh sách bạn bè?',
                           confirmText: 'Xóa',
                           isDestructive: true,
                           onConfirm: () async {
-                            final myId = context.read<AppAuthProvider>().userModel?.id;
+                            final myId = context
+                                .read<AppAuthProvider>()
+                                .userModel
+                                ?.id;
                             if (myId == null) return;
                             try {
-                              await context.read<FriendProvider>().rejectOrRemoveFriend(myId, friend.id);
+                              await context
+                                  .read<FriendProvider>()
+                                  .rejectOrRemoveFriend(myId, friend.id);
                               if (context.mounted) {
-                                SnackbarUtils.showSuccess(context, "Đã xóa bạn bè");
+                                SnackbarUtils.showSuccess(
+                                  context,
+                                  "Đã xóa bạn bè",
+                                );
                               }
                             } catch (e) {
                               if (context.mounted) {
@@ -460,7 +532,10 @@ class _PendingRequestsTab extends StatelessWidget {
                     child: Material(
                       color: Colors.transparent,
                       child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         leading: Container(
                           width: 54,
                           height: 54,
@@ -472,24 +547,47 @@ class _PendingRequestsTab extends StatelessWidget {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(27),
                             child: sender.photoUrl != null
-                                ? Image.network(sender.photoUrl!, fit: BoxFit.cover)
-                                : Icon(Icons.person, color: AppColors.primary.withValues(alpha: 0.7)),
+                                ? Image.network(
+                                    sender.photoUrl!,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Icon(
+                                    Icons.person,
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.7,
+                                    ),
+                                  ),
                           ),
                         ),
                         title: Text(
                           sender.displayName ?? 'Người dùng không tên',
-                          style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textBlack),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textBlack,
+                          ),
                         ),
-                        subtitle: const Text("Muốn kết bạn với bạn", style: TextStyle(fontSize: 12, color: AppColors.textGrey)),
+                        subtitle: const Text(
+                          "Muốn kết bạn với bạn",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textGrey,
+                          ),
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             TextButton(
                               onPressed: () async {
                                 try {
-                                  await provider.acceptFriendRequest(request['user_id1'], request['user_id2']);
+                                  await provider.acceptFriendRequest(
+                                    request['user_id1'],
+                                    request['user_id2'],
+                                  );
                                   if (context.mounted) {
-                                    SnackbarUtils.showSuccess(context, "Chấp nhận thành công");
+                                    SnackbarUtils.showSuccess(
+                                      context,
+                                      "Chấp nhận thành công",
+                                    );
                                   }
                                 } catch (e) {
                                   if (context.mounted) {
@@ -500,15 +598,32 @@ class _PendingRequestsTab extends StatelessWidget {
                               style: TextButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
                               ),
-                              child: const Text("Chấp nhận", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              child: const Text(
+                                "Chấp nhận",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 8),
                             IconButton(
-                              icon: const Icon(Icons.close, color: AppColors.textGrey, size: 20),
-                              onPressed: () => provider.rejectOrRemoveFriend(request['user_id1'], request['user_id2']),
+                              icon: const Icon(
+                                Icons.close,
+                                color: AppColors.textGrey,
+                                size: 20,
+                              ),
+                              onPressed: () => provider.rejectOrRemoveFriend(
+                                request['user_id1'],
+                                request['user_id2'],
+                              ),
                             ),
                           ],
                         ),

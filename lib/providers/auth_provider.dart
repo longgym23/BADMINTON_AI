@@ -149,13 +149,18 @@ class AppAuthProvider extends ChangeNotifier {
   Future<bool> updateUserProfile({
     String? displayName,
     String? phoneNumber,
+    DateTime? dob,
+    String? gender,
   }) async {
     if (_currentUser == null) return false;
     final trimmedName = displayName?.trim();
     final trimmedPhone = phoneNumber?.trim();
+    final trimmedGender = gender?.trim();
 
     if ((trimmedName == null || trimmedName.isEmpty) &&
-        (trimmedPhone == null)) {
+        (trimmedPhone == null) &&
+        (dob == null) &&
+        (trimmedGender == null || trimmedGender.isEmpty)) {
       return false;
     }
 
@@ -167,6 +172,8 @@ class AppAuthProvider extends ChangeNotifier {
         _currentUser!.id,
         displayName: trimmedName,
         phoneNumber: trimmedPhone,
+        dob: dob,
+        gender: trimmedGender,
       );
       if (updatedUser != null) {
         _userModel = updatedUser;

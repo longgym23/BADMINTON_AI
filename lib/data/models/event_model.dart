@@ -1,4 +1,5 @@
 
+import 'dart:math' as math;
 
 class EventModel {
   final String id;
@@ -69,6 +70,45 @@ class EventModel {
       'current_participants': currentParticipants,
       'court_id': courtId,
     };
+  }
+
+  int get availableParticipants =>
+      math.max(0, maxParticipants - currentParticipants);
+
+  DateTime? get startDateTime => _combineDateAndTime(startTime);
+
+  DateTime? get endDateTime {
+    final start = startDateTime;
+    final end = _combineDateAndTime(endTime);
+    if (end == null) return null;
+
+    // Support overnight events (e.g. 22:00 -> 01:00).
+    if (start != null && end.isBefore(start)) {
+      return end.add(const Duration(days: 1));
+    }
+    return end;
+  }
+
+  bool get isEnded {
+    final end = endDateTime;
+    if (end == null) return dateTime.isBefore(DateTime.now());
+    return !end.isAfter(DateTime.now());
+  }
+
+  bool get isBookable => !isEnded && availableParticipants > 0;
+
+  DateTime? _combineDateAndTime(String raw) {
+    final cleaned = raw.trim();
+    if (cleaned.isEmpty) return null;
+
+    final match = RegExp(r'(\d{1,2})[h:](\d{1,2})').firstMatch(cleaned);
+    if (match == null) return null;
+
+    final hour = int.tryParse(match.group(1) ?? '');
+    final minute = int.tryParse(match.group(2) ?? '');
+    if (hour == null || minute == null) return null;
+
+    return DateTime(dateTime.year, dateTime.month, dateTime.day, hour, minute);
   }
 }
 

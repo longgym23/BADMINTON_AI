@@ -6,7 +6,7 @@ import 'package:badminton_ai/utils/app_colors.dart';
 class LoadingSpinner extends StatefulWidget {
   final String message;
   const LoadingSpinner({Key? key, this.message = 'Đang tải...'})
-      : super(key: key);
+    : super(key: key);
 
   @override
   State<LoadingSpinner> createState() => _LoadingSpinnerState();
@@ -42,7 +42,7 @@ class _LoadingSpinnerState extends State<LoadingSpinner>
             // ── Logo ──
             Image.asset(
               'assets/images/logo1.png',
-              width: 100,
+              width: 150,
               fit: BoxFit.contain,
             ),
             const SizedBox(height: 40),
@@ -117,11 +117,7 @@ class _ArcSpinnerPainter extends CustomPainter {
       ..shader = SweepGradient(
         startAngle: 0,
         endAngle: math.pi * 2,
-        colors: [
-          color.withOpacity(0.0),
-          color.withOpacity(0.6),
-          color,
-        ],
+        colors: [color.withOpacity(0.0), color.withOpacity(0.6), color],
         stops: const [0.0, 0.5, 1.0],
         transform: GradientRotation(math.pi * 2 * progress),
       ).createShader(Rect.fromCircle(center: center, radius: radius));
