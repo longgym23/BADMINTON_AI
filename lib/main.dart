@@ -55,7 +55,6 @@ void main() async {
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-    await PushNotificationService().initialize();
   } catch (e) {
     print('Firebase initialization error: $e');
   }
@@ -66,6 +65,12 @@ void main() async {
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9scXdmbmx5Y2J0cmNweXdudnZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTYxMjIsImV4cCI6MjA4NjczMjEyMn0.owENmaiBwqlg03TRAXN1qhrI8cqo_mfy3ukfhIddaGY',
   );
+
+  try {
+    await PushNotificationService().initialize();
+  } catch (e) {
+    print('PushNotificationService initialization error: $e');
+  }
 
   runApp(MyApp());
 }

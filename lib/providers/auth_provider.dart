@@ -67,6 +67,8 @@ class AppAuthProvider extends ChangeNotifier {
         PresenceService().start(user.id);
         // Start foreground push notification listener
         PushNotificationService().listenToRealtimeNotifications(user.id);
+        // Ensure FCM token is saved to DB
+        PushNotificationService().initialize();
       }
       notifyListeners();
     });
