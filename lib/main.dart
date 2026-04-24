@@ -215,6 +215,17 @@ class AppWithProviders extends StatelessWidget {
           ],
           supportedLocales: AppLocalizations.supportedLocales,
           debugShowCheckedModeBanner: false,
+          // Khoá font scale [0.8–1.2] để bảo vệ layout khi user tăng font hệ thống
+          builder: (context, child) {
+            final mq = MediaQuery.of(context);
+            final clampedScale = mq.textScaleFactor.clamp(0.8, 1.2);
+            return MediaQuery(
+              data: mq.copyWith(
+                textScaler: TextScaler.linear(clampedScale),
+              ),
+              child: child!,
+            );
+          },
           theme: ThemeData(
             useMaterial3: true,
             scaffoldBackgroundColor: AppColors.background,

@@ -177,29 +177,23 @@ class _MapTabContentState extends State<_MapTabContent> {
 
   BitmapDescriptor _getMarkerIcon(CourtLocationModel court) {
     if (!_iconsLoaded) return BitmapDescriptor.defaultMarker;
-    String? sportType = court.sportType?.toLowerCase();
-    if (sportType == null) {
-      final nameLower = court.name.toLowerCase();
-      if (nameLower.contains('pickle'))
-        sportType = 'pickleball';
-      else if (nameLower.contains('bóng đá') || nameLower.contains('football'))
-        sportType = 'football';
-      else if (nameLower.contains('tennis'))
-        sportType = 'tennis';
-      else
-        sportType = 'badminton';
+    // Dùng _inferSportType để đảm bảo nhất quán với list và filter
+    final sType = _inferSportType(court);
+    switch (sType) {
+      case SportType.pickleball:
+        return _customIcons['pickleball'] ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+      case SportType.football:
+        return _customIcons['football'] ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
+      case SportType.tennis:
+        return _customIcons['tennis'] ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet);
+      case SportType.badminton:
+      default:
+        return _customIcons['badminton'] ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
     }
-    if (sportType == 'pickleball')
-      return _customIcons['pickleball'] ??
-          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
-    if (sportType == 'football')
-      return _customIcons['football'] ??
-          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
-    if (sportType == 'tennis')
-      return _customIcons['tennis'] ??
-          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet);
-    return _customIcons['badminton'] ??
-        BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
   }
 
   @override
@@ -222,12 +216,16 @@ class _MapTabContentState extends State<_MapTabContent> {
 
   Set<Marker> _buildMarkers(MapViewModel vm) {
     final Set<Marker> markers = {};
+    // Lấy icon theo sport đang được lọc — đảm bảo TẤT CẢ marker hiển thị
+    // cùng icon với nút filter đang chọn, không phụ thuộc tên sân
+    final BitmapDescriptor activeIcon = _getIconForSportType(vm.selectedSport);
+
     for (final court in vm.filteredCourts.take(50)) {
       markers.add(
         Marker(
           markerId: MarkerId(court.id),
           position: LatLng(court.latitude, court.longitude),
-          icon: _getMarkerIcon(court),
+          icon: activeIcon,
           infoWindow: InfoWindow(title: court.name, snippet: court.address),
           onTap: () {
             vm.selectCourt(court);
@@ -242,6 +240,26 @@ class _MapTabContentState extends State<_MapTabContent> {
       );
     }
     return markers;
+  }
+
+  /// Trả về icon marker theo loại sport đang lọc
+  BitmapDescriptor _getIconForSportType(SportType type) {
+    if (!_iconsLoaded) return BitmapDescriptor.defaultMarker;
+    switch (type) {
+      case SportType.pickleball:
+        return _customIcons['pickleball'] ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+      case SportType.football:
+        return _customIcons['football'] ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
+      case SportType.tennis:
+        return _customIcons['tennis'] ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet);
+      case SportType.badminton:
+      default:
+        return _customIcons['badminton'] ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+    }
   }
 
   @override
@@ -727,31 +745,37 @@ class _MapTabContentState extends State<_MapTabContent> {
   }
 
   Widget _getAvatarForSport(SportType type, bool isSelected, Color color) {
+    // Màu icon khi chưa chọn — khớp với màu của từng môn trong _getSportColor()
+    const Color badmintonColor = Color(0xFF22C55E); // xanh lá
+    const Color pickleballColor = Color(0xFF3B82F6); // xanh dương
+    const Color footballColor = Color(0xFFF97316); // cam
+    const Color tennisColor = Color(0xFF8B5CF6); // tím
+
     if (type == SportType.badminton) {
       return Image.asset(
         'assets/images/caulong.png',
         width: 16,
         height: 16,
-        color: isSelected ? null : const ui.Color.fromARGB(255, 55, 240, 104),
+        color: isSelected ? Colors.white : badmintonColor,
       );
     } else if (type == SportType.pickleball) {
       return Image.asset(
         'assets/images/pickleball.png',
         width: 16,
         height: 16,
-        color: isSelected ? null : const ui.Color.fromARGB(255, 212, 234, 15),
+        color: isSelected ? Colors.white : pickleballColor,
       );
     } else if (type == SportType.football) {
       return Icon(
         Icons.sports_soccer,
         size: 16,
-        color: isSelected ? color : const ui.Color.fromARGB(255, 24, 164, 229),
+        color: isSelected ? Colors.white : footballColor,
       );
     } else {
       return Icon(
         Icons.sports_tennis,
         size: 16,
-        color: isSelected ? color : const ui.Color.fromARGB(255, 225, 50, 50),
+        color: isSelected ? Colors.white : tennisColor,
       );
     }
   }

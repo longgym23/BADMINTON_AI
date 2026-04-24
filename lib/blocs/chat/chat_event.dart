@@ -19,9 +19,11 @@ class ChatMessageSent extends ChatEvent {
   final String text;
   final String? imagePath;
   final String? audioPath;
+  final double? userLat;
+  final double? userLng;
 
-  const ChatMessageSent({required this.text, this.imagePath, this.audioPath});
+  const ChatMessageSent({required this.text, this.imagePath, this.audioPath, this.userLat, this.userLng});
 
   @override
-  List<Object> get props => [text, imagePath ?? '', audioPath ?? ''];
+  List<Object> get props => [text, imagePath ?? '', audioPath ?? '', userLat ?? 0, userLng ?? 0];
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:badminton_ai/blocs/chat/chat_bloc.dart';
 import 'package:badminton_ai/data/models/chat_message_model.dart';
+import 'package:badminton_ai/data/repositories/chat_repository.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -18,6 +19,8 @@ import 'package:badminton_ai/screens/user/booking/booking_history_screen.dart';
 import 'package:badminton_ai/screens/user/profile/statistics_screen.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ChatbotTab extends StatefulWidget {
   /// Callback để quay lại trang chủ (tab 0) thay vì Navigator.pop
@@ -49,6 +52,9 @@ class _ChatbotTabState extends State<ChatbotTab> {
     super.initState();
     _initializeSpeech();
     _connectChat();
+    // Warm-up backend ngay khi mở chatbot và bắt đầu keep-alive 10 phút/lần
+    // Đảm bảo Render free-tier không ngủ đông trong suốt session chat
+    ChatRepository.warmUp();
   }
 
   void _connectChat() {
@@ -124,10 +130,12 @@ class _ChatbotTabState extends State<ChatbotTab> {
     _audioRecorder.dispose(); // Cleanup recorder
     _textController.dispose();
     _scrollController.dispose();
+    // Dừng keep-alive khi user rời khỏi màn hình chatbot
+    ChatRepository.stopKeepAlive();
     super.dispose();
   }
 
-  void _sendMessage([String? text, String? imagePath]) {
+  void _sendMessage([String? text, String? imagePath]) async {
     if (!_mounted) return;
     final auth = context.read<AppAuthProvider>();
     if (auth.authState != AuthState.authenticated) {
@@ -150,8 +158,29 @@ class _ChatbotTabState extends State<ChatbotTab> {
     _textController.clear();
     FocusScope.of(context).unfocus();
 
+    double? lat;
+    double? lng;
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (serviceEnabled) {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+           Position? pos = await Geolocator.getLastKnownPosition();
+           pos ??= await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.low, timeLimit: const Duration(seconds: 3));
+           lat = pos.latitude;
+           lng = pos.longitude;
+        }
+      }
+    } catch (_) {}
+
+    if (!_mounted) return;
     context.read<ChatBloc>().add(
-      ChatMessageSent(text: messageText, imagePath: finalImage),
+      ChatMessageSent(
+        text: messageText, 
+        imagePath: finalImage,
+        userLat: lat,
+        userLng: lng,
+      ),
     );
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
   }
@@ -789,6 +818,12 @@ class _MessageBubble extends StatelessWidget {
         .replaceAll(RegExp(r'\[ACTION_CANCEL_BOOKING\]'), '')
         .trim();
 
+    final nearbyCourtsData = message.metadata?['nearby_courts'];
+    List<CourtLocationModel>? backendCourts;
+    if (nearbyCourtsData != null && nearbyCourtsData is List && nearbyCourtsData.isNotEmpty) {
+      backendCourts = nearbyCourtsData.map((e) => CourtLocationModel.fromSupabase(Map<String, dynamic>.from(e as Map))).toList();
+    }
+
     // Check for "Success Card" trigger
     bool isSuccessCard =
         !isUser && message.type == 'booking_success';
@@ -867,9 +902,7 @@ class _MessageBubble extends StatelessWidget {
                         Text(
                           (!isUser && searchSportType != null)
                               ? 'Dưới đây là các sân bạn có thể tham khảo:'
-                              : (!isUser && cancelBooking)
-                                  ? 'Để hủy sân, bạn vui lòng nhấn vào nút "Hủy sân" bên dưới để chuyển đến màn hình Lịch đặt của tôi nhé.'
-                                  : cleanText,
+                              : cleanText,
                           style: TextStyle(
                             color: isUser ? AppColors.surface : AppColors.textBlack,
                             fontSize: 15,
@@ -887,7 +920,7 @@ class _MessageBubble extends StatelessWidget {
           if (searchSportType != null)
             Padding(
               padding: const EdgeInsets.only(top: 8, left: 40),
-              child: _CourtListCarousel(sportType: searchSportType),
+              child: _CourtListCarousel(sportType: searchSportType, backendCourts: backendCourts),
             ),
           
           // Thêm nút hành động cho các action
@@ -1049,7 +1082,8 @@ class _MessageBubble extends StatelessWidget {
 
 class _CourtListCarousel extends StatefulWidget {
   final String sportType;
-  const _CourtListCarousel({required this.sportType});
+  final List<CourtLocationModel>? backendCourts;
+  const _CourtListCarousel({required this.sportType, this.backendCourts});
 
   @override
   State<_CourtListCarousel> createState() => _CourtListCarouselState();
@@ -1062,7 +1096,12 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
   @override
   void initState() {
     super.initState();
-    _fetchCourts();
+    if (widget.backendCourts != null && widget.backendCourts!.isNotEmpty) {
+      courts = widget.backendCourts!;
+      isLoading = false;
+    } else {
+      _fetchCourts();
+    }
   }
 
   Future<void> _fetchCourts() async {
@@ -1149,7 +1188,12 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
                     width: double.infinity,
                     color: AppColors.primaryBg,
                     child: court.imageUrl != null && court.imageUrl!.isNotEmpty
-                         ? Image.network(court.imageUrl!, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.sports_tennis, color: AppColors.primary))
+                         ? CachedNetworkImage(
+                             imageUrl: court.imageUrl!,
+                             fit: BoxFit.cover,
+                             errorWidget: (_,__,___) => const Icon(Icons.sports_tennis, color: AppColors.primary),
+                             placeholder: (_,__) => const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                           )
                          : const Icon(Icons.sports_score, color: AppColors.primary),
                   ),
                 ),
@@ -1174,6 +1218,15 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
                             "${court.pricePerHour.toInt()}đ/h",
                             style: const TextStyle(color: AppColors.brandOrangeDark, fontSize: 12, fontWeight: FontWeight.bold),
                           ),
+                          if (court.distanceKm != null) ...[
+                             const Spacer(),
+                             const Icon(Icons.location_on, size: 12, color: AppColors.primary),
+                             const SizedBox(width: 2),
+                             Text(
+                               "${court.distanceKm!.toStringAsFixed(1)}km",
+                               style: const TextStyle(color: AppColors.textGrey, fontSize: 11),
+                             ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 8),

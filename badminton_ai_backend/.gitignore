@@ -1,3 +1,4 @@
 node_modules
 .env
 MIGRATION_GUIDE.md
+firebase-service-account.json

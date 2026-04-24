@@ -24,6 +24,7 @@ import 'package:badminton_ai/screens/user/home/components/home_filter_bar.dart';
 import 'package:badminton_ai/screens/user/home/components/home_filter_modal.dart';
 import 'package:badminton_ai/screens/user/profile/edit_profile_screen.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -326,20 +327,28 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _buildBody() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 120),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 20),
-          _buildSectionHeader(title: 'Ưu đãi đặc biệt', onSeeAll: () {}),
-          _buildSpecialOfferCard(),
-          const SizedBox(height: 20),
-          _buildCourtsListHeader(),
-          const SizedBox(height: 10),
-          _buildCourtsList(),
-        ],
-      ),
+    return BlocBuilder<HomeFilterBloc, HomeFilterState>(
+      builder: (context, state) {
+        return CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  _buildSectionHeader(title: 'Ưu đãi đặc biệt', onSeeAll: () {}),
+                  _buildSpecialOfferCard(),
+                  const SizedBox(height: 20),
+                  _buildCourtsListHeader(),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+            _buildSliverCourtsList(state),
+            const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
+          ],
+        );
+      },
     );
   }
 
@@ -440,53 +449,53 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _buildCourtsList() {
-    return BlocBuilder<HomeFilterBloc, HomeFilterState>(
-      builder: (context, state) {
-        if (state.status == HomeFilterStatus.loading ||
-            state.status == HomeFilterStatus.initial) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (state.status == HomeFilterStatus.failure) {
-          return Center(child: Text(state.errorMessage ?? "Có lỗi xảy ra"));
-        }
+  Widget _buildSliverCourtsList(HomeFilterState state) {
+    if (state.status == HomeFilterStatus.loading ||
+        state.status == HomeFilterStatus.initial) {
+      return const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())));
+    }
+    if (state.status == HomeFilterStatus.failure) {
+      return SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(20), child: Text(state.errorMessage ?? "Có lỗi xảy ra"))));
+    }
 
-        final courts = state.filteredCourts;
-        if (courts.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(20.0),
-              child: Text(
-                "Không có sân nào phù hợp với bộ lọc",
-                style: TextStyle(color: Colors.grey),
-              ),
+    final courts = state.filteredCourts;
+    if (courts.isEmpty) {
+      return const SliverToBoxAdapter(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Text(
+              "Không có sân nào phù hợp với bộ lọc",
+              style: TextStyle(color: Colors.grey),
             ),
-          );
-        }
+          ),
+        ),
+      );
+    }
 
-        final sorted = List<CourtLocationModel>.from(courts);
-        if (_currentLocation != null) {
-          sorted.sort(
-            (a, b) => _calculateDistance(a).compareTo(_calculateDistance(b)),
-          );
-        }
+    final sorted = List<CourtLocationModel>.from(courts);
+    if (_currentLocation != null) {
+      sorted.sort(
+        (a, b) => _calculateDistance(a).compareTo(_calculateDistance(b)),
+      );
+    }
 
-        return Column(
-          children: sorted
-              .map(
-                (court) => _CourtListItem(
-                  court: court,
-                  distance: _currentLocation != null
-                      ? _calculateDistance(court)
-                      : 0.0,
-                  onTap: () => _showBookingMethodModal(court),
-                  onDirections: () =>
-                      _launchMaps(court.latitude, court.longitude),
-                ),
-              )
-              .toList(),
-        );
-      },
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final court = sorted[index];
+          return _CourtListItem(
+            court: court,
+            distance: _currentLocation != null
+                ? _calculateDistance(court)
+                : 0.0,
+            onTap: () => _showBookingMethodModal(court),
+            onDirections: () =>
+                _launchMaps(court.latitude, court.longitude),
+          );
+        },
+        childCount: sorted.length,
+      ),
     );
   }
 
@@ -665,24 +674,35 @@ class _CourtListItem extends StatelessWidget {
     return Stack(
       children: [
         // Court image
-        Container(
-          height: 180,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            color: Colors.grey[200],
-            image: court.imageUrl != null
-                ? DecorationImage(
-                    image: NetworkImage(court.imageUrl!),
-                    fit: BoxFit.cover,
-                  )
-                : null,
-          ),
-          child: court.imageUrl == null
-              ? const Center(
-                  child: Icon(Icons.image, size: 50, color: Colors.grey),
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          child: court.imageUrl != null
+              ? CachedNetworkImage(
+                  imageUrl: court.imageUrl!,
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    height: 180,
+                    color: Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    height: 180,
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: Icon(Icons.image, size: 50, color: Colors.grey),
+                    ),
+                  ),
                 )
-              : null,
+              : Container(
+                  height: 180,
+                  width: double.infinity,
+                  color: Colors.grey[200],
+                  child: const Center(
+                    child: Icon(Icons.image, size: 50, color: Colors.grey),
+                  ),
+                ),
         ),
         // 'Trống sân' badge
         Positioned(

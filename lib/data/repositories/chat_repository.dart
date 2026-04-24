@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:badminton_ai/data/models/chat_message_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
@@ -7,10 +8,44 @@ import 'package:http/http.dart' as http;
 class ChatRepository {
   final SupabaseClient _client;
 
+  // ─── Backend URL tập trung, dễ thay đổi ──────────────────────────────────
+  static const String _backendBase = 'https://badminton-ai-fgsz.onrender.com';
+  static const String _askUrl = '$_backendBase/ask';
+
+  // ─── Keep-Alive: Ping mỗi 10 phút để ngăn Render free tier ngủ đông ──────
+  static Timer? _keepAliveTimer;
+
+  /// Gọi 1 lần khi màn hình chat được mở lần đầu.
+  /// Vừa warm-up server, vừa bắt đầu chu kỳ keep-alive.
+  static Future<void> warmUp() async {
+    try {
+      await http
+          .get(Uri.parse(_backendBase))
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {}
+    _startKeepAlive();
+  }
+
+  static void _startKeepAlive() {
+    _keepAliveTimer?.cancel();
+    _keepAliveTimer = Timer.periodic(const Duration(minutes: 10), (_) async {
+      try {
+        await http
+            .get(Uri.parse(_backendBase))
+            .timeout(const Duration(seconds: 10));
+      } catch (_) {}
+    });
+  }
+
+  /// Dừng keep-alive khi user thoát khỏi màn hình chat.
+  static void stopKeepAlive() {
+    _keepAliveTimer?.cancel();
+    _keepAliveTimer = null;
+  }
+
   ChatRepository({
     SupabaseClient? client,
     required SupabaseRepository firestoreRepository,
-    // giữ tham số cũ nếu cần để tránh lỗi compile tạm thời, nhưng ở đây ta bỏ luôn vì sẽ sửa main.dart
     dynamic firestore,
   }) : _client = client ?? Supabase.instance.client;
 
@@ -61,6 +96,8 @@ class ChatRepository {
     String text, {
     String? imagePath,
     String? audioPath,
+    double? userLat,
+    double? userLng,
   }) async {
     // 1. Lưu tin nhắn User
     final userMessage = ChatMessageModel(
@@ -77,13 +114,13 @@ class ChatRepository {
     String answer = "Xin lỗi, tôi chưa hiểu ý bạn.";
     Map<String, dynamic>? aiMetadata;
     String aiType = 'text';
-    const String backendUrl = 'https://badminton-ai-fgsz.onrender.com/ask';
 
     try {
       http.Response response;
 
       if (imagePath != null) {
-        var request = http.MultipartRequest('POST', Uri.parse(backendUrl));
+        // Ảnh: timeout 60s (cần xử lý vision 2 lần)
+        var request = http.MultipartRequest('POST', Uri.parse(_askUrl));
         request.files.add(
           await http.MultipartFile.fromPath('image', imagePath),
         );
@@ -91,30 +128,36 @@ class ChatRepository {
             ? text
             : 'Phân tích ảnh này và cho biết đây là sân gì, tình trạng sân, hoặc đồ dùng thể thao gì, cách sử dụng';
         request.fields['user_id'] = userId;
-        var streamedResponse = await request.send();
+        var streamedResponse = await request.send()
+            .timeout(const Duration(seconds: 60));
         response = await http.Response.fromStream(streamedResponse);
       } else if (audioPath != null) {
         var request = http.MultipartRequest(
           'POST',
-          Uri.parse('$backendUrl/audio'),
+          Uri.parse('$_backendBase/ask/audio'),
         );
         request.files.add(
           await http.MultipartFile.fromPath('audio', audioPath),
         );
-        if (text.isNotEmpty) {
-          request.fields['prompt'] = text;
-        }
+        if (text.isNotEmpty) request.fields['prompt'] = text;
         request.fields['user_id'] = userId;
-        var streamedResponse = await request.send();
+        var streamedResponse = await request.send()
+            .timeout(const Duration(seconds: 30));
         response = await http.Response.fromStream(streamedResponse);
       } else {
+        // Text: timeout 45s (đủ để Gemini xử lý, tránh chờ quá lâu)
+        final body = <String, dynamic>{'prompt': text, 'user_id': userId};
+        if (userLat != null && userLng != null) {
+          body['user_lat'] = userLat;
+          body['user_lng'] = userLng;
+        }
         response = await http
             .post(
-              Uri.parse(backendUrl),
+              Uri.parse(_askUrl),
               headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({'prompt': text, 'user_id': userId}),
+              body: jsonEncode(body),
             )
-            .timeout(const Duration(seconds: 90));
+            .timeout(const Duration(seconds: 45));
       }
 
       if (response.statusCode == 200) {

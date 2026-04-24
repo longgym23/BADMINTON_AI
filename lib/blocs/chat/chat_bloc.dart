@@ -73,6 +73,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           event.text,
           imagePath: event.imagePath,
           audioPath: event.audioPath,
+          userLat: event.userLat,
+          userLng: event.userLng,
         );
 
         // 3. Lấy lại toàn bộ lịch sử từ Server để đảm bảo nhất quán & có ID thật

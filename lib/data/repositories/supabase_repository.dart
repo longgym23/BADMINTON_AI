@@ -785,7 +785,8 @@ class SupabaseRepository {
           .from('reviews')
           .select('*, profiles(id, display_name, avatar_url)')
           .eq('court_id', courtId)
-          .order('created_at', ascending: false);
+          .order('created_at', ascending: false)
+          .limit(100);
 
       return data.map<ReviewModel>((row) {
         final review = ReviewModel.fromSupabase(row);

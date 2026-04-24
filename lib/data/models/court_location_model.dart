@@ -12,6 +12,8 @@ class CourtLocationModel {
   final double rating;
   final int totalReviews;
   final String? ownerId;
+  final String? website; // Link đặt sân online (từ dữ liệu cào Google Maps)
+  final double? distanceKm; // Khoảng cách từ vị trí hiện tại (km)
 
   CourtLocationModel({
     required this.id,
@@ -26,8 +28,9 @@ class CourtLocationModel {
     this.rating = 0.0,
     this.totalReviews = 0,
     this.ownerId,
+    this.website,
+    this.distanceKm,
   });
-
 
   // Chuyển từ Supabase (Map snake_case) sang Model
   factory CourtLocationModel.fromSupabase(Map<String, dynamic> data) {
@@ -44,13 +47,14 @@ class CourtLocationModel {
       rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
       totalReviews: (data['total_reviews'] as num?)?.toInt() ?? 0,
       ownerId: data['owner_id'] as String?,
+      website: data['website'] as String?,
+      distanceKm: (data['distance_km'] as num?)?.toDouble(),
     );
   }
 
   // Chuyển sang Map để insert vào Supabase
   Map<String, dynamic> toSupabase() {
     return {
-      // 'id': id, // Thường để Supabase tự sinh ID gen_random_uuid()
       'name': name,
       'address': address,
       'latitude': latitude,
@@ -62,6 +66,7 @@ class CourtLocationModel {
       'rating': rating,
       'total_reviews': totalReviews,
       if (ownerId != null) 'owner_id': ownerId,
+      if (website != null) 'website': website,
     };
   }
 
@@ -79,6 +84,7 @@ class CourtLocationModel {
       'rating': rating,
       'totalReviews': totalReviews,
       if (ownerId != null) 'ownerId': ownerId,
+      if (website != null) 'website': website,
     };
   }
 

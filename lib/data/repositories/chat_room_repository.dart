@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:badminton_ai/data/models/user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -330,6 +332,35 @@ class ChatRoomRepository {
                 : 'Bạn nhận được một hình ảnh mới',
             'is_read': false,
           });
+
+          // Gọi API bắn Push Notification (FCM)
+          try {
+            final senderProfileData = await _client.from('profiles').select('display_name').eq('id', senderId).single();
+            final senderName = senderProfileData['display_name'] ?? 'Ai đó';
+            
+            final roomData = await _client.from('chat_rooms').select('is_group').eq('id', roomId).single();
+            final bool isGroup = roomData['is_group'] == true;
+
+            final notificationTitle = isGroup ? 'Tin nhắn nhóm' : senderName;
+            final notificationBody = content.isNotEmpty ? (isGroup ? '$senderName: $content' : content) : 'Đã gửi một hình ảnh';
+
+            await http.post(
+              Uri.parse('https://badminton-ai-fgsz.onrender.com/api/send-notification'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'receiver_id': memberId,
+                'title': notificationTitle,
+                'body': notificationBody,
+                'data': {
+                  'type': 'chat',
+                  'room_id': roomId,
+                  'sender_id': senderId
+                }
+              }),
+            ).timeout(const Duration(seconds: 10));
+          } catch (e) {
+            print('Lỗi gọi API gửi Push Notification: $e');
+          }
         }
       }
     } catch (e) {

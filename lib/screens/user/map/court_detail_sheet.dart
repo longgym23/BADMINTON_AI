@@ -75,29 +75,24 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
   String _sportLabel(String? type) {
-    switch (type?.toLowerCase()) {
-      case 'pickleball':
-        return 'Pickleball';
-      case 'football':
-        return 'Bóng đá';
-      case 'tennis':
-        return 'Tennis';
-      default:
-        return 'Cầu lông';
-    }
+    final t = type?.toLowerCase() ?? '';
+    if (t.contains('pickleball')) return 'Pickleball';
+    if (t.contains('bóng đá') || t.contains('football') || t.contains('soccer')) return 'Bóng đá';
+    if (t.contains('tennis')) return 'Tennis';
+    if (t.contains('bóng rổ') || t.contains('basketball')) return 'Bóng rổ';
+    if (t.contains('bóng chuyền') || t.contains('volleyball')) return 'Bóng chuyền';
+    if (t.contains('cầu lông') || t.contains('badminton')) return 'Cầu lông';
+    return 'Thể thao';
   }
 
   Color _sportColor(String? type) {
-    switch (type?.toLowerCase()) {
-      case 'pickleball':
-        return Colors.blue;
-      case 'football':
-        return Colors.orange;
-      case 'tennis':
-        return Colors.purple;
-      default:
-        return Colors.green;
-    }
+    final t = type?.toLowerCase() ?? '';
+    if (t.contains('pickleball')) return Colors.blue;
+    if (t.contains('bóng đá') || t.contains('football') || t.contains('soccer')) return Colors.orange;
+    if (t.contains('tennis')) return Colors.purple;
+    if (t.contains('bóng rổ') || t.contains('basketball')) return Colors.deepOrange;
+    if (t.contains('bóng chuyền') || t.contains('volleyball')) return Colors.teal;
+    return Colors.green; // cầu lông mặc định
   }
 
   Future<void> _launchDirections() async {
@@ -535,19 +530,37 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
             _InfoCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
+                children: [
+                  const Text(
                     'Link đặt sân online',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: AppColors.textBlack,
                     ),
                   ),
-                  SizedBox(height: 6),
-                  Text(
-                    'Đặt sân qua ứng dụng · Hệ thống tự động xác nhận',
-                    style: TextStyle(color: AppColors.textGrey, fontSize: 13),
-                  ),
+                  const SizedBox(height: 6),
+                  if (court.website != null && court.website!.isNotEmpty)
+                    GestureDetector(
+                      onTap: () async {
+                        final uri = Uri.tryParse(court.website!);
+                        if (uri != null && await canLaunchUrl(uri)) {
+                          launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      child: Text(
+                        court.website!,
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          fontSize: 13,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    )
+                  else
+                    const Text(
+                      'Đặt sân qua ứng dụng · Hệ thống tự động xác nhận',
+                      style: TextStyle(color: AppColors.textGrey, fontSize: 13),
+                    ),
                 ],
               ),
             ),
@@ -1252,9 +1265,11 @@ class _ReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reviewer = review.reviewer;
-    final initials =
-        (reviewer?.displayName != null && reviewer!.displayName!.isNotEmpty)
-        ? reviewer.displayName!.substring(0, 1).toUpperCase()
+    final displayName = reviewer?.displayName ?? review.reviewerName ?? 'Người dùng';
+    final avatarUrl = reviewer?.photoUrl ?? review.reviewerAvatar;
+    
+    final initials = displayName.isNotEmpty
+        ? displayName.substring(0, 1).toUpperCase()
         : '?';
     final dateStr = DateFormat('dd/MM/yyyy').format(review.createdAt.toLocal());
 
@@ -1283,10 +1298,10 @@ class _ReviewCard extends StatelessWidget {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: AppColors.primaryLight,
-                backgroundImage: reviewer?.photoUrl != null
-                    ? NetworkImage(reviewer!.photoUrl!)
+                backgroundImage: avatarUrl != null
+                    ? NetworkImage(avatarUrl)
                     : null,
-                child: reviewer?.photoUrl == null
+                child: avatarUrl == null
                     ? Text(
                         initials,
                         style: const TextStyle(
@@ -1302,7 +1317,7 @@ class _ReviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      reviewer?.displayName ?? 'Người dùng',
+                      displayName,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,

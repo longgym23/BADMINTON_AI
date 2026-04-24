@@ -29,6 +29,18 @@ const crypto   = require('crypto');
 const { GoogleGenerativeAI }                      = require('@google/generative-ai');
 const { MailerSend, EmailParams, Sender, Recipient } = require('mailersend');
 const { createClient }                            = require('@supabase/supabase-js');
+const admin = require('firebase-admin');
+
+// ─── Firebase Admin Setup ─────────────────────────────────────────────────────
+try {
+  const serviceAccount = require('./firebase-service-account.json');
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+  console.log('[FIREBASE] Admin SDK initialized successfully.');
+} catch (error) {
+  console.error('[ERROR] Failed to initialize Firebase Admin:', error);
+}
 
 // ─── MailerSend ───────────────────────────────────────────────────────────────
 const mailerSend = new MailerSend({ apiKey: process.env.MAILERSEND_API_KEY });
@@ -82,9 +94,9 @@ Nhiệm vụ của bạn là giải đáp thắc mắc về hệ thống đặt 
 5. Tự động nhận diện Action mà người dùng có ý định muốn thực hiện:
    - "search_courts": Khi user tìm sân, hỏi giá, đặt sân.
    - "view_schedule": Xem lịch đã đặt, check lịch.
-   - "cancel_booking": Hủy lịch.
+   - "cancel_booking": Khi user MUỐN THỰC SỰ HỦY SÂN (ví dụ: "tôi muốn hủy sân", "hủy lịch đặt của tôi"). KHÔNG dùng action này khi user chỉ HỎI VỀ CHÍNH SÁCH/QUY ĐỊNH hủy sân.
    - "view_expense": Xem số dư ví, nạp tiền.
-   - "none": Hỏi đáp thông thường, tư vấn dụng cụ.`;
+   - "none": Hỏi đáp thông thường, tư vấn dụng cụ, hỏi về chính sách/quy định hủy sân.`;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PHASE 1 — EMBEDDING CACHE (TTL 5 phút, max 300 entries)
@@ -116,7 +128,11 @@ function quickIntent(prompt) {
   const p = prompt.toLowerCase().trim();
   if (/^(xin chào|chào|hi\b|hello|hey|alo|cảm ơn|thanks|thank you)/.test(p)) return 'greeting';
   if (/^(ok|oke|okay|được|rồi|vâng|dạ|ừ|uhm)$/.test(p))                      return 'greeting';
-  if (/(hủy|cancel).*(lịch|đặt|sân|booking)/i.test(p))  return 'cancel_booking';
+  // Ưu tiên kiểm tra: hỏi về CHÍNH SÁCH/QUY ĐỊNH hủy trước → general (để AI giải thích chính sách)
+  if (/(chính sách|quy định|quy trình|điều kiện|điều khoản|như thế nào|ra sao|thế nào|hoàn tiền|phí|mấy|bao lâu).*(hủy|cancel)/i.test(p)) return 'general';
+  if (/(hủy|cancel).*(chính sách|quy định|quy trình|điều kiện|điều khoản|như thế nào|ra sao|thế nào|hoàn tiền)/i.test(p)) return 'general';
+  // Chỉ gán cancel_booking khi user MUỐN THỰC SỰ HỦY (có ngôi thứ nhất / hành động cụ thể)
+  if (/(tôi muốn hủy|cho tôi hủy|giúp tôi hủy|hủy giúp|hủy lịch của tôi|hủy đặt sân|hủy booking|cancel booking|cancel lịch)/i.test(p)) return 'cancel_booking';
   if (/(giá|bao nhiêu|tiền|phí|cost|giờ|price)/.test(p)) return 'pricing';
   if (/(tìm|đặt|sân nào|có sân|book|search)/.test(p))    return 'search';
   if (/(lịch|schedule|booking|đã đặt|sắp tới)/.test(p))  return 'schedule';
@@ -242,6 +258,55 @@ const cleanupFile = (filePath) => {
   if (filePath && fs.existsSync(filePath)) fs.unlink(filePath).catch(err => console.error('[WARN] Lỗi xóa file tạm:', err));
 };
 
+// ─── Haversine Distance (km) ──────────────────────────────────────────────────
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ─── Nearby Courts from Supabase (theo bán kính km) ──────────────────────────
+async function getNearbyCourts(userLat, userLng, radiusKm = 5, sportType = null) {
+  if (!supabaseAdmin || userLat == null || userLng == null) return [];
+  try {
+    let query = supabaseAdmin
+      .from('courts')
+      .select('id, name, address, latitude, longitude, price_per_hour, sport_type, image_url, rating, total_reviews');
+    if (sportType) query = query.eq('sport_type', sportType);
+    const { data, error } = await query.limit(200);
+    if (error || !data) return [];
+
+    return data
+      .map(c => ({
+        ...c,
+        distance_km: (c.latitude && c.longitude)
+          ? haversineKm(userLat, userLng, c.latitude, c.longitude)
+          : 9999,
+      }))
+      .filter(c => c.distance_km <= radiusKm)
+      .sort((a, b) => a.distance_km - b.distance_km)
+      .slice(0, 10); // trả về tối đa 10 sân gần nhất
+  } catch (e) {
+    console.error('[NEARBY] Error:', e.message); return [];
+  }
+}
+
+// ─── Detect Nearby Query & Radius ────────────────────────────────────────────
+function isNearbyQuery(prompt) {
+  const p = (prompt || '').toLowerCase();
+  return /(gần tôi|gần đây|xung quanh|quanh đây|nearby|trong bán kính|trong vòng|cách đây|gần nhà|khu vực này)/.test(p);
+}
+
+function extractRadiusKm(prompt) {
+  const m = (prompt || '').match(/(\d+(?:\.\d+)?)\s*km/i);
+  return m ? parseFloat(m[1]) : null;
+}
+
+
+
 // ─── Express App ──────────────────────────────────────────────────────────────
 const app  = express();
 const port = process.env.PORT || 3000;
@@ -256,6 +321,9 @@ app.post('/ask', upload.single('image'), async (req, res) => {
   const userId     = req.body.user_id    || '';
   const sessionId  = req.body.session_id || userId || null;
   const userPrompt = req.body.prompt     || (imageFile ? 'Trợ giúp tôi với bức ảnh này.' : '');
+  // ─── Vị trí GPS của user (tùy chọn) ───
+  const userLat    = req.body.user_lat != null ? parseFloat(req.body.user_lat) : null;
+  const userLng    = req.body.user_lng != null ? parseFloat(req.body.user_lng) : null;
 
   const intent     = quickIntent(userPrompt);
   const needsRAG   = !['greeting'].includes(intent);
@@ -300,13 +368,34 @@ app.post('/ask', upload.single('image'), async (req, res) => {
   // ────────────────────────────────────────────────────────────────────────────
   // RAG RETRIEVAL & DB CONTEXT (Gộp chung Query Text Đã Bóc Tách)
   // ────────────────────────────────────────────────────────────────────────────
-  const [kbRows, userContext] = await Promise.all([
+  const [kbRows, userContext, nearbyCourts] = await Promise.all([
     needsRAG ? retrieveKnowledge(queryText, intent) : Promise.resolve([]),
     getUserContext(userId),
+    // Tìm sân theo vị trí nếu có GPS và câu hỏi liên quan đến tìm sân gần
+    (userLat != null && userLng != null && (intent === 'search' || isNearbyQuery(userPrompt)))
+      ? getNearbyCourts(userLat, userLng, extractRadiusKm(userPrompt) || 5)
+      : Promise.resolve([]),
   ]);
 
   const sourcesBlock = buildSourcesBlock(kbRows);
   const sessionHistory = getSession(sessionId);
+
+  // Block vị trí (thêm vào prompt nếu có GPS)
+  let locationBlock = '';
+  if (userLat != null && userLng != null) {
+    const radius = extractRadiusKm(userPrompt) || 5;
+    if (nearbyCourts.length > 0) {
+      const courtLines = nearbyCourts.map(c =>
+        `- ${c.name} (${c.distance_km.toFixed(1)}km) | ${c.address} | ${c.sport_type || ''} | ${c.price_per_hour || '?'}d/h | rating: ${c.rating || 'N/A'}`
+      ).join('\n');
+      locationBlock = `USER_LOCATION: lat=${userLat.toFixed(5)}, lng=${userLng.toFixed(5)}\n`
+        + `CÁC SÂN TRONG BÁN KÍNH ${radius}km (sắp xếp theo khoảng cách gần nhất):\n${courtLines}\n`
+        + `HÃY DÙNG DŨ LIỆU TRÊN ĐÊ TRẢ LỜI CHÍNH XÁC VỀ SÂN GẦN USER.\n`;
+    } else {
+      locationBlock = `USER_LOCATION: lat=${userLat.toFixed(5)}, lng=${userLng.toFixed(5)}\n`
+        + `Không tìm thấy sân nào trong bán kính ${radius}km.\n`;
+    }
+  }
 
   const fullPrompt =
     `${SYSTEM_PROMPT}\n\n` +
@@ -318,8 +407,10 @@ app.post('/ask', upload.single('image'), async (req, res) => {
     `}\n\n` +
     `${sourcesBlock}\n` +
     `${userContext}\n` +
+    `${locationBlock}\n` +
     `NHẮC NHỞ QUAN TRỌNG: Nếu ảnh KHÔNG liên quan đến 4 bộ môn thể thao trên, HÃY giữ phép lịch sự và chối từ dễ thương. \n\n` +
     `USER_ASK: ${userPrompt}`;
+
 
   // ────────────────────────────────────────────────────────────────────────────
   // NHỊP 2: Chốt câu trả lời cuối với Full Prompt + Image
@@ -353,8 +444,10 @@ app.post('/ask', upload.single('image'), async (req, res) => {
           answer:      removeMarkdown(parsed.answer),
           action:      normalizeAction(parsed.action),
           citations:   buildCitations(kbRows),
+          nearby_courts: nearbyCourts,
           _debug: { two_pass_keywords: queryText.replace(userPrompt, '').trim() }
         });
+
       }
       return res.json({ answer: removeMarkdown(text), action: { type: 'none' }, citations: [] });
     } catch (err) {
@@ -396,10 +489,11 @@ app.post('/ask', upload.single('image'), async (req, res) => {
     if (parsed && typeof parsed.answer === 'string') {
       const used = Array.isArray(parsed.used_sources) ? parsed.used_sources : [];
       return res.json({
-        answer:      removeMarkdown(parsed.answer),
-        action:      normalizeAction(parsed.action),
+        answer:       removeMarkdown(parsed.answer),
+        action:       normalizeAction(parsed.action),
         used_sources: used,
-        citations:   buildCitations(kbRows),
+        citations:    buildCitations(kbRows),
+        nearby_courts: nearbyCourts,
       });
     }
 
@@ -570,6 +664,52 @@ app.get('/', (req, res) => {
     rag:     'Hybrid BM25 + Vector (pgvector)',
     stats:   { embed_cache_entries: cacheSize, active_sessions: sessionSize },
   });
+});
+
+// ─── Push Notification Endpoint ────────────────────────────────────────────────
+app.post('/api/send-notification', express.json(), async (req, res) => {
+  const { receiver_id, title, body, data } = req.body;
+  if (!receiver_id || !title || !body) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    // Lấy FCM token từ bảng users hoặc profiles
+    let { data: userData, error } = await supabaseAdmin
+      .from('profiles')
+      .select('fcm_token')
+      .eq('id', receiver_id)
+      .single();
+
+    if (error || !userData?.fcm_token) {
+      // Fallback: Thử bảng users
+      const { data: userData2 } = await supabaseAdmin
+        .from('users')
+        .select('fcm_token')
+        .eq('id', receiver_id)
+        .single();
+      
+      if (!userData2 || !userData2.fcm_token) {
+        return res.status(404).json({ error: 'User FCM token not found' });
+      }
+      userData = userData2;
+    }
+
+    const message = {
+      notification: {
+        title: title,
+        body: body,
+      },
+      data: data || { type: 'chat' },
+      token: userData.fcm_token,
+    };
+
+    const response = await admin.messaging().send(message);
+    res.json({ success: true, messageId: response });
+  } catch (error) {
+    console.error('Error sending push notification:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
