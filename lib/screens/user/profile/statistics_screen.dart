@@ -1,8 +1,8 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
@@ -20,8 +20,8 @@ class StatisticsScreen extends StatelessWidget {
 
     if (userId == null) {
       return Scaffold(
-        appBar: CustomGradientAppBar(title: Text(AppLocalizations.of(context).statistics)),
-        body: Center(child: Text(AppLocalizations.of(context).pleaseLogin)),
+        appBar: CustomGradientAppBar(title: Text('profile_screen.statistics'.tr())),
+        body: Center(child: Text('common.pleaseLogin'.tr())),
       );
     }
 
@@ -40,18 +40,18 @@ class _StatisticsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    
     final vm = context.watch<StatisticsViewModel>();
     final currencyFmt = NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0);
 
     return Scaffold(
-      appBar: _buildAppBar(l),
+      appBar: _buildAppBar(),
       body: vm.isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? Center(child: CircularProgressIndicator(color: AppColors.primary))
           : vm.error != null
-              ? Center(child: Text('${l.error}: ${vm.error}'))
+              ? Center(child: Text('${'common.error'.tr()}: ${vm.error}'))
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -60,35 +60,33 @@ class _StatisticsView extends StatelessWidget {
                         totalSpend: vm.totalSpend,
                         count: vm.courtsBooked,
                         currencyFmt: currencyFmt,
-                        l: l,
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       
                       // Filter Section
-                      _FilterHeader(vm: vm, l: l),
-                      const SizedBox(height: 24),
+                      _FilterHeader(vm: vm),
+                      SizedBox(height: 24),
 
                       // Chart Section
                       _ChartSection(
                         distribution: vm.getSportTypeDistribution(),
-                        l: l,
                       ),
-                      const SizedBox(height: 40),
+                      SizedBox(height: 40),
                     ],
                   ),
                 ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(AppLocalizations l) {
+  PreferredSizeWidget _buildAppBar() {
     return CustomGradientAppBar(
-      title: Text(l.statistics,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+      title: Text('profile_screen.statistics'.tr(),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
       centerTitle: true,
       elevation: 0,
       leading: Builder(
         builder: (context) => IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -102,22 +100,19 @@ class _SummaryRow extends StatelessWidget {
   final int totalSpend;
   final int count;
   final NumberFormat currencyFmt;
-  final AppLocalizations l;
-
-  const _SummaryRow({
+const _SummaryRow({
     required this.totalSpend,
     required this.count,
     required this.currencyFmt,
-    required this.l,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _SummaryCard(title: l.totalSpend, value: currencyFmt.format(totalSpend))),
-        const SizedBox(width: 16),
-        Expanded(child: _SummaryCard(title: l.courtsBooked, value: '$count ${l.times}')),
+        Expanded(child: _SummaryCard(title: 'booking_history_screen.totalSpend'.tr(), value: currencyFmt.format(totalSpend))),
+        SizedBox(width: 16),
+        Expanded(child: _SummaryCard(title: 'booking_history_screen.courtsBooked'.tr(), value: '$count ${'booking_history_screen.times'.tr()}')),
       ],
     );
   }
@@ -132,7 +127,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -144,8 +139,8 @@ class _SummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 8),
-          Text(value, style: const TextStyle(color: AppColors.textBlack, fontSize: 18, fontWeight: FontWeight.bold)),
+          SizedBox(height: 8),
+          Text(value, style: TextStyle(color: AppColors.textBlack, fontSize: 18, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -156,9 +151,7 @@ class _SummaryCard extends StatelessWidget {
 
 class _FilterHeader extends StatelessWidget {
   final StatisticsViewModel vm;
-  final AppLocalizations l;
-
-  const _FilterHeader({required this.vm, required this.l});
+const _FilterHeader({required this.vm});
 
   @override
   Widget build(BuildContext context) {
@@ -169,10 +162,10 @@ class _FilterHeader extends StatelessWidget {
             children: [
               Flexible(
                 child: Text(
-                  vm.filterMode == FilterMode.all ? l.sectionAll : l.statisticalFilter,
+                  vm.filterMode == FilterMode.all ? 'booking_history_screen.sectionAll'.tr() : 'profile_screen.statisticalFilter'.tr(),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.grey,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
@@ -181,12 +174,12 @@ class _FilterHeader extends StatelessWidget {
                 ),
               ),
               if (vm.filterMode != FilterMode.all) ...[
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Flexible(
                   child: GestureDetector(
                     onTap: vm.setFilterAll,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: AppColors.primaryBg,
                         borderRadius: BorderRadius.circular(12),
@@ -199,11 +192,11 @@ class _FilterHeader extends StatelessWidget {
                               vm.filterLabel(context),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
-                              style: const TextStyle(color: AppColors.primary, fontSize: 12),
+                              style: TextStyle(color: AppColors.primary, fontSize: 12),
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.close, size: 12, color: AppColors.primary),
+                          SizedBox(width: 4),
+                          Icon(Icons.close, size: 12, color: AppColors.primary),
                         ],
                       ),
                     ),
@@ -213,8 +206,8 @@ class _FilterHeader extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 8),
-        StatisticsFilterRow(vm: vm, l: l),
+        SizedBox(width: 8),
+        StatisticsFilterRow(vm: vm),
       ],
     );
   }
@@ -224,9 +217,7 @@ class _FilterHeader extends StatelessWidget {
 
 class _ChartSection extends StatelessWidget {
   final Map<String, int> distribution;
-  final AppLocalizations l;
-
-  const _ChartSection({required this.distribution, required this.l});
+const _ChartSection({required this.distribution});
 
   Color _getColorForSport(String sportType) {
     switch (sportType.toLowerCase()) {
@@ -241,17 +232,17 @@ class _ChartSection extends StatelessWidget {
     }
   }
 
-  String _getNameForSport(String sportType, AppLocalizations l) {
+  String _getNameForSport(String sportType) {
     switch (sportType.toLowerCase()) {
       case 'badminton':
-        return l.badminton;
+        return 'checkout_screen.badminton'.tr();
       case 'football':
-        return l.football;
+        return 'profile_screen.football'.tr();
       case 'pickleball':
-        return l.pickleball;
+        return 'profile_screen.pickleball'.tr();
       default:
         // if the type in the DB is unrecognized or "unknown", fallback to "Other"
-        return sportType == 'unknown' ? l.otherSports : sportType; 
+        return sportType == 'unknown' ? 'profile_screen.otherSports'.tr() : sportType; 
     }
   }
 
@@ -260,9 +251,9 @@ class _ChartSection extends StatelessWidget {
     if (distribution.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 40),
+          padding: EdgeInsets.symmetric(vertical: 8),
           child: Text(
-            l.noData,
+            'common.noData'.tr(),
             style: TextStyle(color: Colors.grey[500], fontSize: 14),
           ),
         ),
@@ -278,7 +269,7 @@ class _ChartSection extends StatelessWidget {
         value: entry.value.toDouble(),
         title: '${percentage.toStringAsFixed(1)}%',
         radius: 60,
-        titleStyle: const TextStyle(
+        titleStyle: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
           color: Colors.white,
@@ -287,7 +278,7 @@ class _ChartSection extends StatelessWidget {
     }).toList();
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -299,10 +290,10 @@ class _ChartSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            l.pieChartTitle,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textBlack),
+            'profile_screen.pieChartTitle'.tr(),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textBlack),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SizedBox(
             height: 200,
             child: PieChart(
@@ -313,7 +304,7 @@ class _ChartSection extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           // Legends
           Wrap(
             spacing: 16,
@@ -330,10 +321,10 @@ class _ChartSection extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Text(
-                    _getNameForSport(key, l),
-                    style: const TextStyle(fontSize: 13, color: AppColors.textGrey, fontWeight: FontWeight.w500),
+                    _getNameForSport(key),
+                    style: TextStyle(fontSize: 13, color: AppColors.textGrey, fontWeight: FontWeight.w500),
                   ),
                 ],
               );

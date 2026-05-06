@@ -1,101 +1,88 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:badminton_ai/utils/app_logger.dart';
 import 'dart:convert';
 
 class PushNotificationService {
+  static const _tag = 'PushNotification';
+
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
   static final PushNotificationService _instance =
       PushNotificationService._internal();
   RealtimeChannel? _notificationChannel;
 
-  factory PushNotificationService() {
-    return _instance;
-  }
-
+  factory PushNotificationService() => _instance;
   PushNotificationService._internal();
 
   Future<void> initialize() async {
-    // Xin quyền thông báo
-    NotificationSettings settings = await _fcm.requestPermission(
+    // ─── Xin quyền thông báo ───────────────────────────────────────────────
+    final settings = await _fcm.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      if (kDebugMode) {
-        print('User granted notification permission');
-      }
+      AppLogger.i(_tag, 'Notification permission granted');
+    } else {
+      AppLogger.w(_tag, 'Notification permission denied: ${settings.authorizationStatus}');
     }
 
-    // Khởi tạo Local Notifications (Android & iOS)
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const DarwinInitializationSettings initializationSettingsDarwin =
-        DarwinInitializationSettings(
+    // ─── Local Notifications (Android & iOS) ──────────────────────────────
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings(
       requestSoundPermission: true,
       requestBadgePermission: true,
       requestAlertPermission: true,
     );
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsDarwin,
-    );
     await _localNotifications.initialize(
-      settings: initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
+      settings: const InitializationSettings(android: androidSettings, iOS: iosSettings),
+      onDidReceiveNotificationResponse: (response) {
         if (response.payload != null) {
-          if (kDebugMode) print('Local notification payload: ${response.payload}');
+          AppLogger.d(_tag, 'Local notification tapped: ${response.payload}');
         }
       },
     );
 
-    // Cấp quyền kênh Android
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'high_importance_channel', // id
-      'High Importance Notifications', // title
-      description: 'This channel is used for important notifications.', // description
+    // ─── Android Notification Channel ─────────────────────────────────────
+    const channel = AndroidNotificationChannel(
+      'high_importance_channel',
+      'High Importance Notifications',
+      description: 'Used for important notifications.',
       importance: Importance.high,
     );
-
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
 
-    // Lấy FCM Token để gửi Push sau này via backend
+    // ─── FCM Token — lấy và lưu lên Supabase ─────────────────────────────
     try {
-      String? token = await _fcm.getToken();
-      if (kDebugMode) {
-        print('FCM Token: $token');
-      }
+      final token = await _fcm.getToken();
       if (token != null) {
+        AppLogger.d(_tag, 'FCM Token acquired');
         await _saveTokenToSupabase(token);
+      } else {
+        AppLogger.w(_tag, 'FCM token is null — notifications may not work');
       }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Không lấy được FCM token: $e');
-      }
+    } catch (e, st) {
+      AppLogger.e(_tag, 'Failed to get FCM token', e, st);
     }
 
-    // Lắng nghe token bị thay đổi
+    // ─── Tự động cập nhật khi token bị refresh (thiết bị cũ, re-install) ─
+    // FIX #7: onTokenRefresh xử lý stale token tự động
     _fcm.onTokenRefresh.listen((newToken) {
-      if (kDebugMode) {
-        print('FCM Token Refreshed: $newToken');
-      }
+      AppLogger.i(_tag, 'FCM token refreshed — updating Supabase');
       _saveTokenToSupabase(newToken);
     });
 
-    // Lắng nghe thông báo khi đang mở app (Foreground)
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      if (kDebugMode) {
-        print('Nhận được thông báo foreground: ${message.notification?.title}');
-      }
-      
-      RemoteNotification? notification = message.notification;
-      
+    // ─── Foreground messages ───────────────────────────────────────────────
+    FirebaseMessaging.onMessage.listen((message) {
+      AppLogger.d(_tag, 'Foreground message: ${message.notification?.title}');
+      final notification = message.notification;
       if (notification != null) {
         _localNotifications.show(
           id: notification.hashCode,
@@ -103,17 +90,14 @@ class PushNotificationService {
           body: notification.body,
           notificationDetails: NotificationDetails(
             android: AndroidNotificationDetails(
-              channel.id,
-              channel.name,
+              channel.id, channel.name,
               channelDescription: channel.description,
               icon: '@mipmap/ic_launcher',
               priority: Priority.high,
               importance: Importance.high,
             ),
             iOS: const DarwinNotificationDetails(
-              presentAlert: true,
-              presentBadge: true,
-              presentSound: true,
+              presentAlert: true, presentBadge: true, presentSound: true,
             ),
           ),
           payload: jsonEncode(message.data),
@@ -121,18 +105,15 @@ class PushNotificationService {
       }
     });
 
-    // Xử lý khi user bấm vào thông báo từ background/terminated
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      if (kDebugMode) {
-        print('User bấm vào thông báo: ${message.data}');
-      }
-      // Điều hướng tới page tương ứng (ví dụ màn chat hoặc sân) nếu cần thiết
+    // ─── Khi user bấm vào thông báo từ background/terminated ─────────────
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      AppLogger.i(_tag, 'Notification opened: ${message.data}');
     });
   }
 
+  /// Lắng nghe realtime notifications từ Supabase DB
   void listenToRealtimeNotifications(String userId) {
     _notificationChannel?.unsubscribe();
-    // Lắng nghe bảng notifications chung
     _notificationChannel = Supabase.instance.client
         .channel('public:notifications_$userId')
         .onPostgresChanges(
@@ -146,21 +127,21 @@ class PushNotificationService {
           ),
           callback: (payload) {
             final newRow = payload.newRecord;
-            final title = newRow['title'] ?? 'Thông báo hệ thống';
-            final body = newRow['message'] ?? 'Bạn có một thông báo mới';
-            final id = DateTime.now().millisecondsSinceEpoch.remainder(10000);
-            
+            final title = newRow['title'] as String? ?? 'Thông báo hệ thống';
+            final body  = newRow['message'] as String? ?? 'Bạn có một thông báo mới';
+            final id    = DateTime.now().millisecondsSinceEpoch.remainder(10000);
             _showLocalPush(id, title, body);
           },
         )
         .subscribe((status, [error]) {
-          if (kDebugMode) {
-            print('Realtime notification channel status: $status, error: $error');
+          if (error != null) {
+            AppLogger.e(_tag, 'Realtime channel error: $status', error);
+          } else {
+            AppLogger.d(_tag, 'Realtime channel status: $status');
           }
-          // Nếu timeout hoặc lỗi, thử subscribe lại sau 5 giây
           if (status == RealtimeSubscribeStatus.timedOut ||
               status == RealtimeSubscribeStatus.channelError) {
-            if (kDebugMode) print('Retrying realtime notification subscription...');
+            AppLogger.w(_tag, 'Realtime timeout — retrying in 5s');
             Future.delayed(const Duration(seconds: 5), () {
               listenToRealtimeNotifications(userId);
             });
@@ -182,56 +163,47 @@ class PushNotificationService {
           icon: '@mipmap/ic_launcher',
         ),
         iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
+          presentAlert: true, presentBadge: true, presentSound: true,
         ),
       ),
     );
   }
 
+  /// Lưu FCM token lên Supabase profiles — ghi đè nếu đã có (xử lý stale)
   Future<void> _saveTokenToSupabase(String token) async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        await Supabase.instance.client
-            .from('profiles')
-            .update({'fcm_token': token})
-            .eq('id', user.id);
-        if (kDebugMode) {
-          print('Saved FCM token to Supabase for user ${user.id}');
-        }
+      if (user == null) {
+        AppLogger.w(_tag, 'Cannot save FCM token — user not logged in');
+        return;
       }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error saving FCM token: $e');
-      }
+      await Supabase.instance.client
+          .from('profiles')
+          .update({'fcm_token': token})
+          .eq('id', user.id);
+      AppLogger.i(_tag, 'FCM token saved for uid=${user.id}');
+    } catch (e, st) {
+      AppLogger.e(_tag, 'Failed to save FCM token', e, st);
     }
   }
 
-  // Tắt thông báo (xóa token ở local VÀ trên Supabase để backend không push nữa)
+  /// Xóa token khi user tắt thông báo hoặc logout
   Future<void> deleteToken() async {
     try {
-      // 1. Xóa trên Firebase local
       await _fcm.deleteToken();
       _notificationChannel?.unsubscribe();
       _notificationChannel = null;
-      
-      // 2. Xóa trên Supabase db
+
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
         await Supabase.instance.client
             .from('profiles')
             .update({'fcm_token': null})
             .eq('id', user.id);
-        if (kDebugMode) {
-          print('Deleted FCM token from Supabase for user ${user.id} (Notifications Disabled)');
-        }
+        AppLogger.i(_tag, 'FCM token deleted for uid=${user.id}');
       }
-    } catch (e) {
-      if (kDebugMode) {
-         print('Error deleting FCM token: $e');
-      }
+    } catch (e, st) {
+      AppLogger.e(_tag, 'Failed to delete FCM token', e, st);
     }
   }
 }

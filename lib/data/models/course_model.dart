@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/domain/entities/course.dart';
 
 class CourseModel extends Course {

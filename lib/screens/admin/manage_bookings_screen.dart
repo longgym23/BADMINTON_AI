@@ -1,13 +1,13 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/viewmodels/manage_bookings_viewmodel.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 import 'package:badminton_ai/widgets/time_filter_widget.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/utils/dialog_utils.dart';
@@ -38,19 +38,22 @@ class _ManageBookingsViewState extends State<_ManageBookingsView> {
     SupabaseRepository repo,
   ) {
     if (bookingId == null) return;
-    final l = AppLocalizations.of(context);
 
     DialogUtils.showConfirmDialog(
       context,
-      title: "Hủy lịch đặt",
-      content: "Admin/Owner: Bạn có chắc chắn muốn hủy lịch đặt này không?",
-      confirmText: l.confirm,
-      cancelText: l.no,
+      title: 'screens.cancelBooking'.tr(),
+      content: 'screens.adminOwnerAreYouSureYou'.tr(),
+      confirmText: 'common.confirm'.tr(),
+      cancelText: 'common.no'.tr(),
       isDestructive: true,
       onConfirm: () async {
         try {
           await repo.cancelBooking(bookingId);
-          AppToast.show(context, "Đã hủy sân thành công", type: ToastType.success);
+          AppToast.show(
+            context,
+            'screens.theFieldHasBeenSuccessfull'.tr(),
+            type: ToastType.success,
+          );
           setState(() {});
         } catch (e) {
           AppToast.show(context, "Hủy sân thất bại: $e", type: ToastType.error);
@@ -61,24 +64,33 @@ class _ManageBookingsViewState extends State<_ManageBookingsView> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
     final repo = context.watch<SupabaseRepository>();
     final vm = context.watch<ManageBookingsViewModel>();
     final auth = context.read<AppAuthProvider>();
     final isOwner = auth.userRole == 'court_owner';
     final ownerId = isOwner ? auth.userModel?.id : null;
 
-    final currencyFormatter = NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0);
+    final currencyFormatter = NumberFormat.simpleCurrency(
+      locale: 'vi_VN',
+      decimalDigits: 0,
+    );
 
-    final isAllowed = auth.userRole == 'admin' || auth.userRole == 'court_owner';
-    
+    final isAllowed =
+        auth.userRole == 'admin' || auth.userRole == 'court_owner';
+
     if (!isAllowed) {
-      return const Scaffold(body: Center(child: Text('Bạn không có quyền truy cập trang này.')));
+      return Scaffold(
+        body: Center(child: Text('screens.youDoNotHavePermissionTo'.tr())),
+      );
     }
 
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: Text(isOwner ? 'Quản lý Lịch của tôi' : 'Quản lý Tất cả Lịch đặt'),
+        title: Text(
+          isOwner
+              ? 'screens.manageMyCalendar'.tr()
+              : 'screens.manageAllBookings'.tr(),
+        ),
       ),
       body: Column(
         children: [
@@ -92,7 +104,11 @@ class _ManageBookingsViewState extends State<_ManageBookingsView> {
                 bottomRight: Radius.circular(20),
               ),
               boxShadow: [
-                BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
               ],
             ),
             child: Column(
@@ -101,14 +117,14 @@ class _ManageBookingsViewState extends State<_ManageBookingsView> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Bộ lọc thời gian',
+                      'screens.timeFilter'.tr(),
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: Colors.grey[800],
                       ),
                     ),
-                    TimeFilterWidget(viewModel: vm, l: l),
+                    TimeFilterWidget(viewModel: vm),
                   ],
                 ),
               ],
@@ -130,7 +146,7 @@ class _ManageBookingsViewState extends State<_ManageBookingsView> {
                 if (snapshot.hasError) {
                   return Center(child: Text("Lỗi: ${snapshot.error}"));
                 }
-                
+
                 final allBookings = snapshot.data ?? [];
                 final filtered = vm.applyFilter(allBookings);
                 final sorted = vm.sortBookings(filtered);
@@ -140,12 +156,19 @@ class _ManageBookingsViewState extends State<_ManageBookingsView> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.event_busy, size: 64, color: Colors.grey[300]),
+                        Icon(
+                          Icons.event_busy,
+                          size: 64,
+                          color: Colors.grey[300],
+                        ),
                         const SizedBox(height: 16),
                         Text(
-                          "Không có lịch đặt nào\ntrong khoảng thời gian đã chọn.",
+                          'screens.thereAreNoBookingsNforThe'.tr(),
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey[500], fontSize: 15),
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 15,
+                          ),
                         ),
                       ],
                     ),
@@ -163,7 +186,7 @@ class _ManageBookingsViewState extends State<_ManageBookingsView> {
                         fmt: currencyFormatter,
                       );
                     }
-                    
+
                     final booking = sorted[index - 1];
                     return _AdminBookingCard(
                       booking: booking,
@@ -186,7 +209,11 @@ class _RevenueSummary extends StatelessWidget {
   final int count;
   final NumberFormat fmt;
 
-  const _RevenueSummary({required this.total, required this.count, required this.fmt});
+  const _RevenueSummary({
+    required this.total,
+    required this.count,
+    required this.fmt,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -214,17 +241,37 @@ class _RevenueSummary extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Tổng doanh thu', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              Text(
+                'screens.totalRevenue'.tr(),
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
               const SizedBox(height: 4),
-              Text(fmt.format(total), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(
+                fmt.format(total),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text('Số lịch đặt', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              Text(
+                'screens.bookingNumber'.tr(),
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
               const SizedBox(height: 4),
-              Text('$count', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(
+                '$count',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ],
@@ -238,25 +285,41 @@ class _AdminBookingCard extends StatelessWidget {
   final NumberFormat fmt;
   final VoidCallback onDelete;
 
-  const _AdminBookingCard({required this.booking, required this.fmt, required this.onDelete});
+  const _AdminBookingCard({
+    required this.booking,
+    required this.fmt,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
     // Determine color based on status (if status exists) or just use primary
-    final Color statusColor = booking.status == 'PAID' ? Colors.green : (booking.status == 'cancelled' ? Colors.red : AppColors.brandOrange);
+    final Color statusColor = booking.status == 'PAID'
+        ? Colors.green
+        : (booking.status == 'cancelled' ? Colors.red : AppColors.brandOrange);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey[200]!)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey[200]!),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
             // Left decor line
-            Container(width: 4, height: 60, decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(2))),
+            Container(
+              width: 4,
+              height: 60,
+              decoration: BoxDecoration(
+                color: statusColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
             const SizedBox(width: 12),
-            
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,7 +329,10 @@ class _AdminBookingCard extends StatelessWidget {
                     children: [
                       Text(
                         booking.userName,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
                       Text(
                         DateFormat('dd/MM/yyyy').format(booking.date),
@@ -277,12 +343,19 @@ class _AdminBookingCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     '${booking.courtName} - Sân #${booking.courtNumber}',
-                    style: const TextStyle(fontSize: 13, color: AppColors.textBlack),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textBlack,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                      Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: Colors.grey[600],
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${booking.timeSlot}:00 - ${booking.timeSlot + 1}:00',
@@ -291,14 +364,18 @@ class _AdminBookingCard extends StatelessWidget {
                       const Spacer(),
                       Text(
                         fmt.format(booking.price),
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.brandOrangeDark, fontSize: 14),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.brandOrangeDark,
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            
+
             const SizedBox(width: 8),
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.red),

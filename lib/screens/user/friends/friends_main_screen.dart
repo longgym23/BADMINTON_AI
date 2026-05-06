@@ -1,5 +1,6 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/models/user_model.dart';
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/friend_provider.dart';
 import 'package:badminton_ai/screens/user/friends/add_friend_screen.dart';
@@ -12,7 +13,6 @@ import 'package:badminton_ai/utils/snackbar_utils.dart';
 import 'package:badminton_ai/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:timeago/timeago.dart' as timeago;
 import 'dart:ui';
 
 class FriendsMainScreen extends StatefulWidget {
@@ -44,8 +44,7 @@ class _FriendsMainScreenState extends State<FriendsMainScreen> {
           backgroundColor: AppColors.background,
           appBar: AppBar(
             centerTitle: false,
-            title: const Text(
-              "Cộng đồng",
+            title: Text('screens.community'.tr(),
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w800,
@@ -58,12 +57,12 @@ class _FriendsMainScreenState extends State<FriendsMainScreen> {
             actions: [
               IconButton(
                 icon: Container(
-                  padding: const EdgeInsets.all(6),
+                  padding: EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.person_add,
                     color: AppColors.primary,
                     size: 20,
@@ -74,12 +73,12 @@ class _FriendsMainScreenState extends State<FriendsMainScreen> {
                   MaterialPageRoute(builder: (_) => const AddFriendScreen()),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
             ],
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(48),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: 16),
                 child: TabBar(
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
@@ -88,23 +87,23 @@ class _FriendsMainScreenState extends State<FriendsMainScreen> {
                   indicatorColor: AppColors.primary,
                   indicatorWeight: 4,
                   indicatorSize: TabBarIndicatorSize.label,
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  labelStyle: const TextStyle(
+                  labelPadding: EdgeInsets.symmetric(horizontal: 16),
+                  labelStyle: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                     letterSpacing: -0.4,
                   ),
-                  unselectedLabelStyle: const TextStyle(
+                  unselectedLabelStyle: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
                     letterSpacing: -0.4,
                   ),
                   dividerColor: Colors.transparent,
                   tabs: [
-                    Tab(text: "Cá nhân"),
-                    Tab(text: "Nhóm"),
-                    Tab(text: "Bạn bè"),
-                    Tab(text: "Lời mời"),
+                    Tab(text: 'screens.individual'.tr()),
+                    Tab(text: 'screens.group'.tr()),
+                    Tab(text: 'screens.friend'.tr()),
+                    Tab(text: 'screens.invitation'.tr()),
                   ],
                 ),
               ),
@@ -112,7 +111,7 @@ class _FriendsMainScreenState extends State<FriendsMainScreen> {
           ),
           floatingActionButton: currentTab == 0
               ? Padding(
-                  padding: const EdgeInsets.only(bottom: 100.0),
+                  padding: EdgeInsets.only(bottom: 100.0),
                   child: FloatingActionButton(
                     onPressed: () => Navigator.push(
                       context,
@@ -125,7 +124,7 @@ class _FriendsMainScreenState extends State<FriendsMainScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Icon(Icons.edit_square, color: Colors.white),
+                    child: Icon(Icons.edit_square, color: Colors.white),
                   ),
                 )
               : null,
@@ -222,11 +221,11 @@ class _FriendsListTabState extends State<_FriendsListTab> {
               }
 
               if (friends.isEmpty) {
-                return const Center(child: Text("Không tìm thấy bạn bè nào."));
+                return Center(child: Text('screens.noFriendsFound'.tr()));
               }
 
               return ListView.builder(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   vertical: 12,
                   horizontal: 16,
                 ),
@@ -234,7 +233,7 @@ class _FriendsListTabState extends State<_FriendsListTab> {
                 itemBuilder: (context, index) {
                   final friend = friends[index];
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: EdgeInsets.only(bottom: 12),
                     child: _FriendCard(friend: friend),
                   );
                 },
@@ -248,7 +247,7 @@ class _FriendsListTabState extends State<_FriendsListTab> {
 
   Widget _buildSearchField() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Container(
         height: 44,
         decoration: BoxDecoration(
@@ -257,12 +256,12 @@ class _FriendsListTabState extends State<_FriendsListTab> {
         ),
         child: Builder(
           builder: (context) {
-            final l = AppLocalizations.of(context)!;
+            
             return TextField(
               controller: _searchController,
               onChanged: (val) => setState(() => _searchQuery = val),
               decoration: InputDecoration(
-                hintText: l.searchNameOrPhone,
+                hintText: 'home_screen.searchNameOrPhone'.tr(),
                 hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
                 prefixIcon: Icon(
                   Icons.search,
@@ -270,7 +269,7 @@ class _FriendsListTabState extends State<_FriendsListTab> {
                   size: 20,
                 ),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                contentPadding: EdgeInsets.symmetric(vertical: 10),
               ),
             );
           },
@@ -311,7 +310,7 @@ class _FriendCard extends StatelessWidget {
           child: Material(
             color: Colors.transparent,
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
+              contentPadding: EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 8,
               ),
@@ -366,8 +365,8 @@ class _FriendCard extends StatelessWidget {
                 ],
               ),
               title: Text(
-                friend.displayName ?? 'Người dùng không tên',
-                style: const TextStyle(
+                friend.displayName ?? 'screens.anonymousUser'.tr(),
+                style: TextStyle(
                   fontWeight: FontWeight.w700,
                   color: AppColors.textBlack,
                 ),
@@ -388,7 +387,7 @@ class _FriendCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.message_rounded,
                         color: AppColors.primary,
                         size: 20,
@@ -411,7 +410,7 @@ class _FriendCard extends StatelessWidget {
                             createdAt: DateTime.now(),
                           );
                           room.displayTitle =
-                              friend.displayName ?? 'Người dùng';
+                              friend.displayName ?? 'screens.user'.tr();
                           room.displayAvatar = friend.photoUrl;
                           Navigator.push(
                             context,
@@ -431,14 +430,14 @@ class _FriendCard extends StatelessWidget {
                       },
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Container(
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.person_remove,
                         color: AppColors.error,
                         size: 20,
@@ -446,10 +445,10 @@ class _FriendCard extends StatelessWidget {
                       onPressed: () {
                         DialogUtils.showConfirmDialog(
                           context,
-                          title: 'Xóa bạn bè',
+                          title: 'screens.deleteFriends'.tr(),
                           content:
                               'Bạn có chắc chắn muốn xóa ${friend.displayName ?? "người này"} khỏi danh sách bạn bè?',
-                          confirmText: 'Xóa',
+                          confirmText: 'screens.erase'.tr(),
                           isDestructive: true,
                           onConfirm: () async {
                             final myId = context
@@ -464,7 +463,7 @@ class _FriendCard extends StatelessWidget {
                               if (context.mounted) {
                                 SnackbarUtils.showSuccess(
                                   context,
-                                  "Đã xóa bạn bè",
+                                  'screens.deletedFriends'.tr(),
                                 );
                               }
                             } catch (e) {
@@ -497,18 +496,18 @@ class _PendingRequestsTab extends StatelessWidget {
         final requests = provider.pendingRequests;
 
         if (requests.isEmpty) {
-          return const Center(child: Text("Không có lời mời kết bạn nào."));
+          return Center(child: Text('screens.thereAreNoFriendRequests'.tr()));
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           itemCount: requests.length,
           itemBuilder: (context, index) {
             final request = requests[index];
             final UserModel sender = request['user'];
 
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: 12),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(24),
                 child: BackdropFilter(
@@ -532,7 +531,7 @@ class _PendingRequestsTab extends StatelessWidget {
                     child: Material(
                       color: Colors.transparent,
                       child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
+                        contentPadding: EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
                         ),
@@ -560,14 +559,13 @@ class _PendingRequestsTab extends StatelessWidget {
                           ),
                         ),
                         title: Text(
-                          sender.displayName ?? 'Người dùng không tên',
-                          style: const TextStyle(
+                          sender.displayName ?? 'screens.anonymousUser'.tr(),
+                          style: TextStyle(
                             fontWeight: FontWeight.w700,
                             color: AppColors.textBlack,
                           ),
                         ),
-                        subtitle: const Text(
-                          "Muốn kết bạn với bạn",
+                        subtitle: Text('screens.wantToMakeFriendsWithYou'.tr(),
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textGrey,
@@ -586,7 +584,7 @@ class _PendingRequestsTab extends StatelessWidget {
                                   if (context.mounted) {
                                     SnackbarUtils.showSuccess(
                                       context,
-                                      "Chấp nhận thành công",
+                                      'screens.acceptSuccess'.tr(),
                                     );
                                   }
                                 } catch (e) {
@@ -601,21 +599,20 @@ class _PendingRequestsTab extends StatelessWidget {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                padding: const EdgeInsets.symmetric(
+                                padding: EdgeInsets.symmetric(
                                   horizontal: 16,
                                 ),
                               ),
-                              child: const Text(
-                                "Chấp nhận",
+                              child: Text('screens.accept'.tr(),
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             IconButton(
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.close,
                                 color: AppColors.textGrey,
                                 size: 20,

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:io';
 import 'package:badminton_ai/data/repositories/chat_room_repository.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
@@ -79,7 +80,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
         );
         if (uploadedUrl == null) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lỗi tải ảnh lên.')));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('screens.errorUploadingPhoto'.tr())));
           }
         }
       }
@@ -87,7 +88,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
       await context.read<ChatRoomRepository>().sendMessage(
         widget.room.id,
         userId,
-        currentText.isEmpty && uploadedUrl != null ? '[Hình ảnh]' : currentText,
+        currentText.isEmpty && uploadedUrl != null ? 'screens.Image'.tr() : currentText,
         imagePath: uploadedUrl,
       );
     } finally {
@@ -127,7 +128,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
+              icon: Icon(Icons.close, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -140,7 +141,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                 child: CachedNetworkImage(
                   imageUrl: imageUrl,
                   fit: BoxFit.contain,
-                  placeholder: (context, url) => const Center(
+                  placeholder: (context, url) => Center(
                     child: CircularProgressIndicator(),
                   ),
                 ),
@@ -175,14 +176,14 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                     )
                   : null,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.room.displayTitle ?? 'Không tên',
-                    style: const TextStyle(
+                    widget.room.displayTitle ?? 'screens.nameless'.tr(),
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -192,12 +193,12 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                       if (widget.room.isGroup) {
                         return Text(
                           "${widget.room.members.length} thành viên",
-                          style: const TextStyle(fontSize: 12, color: AppColors.primary),
+                          style: TextStyle(fontSize: 12, color: AppColors.primary),
                         );
                       }
                       
                       if (widget.room.members.isEmpty) {
-                        return const SizedBox.shrink();
+                        return SizedBox.shrink();
                       }
                       final otherUser = widget.room.members.firstWhere(
                         (m) => m.id != userId,
@@ -205,11 +206,11 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                       );
                       
                       final isOnline = otherUser.status == 'online';
-                      String text = "Ngoại tuyến";
+                      String text = 'screens.offline'.tr();
                       Color color = Colors.grey;
                       
                       if (isOnline) {
-                        text = "Đang hoạt động";
+                        text = 'screens.active'.tr();
                         color = AppColors.success;
                       } else if (otherUser.lastActiveAt != null) {
                         timeago.setLocaleMessages('vi', timeago.ViMessages());
@@ -236,14 +237,14 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
         actions: widget.room.isGroup
             ? [
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: AppColors.textBlack),
+                  icon: Icon(Icons.more_vert, color: AppColors.textBlack),
                   onSelected: (value) async {
                     if (value == 'leave') {
                       DialogUtils.showConfirmDialog(
                         context,
-                        title: 'Rời nhóm',
-                        content: 'Bạn có chắc chắn muốn rời khỏi nhóm này không?',
-                        confirmText: 'Rời đi',
+                        title: 'screens.leaveTheGroup'.tr(),
+                        content: 'screens.areYouSureYouWantToLeave'.tr(),
+                        confirmText: 'screens.leave'.tr(),
                         isDestructive: true,
                         onConfirm: () async {
                           if (userId == null) return;
@@ -251,7 +252,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                             await context.read<ChatRoomRepository>().leaveGroup(widget.room.id, userId);
                             if (mounted) {
                               Navigator.pop(context); // Trở về màn hình trước
-                              SnackbarUtils.showSuccess(context, 'Đã rời nhóm');
+                              SnackbarUtils.showSuccess(context, 'screens.leftTheGroup'.tr());
                             }
                           } catch (e) {
                             if (mounted) SnackbarUtils.showError(context, 'Lỗi: $e');
@@ -261,16 +262,16 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                     } else if (value == 'dissolve') {
                       DialogUtils.showConfirmDialog(
                         context,
-                        title: 'Giải tán nhóm',
-                        content: 'Hành động này sẽ xóa vĩnh viễn nhóm và tất cả tin nhắn. Bạn có chắc chắn không?',
-                        confirmText: 'Giải tán',
+                        title: 'screens.disbandTheGroup'.tr(),
+                        content: 'screens.thisActionWillPermanentlyD'.tr(),
+                        confirmText: 'screens.dissolve'.tr(),
                         isDestructive: true,
                         onConfirm: () async {
                           try {
                             await context.read<ChatRoomRepository>().dissolveGroup(widget.room.id);
                             if (mounted) {
                               Navigator.pop(context); // Trở về
-                              SnackbarUtils.showSuccess(context, 'Đã giải tán nhóm');
+                              SnackbarUtils.showSuccess(context, 'screens.theGroupHasBeenDisbanded'.tr());
                             }
                           } catch (e) {
                             if (mounted) SnackbarUtils.showError(context, 'Lỗi: $e');
@@ -283,13 +284,13 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                     final isLeader = widget.room.adminId == null || widget.room.adminId == userId;
                     return [
                       if (isLeader)
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'dissolve',
-                          child: Text('Giải tán nhóm', style: TextStyle(color: AppColors.error)),
+                          child: Text('screens.disbandTheGroup'.tr(), style: TextStyle(color: AppColors.error)),
                         ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'leave',
-                        child: Text('Rời nhóm'),
+                        child: Text('screens.leaveTheGroup'.tr()),
                       ),
                     ];
                   },
@@ -310,7 +311,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                   }
                 });
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(child: CircularProgressIndicator());
                 }
 
                 if (snapshot.hasError) {
@@ -333,7 +334,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                 return ListView.builder(
                   controller: _scrollController,
                   reverse: false,
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 16,
                   ),
@@ -350,7 +351,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                           ? Alignment.centerRight
                           : Alignment.centerLeft,
                       child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: EdgeInsets.only(bottom: 12),
                         child: Column(
                           crossAxisAlignment: isMe
                               ? CrossAxisAlignment.end
@@ -358,13 +359,13 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                           children: [
                             if (!isMe && widget.room.isGroup) ...[
                               Padding(
-                                padding: const EdgeInsets.only(
+                                padding: EdgeInsets.only(
                                   left: 8,
                                   bottom: 4,
                                 ),
                                 child: Text(
-                                  msg.sender?.displayName ?? 'Người dùng',
-                                  style: const TextStyle(
+                                  msg.sender?.displayName ?? 'screens.user'.tr(),
+                                  style: TextStyle(
                                     color: AppColors.textGrey,
                                     fontSize: 12,
                                   ),
@@ -415,7 +416,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                                                   Container(
                                                     height: 200,
                                                     color: Colors.grey.shade200,
-                                                    child: const Center(
+                                                    child: Center(
                                                       child:
                                                           CircularProgressIndicator(),
                                                     ),
@@ -424,7 +425,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                                                   Container(
                                                     height: 150,
                                                     color: Colors.grey.shade200,
-                                                    child: const Icon(
+                                                    child: Icon(
                                                       Icons.broken_image,
                                                       color: Colors.grey,
                                                       size: 40,
@@ -436,9 +437,9 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                                       ),
                                     // ── Nội dung text ──
                                     if (msg.content.isNotEmpty &&
-                                        msg.content != '[Hình ảnh]')
+                                        msg.content != 'screens.Image'.tr())
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(
+                                        padding: EdgeInsets.symmetric(
                                           horizontal: 16,
                                           vertical: 12,
                                         ),
@@ -454,21 +455,21 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                                       ),
                                     // Nếu chỉ có ảnh (không có text), thêm padding nhỏ
                                     if (msg.imagePath != null &&
-                                        (msg.content.isEmpty || msg.content == '[Hình ảnh]'))
-                                      const SizedBox(height: 4),
+                                        (msg.content.isEmpty || msg.content == 'screens.Image'.tr()))
+                                      SizedBox(height: 4),
                                   ],
                                 ),
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.only(
+                              padding: EdgeInsets.only(
                                 top: 4,
                                 left: 4,
                                 right: 4,
                               ),
                               child: Text(
                                 timeStr,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AppColors.textLight,
                                   fontSize: 10,
                                 ),
@@ -485,7 +486,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
           ),
 
           if (_isUploading)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(8.0),
               child: LinearProgressIndicator(),
             ),
@@ -493,7 +494,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
           // Message Input Field
           SafeArea(
             child: Container(
-              padding: const EdgeInsets.symmetric(
+              padding: EdgeInsets.symmetric(
                 horizontal: 8.0,
                 vertical: 8.0,
               ),
@@ -513,7 +514,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                 children: [
                   if (_previewImage != null)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 8, left: 8, top: 4),
+                      padding: EdgeInsets.only(bottom: 8, left: 8, top: 4),
                       child: SizedBox(
                         width: 88,
                         height: 88,
@@ -552,8 +553,8 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                                     shape: BoxShape.circle,
                                     border: Border.all(color: Colors.white, width: 1.5),
                                   ),
-                                  padding: const EdgeInsets.all(3),
-                                  child: const Icon(
+                                  padding: EdgeInsets.all(3),
+                                  child: Icon(
                                     Icons.close,
                                     color: Colors.white,
                                     size: 13,
@@ -568,7 +569,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.camera_alt_outlined,
                           color: AppColors.primary,
                           size: 26,
@@ -576,7 +577,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                         onPressed: _isUploading ? null : () => _pickImage(ImageSource.camera),
                       ),
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.image_outlined,
                           color: AppColors.primary,
                           size: 26,
@@ -589,15 +590,15 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                           minLines: 1,
                           maxLines: 4,
                           decoration: InputDecoration(
-                            hintText: "Nhắn tin...",
-                            hintStyle: const TextStyle(color: AppColors.textLight),
+                            hintText: 'screens.texting'.tr(),
+                            hintStyle: TextStyle(color: AppColors.textLight),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
                             fillColor: Colors.grey[100],
-                            contentPadding: const EdgeInsets.symmetric(
+                            contentPadding: EdgeInsets.symmetric(
                               horizontal: 20,
                               vertical: 10,
                             ),
@@ -606,11 +607,11 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                           onSubmitted: (_) => _sendMessage(),
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       CircleAvatar(
                         backgroundColor: AppColors.primary,
                         child: IconButton(
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.send_rounded,
                             color: Colors.white,
                             size: 20,

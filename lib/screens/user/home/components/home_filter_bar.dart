@@ -2,6 +2,7 @@ import 'package:badminton_ai/blocs/home_filter/home_filter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_event.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class HomeFilterBar extends StatelessWidget {
   const HomeFilterBar({super.key});
@@ -17,11 +18,13 @@ class HomeFilterBar extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _buildFilterChip(context, 'Cầu lông', 'badminton', currentSport),
-          const SizedBox(width: 8),
+          _buildFilterChip(context, 'screens.badminton'.tr(), 'badminton', currentSport),
+          SizedBox(width: 8),
           _buildFilterChip(context, 'Pickleball', 'pickleball', currentSport),
-          const SizedBox(width: 8),
-          _buildFilterChip(context, 'Bóng đá', 'football', currentSport),
+          SizedBox(width: 8),
+          _buildFilterChip(context, 'screens.football'.tr(), 'football', currentSport),
+          SizedBox(width: 8),
+          _buildFilterChip(context, 'Tennis', 'tennis', currentSport),
         ],
       ),
     );
@@ -42,7 +45,7 @@ class HomeFilterBar extends StatelessWidget {
         );
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? Colors.grey[700] : Colors.grey[800],
           borderRadius: BorderRadius.circular(20),

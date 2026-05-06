@@ -1,18 +1,16 @@
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+import 'package:easy_localization/easy_localization.dart';
+
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/viewmodels/booking_history_viewmodel.dart';
 import 'package:badminton_ai/viewmodels/mixins/filterable_viewmodel_mixin.dart';
 import 'package:badminton_ai/screens/user/booking/components/booking_history/calendar_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'package:badminton_ai/widgets/custom_date_range_picker_dialog.dart';
 
 /// Popup filter button that opens date-range / month / year pickers.
 class FilterRow extends StatelessWidget {
   final BookingHistoryViewModel vm;
-  final AppLocalizations l;
-
-  const FilterRow({super.key, required this.vm, required this.l});
+const FilterRow({super.key, required this.vm});
 
   // ─── Date Range Picker ─────────────────────────────────────────────────
 
@@ -20,8 +18,8 @@ class FilterRow extends StatelessWidget {
     final result = await showCustomDateRangePicker(
       context: context,
       initialDateRange: vm.selectedDateRange,
-      cancelLabel: l.cancel,
-      confirmLabel: l.confirm,
+      cancelLabel: 'common.cancel'.tr(),
+      confirmLabel: 'common.confirm'.tr(),
     );
 
     if (result != null) {
@@ -53,7 +51,7 @@ class FilterRow extends StatelessWidget {
                   onPrevious: () => setState(() => tempYear--),
                   onNext: () => setState(() => tempYear++),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 GridView.count(
                   crossAxisCount: 4,
                   shrinkWrap: true,
@@ -87,8 +85,8 @@ class FilterRow extends StatelessWidget {
                 Navigator.pop(ctx);
                 vm.setFilterMonth(tempMonth, tempYear);
               },
-              cancelLabel: l.cancel,
-              confirmLabel: l.confirm,
+              cancelLabel: 'common.cancel'.tr(),
+              confirmLabel: 'common.confirm'.tr(),
             ),
           ],
         ),
@@ -110,7 +108,7 @@ class FilterRow extends StatelessWidget {
           shape: BookingCalendarTheme.dialogShape,
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           content: SizedBox(
             width: BookingCalendarTheme.dialogWidth,
             child: Column(
@@ -121,7 +119,7 @@ class FilterRow extends StatelessWidget {
                   onPrevious: () => setState(() => startYear -= 12),
                   onNext: () => setState(() => startYear += 12),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 GridView.count(
                   crossAxisCount: 3,
                   shrinkWrap: true,
@@ -150,15 +148,15 @@ class FilterRow extends StatelessWidget {
           ),
           actions: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: _DialogActions(
                 onCancel: () => Navigator.pop(ctx),
                 onConfirm: () {
                   Navigator.pop(ctx);
                   vm.setFilterYear(tempYear);
                 },
-                cancelLabel: l.cancel,
-                confirmLabel: l.confirm,
+                cancelLabel: 'common.cancel'.tr(),
+                confirmLabel: 'common.confirm'.tr(),
               ),
             ),
           ],
@@ -194,13 +192,13 @@ class FilterRow extends StatelessWidget {
           }
         },
         itemBuilder: (context) => [
-          _buildMenuItem(0, l.filterByDateRange),
-          _buildMenuItem(1, l.filterByMonth),
-          _buildMenuItem(2, l.filterByYear),
-          _buildMenuItem(3, l.viewAll),
+          _buildMenuItem(0, 'booking_history_screen.filterByDateRange'.tr()),
+          _buildMenuItem(1, 'booking_history_screen.filterByMonth'.tr()),
+          _buildMenuItem(2, 'booking_history_screen.filterByYear'.tr()),
+          _buildMenuItem(3, 'booking_history_screen.viewAll'.tr()),
         ],
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: AppColors.brandOrange),
@@ -210,15 +208,15 @@ class FilterRow extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                vm.filterMode == FilterMode.all ? l.viewAll : vm.filterLabel(context),
-                style: const TextStyle(
+                vm.filterMode == FilterMode.all ? 'booking_history_screen.viewAll'.tr() : vm.filterLabel(context),
+                style: TextStyle(
                   color: Color.fromARGB(255, 108, 108, 108),
                   fontWeight: FontWeight.w500,
                   fontSize: 12,
                 ),
               ),
-              const SizedBox(width: 8),
-              const Icon(Icons.calendar_month, color: AppColors.brandOrange, size: 16),
+              SizedBox(width: 8),
+              Icon(Icons.calendar_month, color: AppColors.brandOrange, size: 16),
             ],
           ),
         ),
@@ -234,7 +232,7 @@ class FilterRow extends StatelessWidget {
       child: Center(
         child: Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             color: Color.fromARGB(255, 248, 255, 252),
             fontWeight: FontWeight.w600,
             fontSize: 13,
@@ -265,9 +263,15 @@ class _DialogActions extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        BookingCalendarTheme.cancelButton(onPressed: onCancel, label: cancelLabel),
-        const SizedBox(width: 16),
-        BookingCalendarTheme.confirmButton(onPressed: onConfirm, label: confirmLabel),
+        BookingCalendarTheme.cancelButton(
+          onPressed: onCancel,
+          label: 'common.cancel'.tr(),
+        ),
+        SizedBox(width: 16),
+        BookingCalendarTheme.confirmButton(
+          onPressed: onConfirm,
+          label: 'common.confirm'.tr(),
+        ),
       ],
     );
   }

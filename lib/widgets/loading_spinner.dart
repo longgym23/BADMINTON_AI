@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:badminton_ai/utils/app_colors.dart';

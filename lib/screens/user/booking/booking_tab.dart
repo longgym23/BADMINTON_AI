@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
@@ -48,7 +49,7 @@ class _BookingTabState extends State<BookingTab> {
   Widget build(BuildContext context) {
     final firestoreRepo = context.read<SupabaseRepository>();
     final colors = Theme.of(context).colorScheme;
-    final provider = context.watch<BookingProvider>();
+    
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -62,27 +63,27 @@ class _BookingTabState extends State<BookingTab> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [colors.primary, colors.primary.withOpacity(0.8)],
+                  colors: [colors.primary, colors.primary.withValues(alpha: 0.8)],
                 ),
               ),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Đặt sân",
+                    'screens.setThePitch1'.tr(),
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
-                    "Chọn ngày và sân để đặt lịch",
+                    'screens.selectDateAndCourseToSche'.tr(),
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   ),
                 ],
@@ -93,7 +94,7 @@ class _BookingTabState extends State<BookingTab> {
           // 1. Lịch chọn ngày
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(
@@ -108,27 +109,27 @@ class _BookingTabState extends State<BookingTab> {
           // 2. Chọn sân
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: _SectionHeader(
                 icon: Icons.sports_tennis_rounded,
-                title: "1. Chọn sân",
+                title: 'screens.1ChooseAYard'.tr(),
                 color: colors.primary,
               ),
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: StreamBuilder<List<CourtLocationModel>>(
                 stream: firestoreRepo.getCourtLocationsStream(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting &&
                       _selectedCourt == null) {
-                    return const Center(child: CircularProgressIndicator());
+                    return Center(child: CircularProgressIndicator());
                   }
                   if (snapshot.hasError) {
                     return Text(
-                      "Lỗi tải sân",
+                      'screens.pitchLoadingError'.tr(),
                       style: TextStyle(color: Colors.red),
                     );
                   }
@@ -136,7 +137,7 @@ class _BookingTabState extends State<BookingTab> {
                   final courts = snapshot.data ?? [];
                   if (courts.isEmpty) {
                     return Text(
-                      "Chưa có sân nào.",
+                      'screens.thereIsNoYardYet'.tr(),
                       style: TextStyle(color: Colors.white),
                     );
                   }
@@ -159,12 +160,12 @@ class _BookingTabState extends State<BookingTab> {
 
                   // Hiển thị loading cho đến khi _selectedCourt được gán
                   if (_selectedCourt == null) {
-                    return const Center(child: CircularProgressIndicator());
+                    return Center(child: CircularProgressIndicator());
                   }
 
                   return Card(
                     elevation: 2,
-                    margin: const EdgeInsets.all(0),
+                    margin: EdgeInsets.all(0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -173,12 +174,12 @@ class _BookingTabState extends State<BookingTab> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: colors.primary.withOpacity(0.2),
+                          color: colors.primary.withValues(alpha: 0.2),
                           width: 1,
                         ),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 4,
                         ),
@@ -227,17 +228,17 @@ class _BookingTabState extends State<BookingTab> {
           // 3. Nút mở màn hình chọn slot
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(16.0),
               child: _selectedCourt == null
                   ? Container(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Center(
                         child: Text(
-                          "Vui lòng chọn sân ở trên",
+                          'screens.pleaseSelectACourseAbove'.tr(),
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 16,
@@ -246,9 +247,8 @@ class _BookingTabState extends State<BookingTab> {
                       ),
                     )
                   : ElevatedButton.icon(
-                      icon: const Icon(Icons.calendar_view_week_rounded),
-                      label: const Text(
-                        "Chọn khung giờ",
+                      icon: Icon(Icons.calendar_view_week_rounded),
+                      label: Text('screens.chooseATimeFrame'.tr(),
                         style: TextStyle(fontSize: 18),
                       ),
                       onPressed: () {
@@ -322,7 +322,7 @@ class _BookingTabState extends State<BookingTab> {
           fontWeight: FontWeight.bold,
         ),
         todayDecoration: BoxDecoration(
-          color: colors.primary.withOpacity(0.3), // Xanh nhạt
+          color: colors.primary.withValues(alpha: 0.3), // Xanh nhạt
           shape: BoxShape.circle,
         ),
         todayTextStyle: TextStyle(
@@ -343,7 +343,7 @@ class _BookingTabState extends State<BookingTab> {
           fontWeight: FontWeight.w500,
         ),
         weekdayStyle: TextStyle(
-          color: Colors.black.withOpacity(0.7),
+          color: Colors.black.withValues(alpha: 0.7),
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -357,15 +357,15 @@ class _BookingTabState extends State<BookingTab> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildLegendItem(colors.secondary, "Đang chọn", colors.primary),
-            _buildLegendItem(Colors.redAccent[100]!, "Đã đặt", Colors.black54),
+            _buildLegendItem(colors.secondary, 'screens.selecting'.tr(), colors.primary),
+            _buildLegendItem(Colors.redAccent[100]!, 'screens.booked'.tr(), Colors.black54),
             _buildLegendItem(
               Colors.grey.shade200,
-              "Còn trống",
+              'screens.stillEmpty'.tr(),
               Colors.black54,
             ), // Sửa màu
           ],
@@ -386,7 +386,7 @@ class _BookingTabState extends State<BookingTab> {
             border: Border.all(color: Colors.black12, width: 1),
           ),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Text(
           text,
           style: TextStyle(
@@ -416,7 +416,7 @@ class _SectionHeader extends StatelessWidget {
     return Row(
       children: [
         Icon(icon, color: color, size: 24),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Text(
           title,
           style: TextStyle(
@@ -506,7 +506,7 @@ class _BookingTimeline extends StatelessWidget {
               (time) => Container(
                 width: colWidth,
                 height: 45, // Chiều cao hàng Header
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: colors.primary, // Màu xanh đậm
                   border: Border(
@@ -517,7 +517,7 @@ class _BookingTimeline extends StatelessWidget {
                 child: Center(
                   child: Text(
                     "${time}:00",
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -543,9 +543,9 @@ class _BookingTimeline extends StatelessWidget {
         Container(
           width: rowHeaderWidth,
           height: 60,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
-            color: colors.primary.withOpacity(
+            color: colors.primary.withValues(alpha: 
               0.9,
             ), // Màu xanh đậm (nhạt hơn header)
             border: Border(
@@ -557,7 +557,7 @@ class _BookingTimeline extends StatelessWidget {
             child: Text(
               "Sân $courtNum",
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
@@ -581,10 +581,10 @@ class _BookingTimeline extends StatelessWidget {
               size: 20,
             );
           } else if (isBooked) {
-            cellColor = Colors.redAccent[100]!.withOpacity(0.8); // Đỏ
+            cellColor = Colors.redAccent[100]!.withValues(alpha: 0.8); // Đỏ
             cellIcon = Icon(
               Icons.lock,
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               size: 18,
             );
           } else {
@@ -602,11 +602,11 @@ class _BookingTimeline extends StatelessWidget {
                 color: cellColor,
                 border: Border(
                   bottom: BorderSide(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     width: 1,
                   ),
                   right: BorderSide(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     width: 1,
                   ),
                 ),
@@ -619,3 +619,4 @@ class _BookingTimeline extends StatelessWidget {
     );
   }
 }
+

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:badminton_ai/data/repositories/chat_rooms_repository_impl.dart';
@@ -15,11 +16,11 @@ import 'package:badminton_ai/blocs/chat/chat_bloc.dart';
 import 'package:badminton_ai/data/repositories/chat_repository.dart';
 import 'package:badminton_ai/providers/unread_count_provider.dart';
 import 'package:badminton_ai/screens/splash/splash_screen.dart';
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:badminton_ai/data/repositories/friend_repository.dart';
@@ -50,13 +51,19 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await EasyLocalization.ensureInitialized();
   await initializeDateFormatting('vi_VN', null);
+
+  // Đọc ngôn ngữ đã lưu trước khi runApp để tránh flash ngôn ngữ sai lúc khởi động
+  final prefs = await SharedPreferences.getInstance();
+  final savedLangCode = prefs.getString('app_language_code') ?? 'vi';
+  final startLocale = savedLangCode == 'en' ? const Locale('en') : const Locale('vi');
 
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   } catch (e) {
-    print('Firebase initialization error: $e');
+    print('Firebase initialization error: \$e');
   }
 
   // Initialize Supabase
@@ -69,10 +76,18 @@ void main() async {
   try {
     await PushNotificationService().initialize();
   } catch (e) {
-    print('PushNotificationService initialization error: $e');
+    print('PushNotificationService initialization error: \$e');
   }
 
-  runApp(MyApp());
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [Locale('vi'), Locale('en')],
+      path: 'assets',
+      fallbackLocale: const Locale('vi'),
+      startLocale: startLocale,
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -210,20 +225,18 @@ class AppWithProviders extends StatelessWidget {
       // Consumer<LanguageProvider> đảm bảo toàn bộ MaterialApp rebuild khi đổi ngôn ngữ
       child: Consumer<LanguageProvider>(
         builder: (context, langProvider, _) => MaterialApp(
+          // Key thay đổi theo locale → Flutter destroy & recreate toàn bộ widget tree
+          // → tất cả tab, route đều rebuild ngay lập tức khi đổi ngôn ngữ
+          key: ValueKey(langProvider.locale.languageCode),
           title: 'Badminton Court Booking',
           locale: langProvider.locale,
-          localizationsDelegates: [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: context.localizationDelegates,
+          supportedLocales: context.supportedLocales,
           debugShowCheckedModeBanner: false,
           // Khoá font scale [0.8–1.2] để bảo vệ layout khi user tăng font hệ thống
           builder: (context, child) {
             final mq = MediaQuery.of(context);
-            final clampedScale = mq.textScaleFactor.clamp(0.8, 1.2);
+            final clampedScale = mq.textScaler.scale(1.0).clamp(0.8, 1.2);
             return MediaQuery(
               data: mq.copyWith(
                 textScaler: TextScaler.linear(clampedScale),

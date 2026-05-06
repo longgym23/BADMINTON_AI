@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,6 +8,7 @@ import 'package:badminton_ai/data/models/notification_model.dart';
 import 'package:badminton_ai/data/models/user_model.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/data/models/review_model.dart';
+import 'package:badminton_ai/utils/app_logger.dart';
 
 class SupabaseRepository {
   final SupabaseClient _client;
@@ -49,8 +51,8 @@ class SupabaseRepository {
       return List<CourtLocationModel>.from(
         data.map((e) => CourtLocationModel.fromSupabase(e)),
       );
-    } catch (e) {
-      print("Fallback get courts error: $e");
+    } catch (e, st) {
+      AppLogger.e('Repository', 'getAllCourtsFallback error', e, st);
       return [];
     }
   }
@@ -79,8 +81,8 @@ class SupabaseRepository {
           .eq('id', courtId)
           .single();
       return CourtLocationModel.fromSupabase(data);
-    } catch (e) {
-      print("Lỗi getCourtLocationById: $e");
+    } catch (e, st) {
+      AppLogger.e('Repository', 'getCourtLocationById error', e, st);
       return null;
     }
   }
@@ -157,14 +159,36 @@ class SupabaseRepository {
         .eq('status', 'PENDING_PAYMENT');
   }
 
-  // Lấy lịch sử đặt sân của user
+  // Lấy stream các booking của user (Realtime — giới hạn 50 mục gần nhất)
   Stream<List<BookingModel>> getUserBookingHistoryStream(String userId) {
     return _client
         .from('bookings')
         .stream(primaryKey: ['id'])
         .eq('user_id', userId)
-        .order('booking_date', ascending: false) // Sắp xếp giảm dần
+        .order('booking_date', ascending: false)
+        .limit(50) // Pagination: chỉ lấy 50 gần nhất qua stream
         .map((data) => data.map((e) => BookingModel.fromSupabase(e)).toList());
+  }
+
+  // Pagination: Lấy thêm booking cũ hơn (dùng khi user kéo "Load more")
+  Future<List<BookingModel>> getMoreBookingHistory({
+    required String userId,
+    required int offset,
+    int limit = 20,
+  }) async {
+    try {
+      final data = await _client
+          .from('bookings')
+          .select()
+          .eq('user_id', userId)
+          .order('booking_date', ascending: false)
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1);
+      return data.map<BookingModel>((e) => BookingModel.fromSupabase(e)).toList();
+    } catch (e, st) {
+      AppLogger.e('Repository', 'getMoreBookingHistory error', e, st);
+      return [];
+    }
   }
 
   // Lấy danh sách booking trong 1 khoảng thời gian (dùng cho thống kê biểu đồ)
@@ -174,16 +198,14 @@ class SupabaseRepository {
     String? ownerId,
     String? courtId,
   }) async {
-    String startStr = start.toIso8601String().split('T')[0];
-    String endStr = end.toIso8601String().split('T')[0];
-
+    final startStr = start.toIso8601String().split('T')[0];
+    final endStr   = end.toIso8601String().split('T')[0];
     try {
       var query = _client
           .from('bookings')
           .select()
           .gte('booking_date', startStr)
           .lte('booking_date', endStr);
-
       if (courtId != null) {
         query = query.eq('court_id', courtId);
       } else if (ownerId != null) {
@@ -191,18 +213,14 @@ class SupabaseRepository {
             .from('courts')
             .select('id')
             .eq('owner_id', ownerId);
-        final List<String> courtIds = (userCourtsResp as List)
-            .map((c) => c['id'] as String)
-            .toList();
-
+        final courtIds = (userCourtsResp as List).map((c) => c['id'] as String).toList();
         if (courtIds.isEmpty) return [];
         query = query.inFilter('court_id', courtIds);
       }
-
       final data = await query;
       return data.map((e) => BookingModel.fromSupabase(e)).toList();
-    } catch (e) {
-      print("Lỗi lấy dữ liệu thống kê: $e");
+    } catch (e, st) {
+      AppLogger.e('Repository', 'getBookingsForDateRange error', e, st);
       return [];
     }
   }
@@ -678,25 +696,14 @@ class SupabaseRepository {
   // Upload ảnh lên Supabase Storage
   Future<String> uploadImage(String filePath, String bucket) async {
     try {
-      File file = File(filePath);
-      if (!file.existsSync()) {
-        throw Exception('File không tồn tại tại đường dẫn: $filePath');
-      }
-
-      String fileName =
-          '${DateTime.now().millisecondsSinceEpoch}_${file.uri.pathSegments.last}';
-
-      // Upload
+      final file = File(filePath);
+      if (!file.existsSync()) throw Exception('File không tồn tại: $filePath');
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.uri.pathSegments.last}';
       await _client.storage.from(bucket).upload(fileName, file);
-
-      // Get Public URL
-      final String publicUrl = _client.storage
-          .from(bucket)
-          .getPublicUrl(fileName);
-      return publicUrl;
-    } catch (e) {
-      print("Lỗi uploadImage Supabase: $e");
-      throw e;
+      return _client.storage.from(bucket).getPublicUrl(fileName);
+    } catch (e, st) {
+      AppLogger.e('Repository', 'uploadImage error', e, st);
+      rethrow;
     }
   }
 

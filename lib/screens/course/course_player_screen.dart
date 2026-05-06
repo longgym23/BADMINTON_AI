@@ -6,6 +6,7 @@ import 'package:badminton_ai/domain/entities/course.dart';
 import 'package:badminton_ai/providers/course_provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class CoursePlayerScreen extends StatefulWidget {
   final Course course;
@@ -71,7 +72,7 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
           appBar: CustomGradientAppBar(
             title: Text(
               widget.course.title,
-              style: const TextStyle(fontSize: 16),
+              style: TextStyle(fontSize: 16),
             ),
           ),
           body: Column(
@@ -79,44 +80,43 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
             children: [
               player,
               Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       widget.course.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.access_time,
                           size: 16,
                           color: Colors.grey,
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           'Thời lượng: ${widget.course.duration}',
-                          style: const TextStyle(color: Colors.grey),
+                          style: TextStyle(color: Colors.grey),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Mô tả khóa học',
+                    SizedBox(height: 16),
+                    Text('screens.courseDescription'.tr(),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       widget.course.description,
-                      style: const TextStyle(fontSize: 15, height: 1.5),
+                      style: TextStyle(fontSize: 15, height: 1.5),
                     ),
                   ],
                 ),

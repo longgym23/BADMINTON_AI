@@ -1,4 +1,5 @@
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+import 'package:easy_localization/easy_localization.dart';
+
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/screens/admin/admin_dashboard_screen.dart';
 import 'package:badminton_ai/screens/auth/login_screen.dart';
@@ -84,11 +85,10 @@ class _SplashScreenState extends State<SplashScreen>
                 // Tên app
                 Builder(
                   builder: (context) {
-                    final l = AppLocalizations.of(context)!;
                     return Column(
                       children: [
                         Text(
-                          l.appNameKloo,
+                          'common.appNameKloo'.tr(),
                           style: const TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.w900,
@@ -98,7 +98,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          l.smartBooking,
+                          'home_screen.smartBooking'.tr(),
                           style: const TextStyle(
                             fontSize: 13,
                             color: AppColors.textGrey,
@@ -114,7 +114,7 @@ class _SplashScreenState extends State<SplashScreen>
                 SizedBox(
                   width: 120,
                   child: LinearProgressIndicator(
-                    backgroundColor: AppColors.primary.withOpacity(0.12),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       AppColors.primary,
                     ),
@@ -163,7 +163,7 @@ class _AppRouterState extends State<_AppRouter> {
               future: _prefsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const LoadingSpinner(message: 'Đang tải...');
+                  return LoadingSpinner(message: 'screens.loading'.tr());
                 }
                 final prefs = snapshot.data;
                 final isFirstTime = prefs?.getBool('isFirstTime') ?? true;
@@ -176,7 +176,7 @@ class _AppRouterState extends State<_AppRouter> {
             );
           case AuthState.loading:
           case AuthState.unknown:
-            return const LoadingSpinner(message: 'Đang tải...');
+            return LoadingSpinner(message: 'screens.loading'.tr());
         }
       },
     );

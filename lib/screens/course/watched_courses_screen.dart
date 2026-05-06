@@ -4,6 +4,7 @@ import 'package:badminton_ai/providers/course_provider.dart';
 import 'package:badminton_ai/domain/entities/course.dart';
 import 'package:badminton_ai/screens/course/course_player_screen.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class WatchedCoursesScreen extends StatefulWidget {
   const WatchedCoursesScreen({super.key});
@@ -25,7 +26,10 @@ class _WatchedCoursesScreenState extends State<WatchedCoursesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: const Text('Đã xem gần đây', style: TextStyle(color: Colors.white)),
+        title: Text(
+          'screens.recentlyViewed'.tr(),
+          style: TextStyle(color: Colors.white),
+        ),
       ),
       body: Consumer<CourseProvider>(
         builder: (context, provider, child) {
@@ -36,7 +40,9 @@ class _WatchedCoursesScreenState extends State<WatchedCoursesScreen> {
           final courses = provider.watchedCourses;
 
           if (courses.isEmpty) {
-            return const Center(child: Text('Bạn chưa xem khóa học nào.'));
+            return Center(
+              child: Text('screens.youHavenTViewedAnyCourses'.tr()),
+            );
           }
 
           return ListView.builder(
@@ -102,10 +108,7 @@ class _WatchedCoursesScreenState extends State<WatchedCoursesScreen> {
                     const SizedBox(height: 4),
                     Text(
                       course.duration,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                   ],
                 ),

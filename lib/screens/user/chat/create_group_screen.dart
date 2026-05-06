@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:badminton_ai/screens/user/chat/direct_chat_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart';
 
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({super.key});
@@ -36,13 +37,13 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     if (name.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Vui lòng nhập tên nhóm')));
+      ).showSnackBar(SnackBar(content: Text('screens.pleaseEnterAGroupName'.tr())));
       return;
     }
 
     if (_selectedFriendIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ít nhất 1 thành viên')),
+        SnackBar(content: Text('screens.pleaseSelectAtLeast1Membe'.tr())),
       );
       return;
     }
@@ -101,11 +102,11 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Tạo nhóm chat"),
+        title: Text('screens.createAChatGroup'.tr()),
         backgroundColor: Colors.white,
         actions: [
           if (_isLoading)
-            const Center(
+            Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.0),
                 child: SizedBox(
@@ -118,8 +119,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           else
             TextButton(
               onPressed: _createGroup,
-              child: const Text(
-                'Tạo',
+              child: Text('screens.create'.tr(),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -128,7 +128,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       body: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24),
             color: Colors.white,
             child: Column(
               children: [
@@ -162,13 +162,13 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: EdgeInsets.all(4),
                         decoration: BoxDecoration(
                           color: AppColors.primary,
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.camera_alt,
                           size: 16,
                           color: Colors.white,
@@ -177,30 +177,30 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 TextField(
                   controller: _nameController,
                   decoration: InputDecoration(
-                    hintText: 'Tên nhóm...',
+                    hintText: 'screens.groupName'.tr(),
                     filled: true,
                     fillColor: Colors.grey[100],
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          const Padding(
+          SizedBox(height: 8),
+          Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                "CHỌN BẠN BÈ",
+                'screens.cHOOSEFRIENDS'.tr(),
                 style: TextStyle(
                   color: Colors.grey,
                   fontWeight: FontWeight.bold,
@@ -210,8 +210,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           ),
           Expanded(
             child: friends.isEmpty
-                ? const Center(
-                    child: Text('Bạn chưa có bạn bè nào để thêm vào nhóm.'),
+                ? Center(
+                    child: Text('screens.youDonTHaveAnyFriendsTo'.tr()),
                   )
                 : ListView.builder(
                     itemCount: friends.length,
@@ -225,10 +225,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                               ? NetworkImage(friend.photoUrl!)
                               : null,
                           child: friend.photoUrl == null
-                              ? const Icon(Icons.person)
+                              ? Icon(Icons.person)
                               : null,
                         ),
-                        title: Text(friend.displayName ?? 'Người dùng'),
+                        title: Text(friend.displayName ?? 'screens.user'.tr()),
                         trailing: Icon(
                           isSelected
                               ? Icons.check_box

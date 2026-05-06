@@ -2,6 +2,7 @@ import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class RegisterScreen extends StatefulWidget {
   @override
@@ -37,7 +38,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (_passwordController.text != _confirmPasswordController.text) {
         AppToast.show(
           context,
-          'Mật khẩu xác nhận không khớp.',
+          'screens.confirmationPasswordDoesNot'.tr(),
           type: ToastType.error,
         );
         return;
@@ -53,7 +54,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (success && mounted) {
         AppToast.show(
           context,
-          'Đăng ký thành công! Vui lòng kiểm tra email và đăng nhập.',
+          'screens.registeredSuccessfullyPleas'.tr(),
           type: ToastType.success,
         );
         await Future.delayed(const Duration(milliseconds: 1400));
@@ -62,7 +63,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else if (mounted) {
         AppToast.show(
           context,
-          'Đăng ký thất bại. Email có thể đã tồn tại.',
+          'screens.registrationFailedEmailMay'.tr(),
           type: ToastType.error,
         );
       }
@@ -202,16 +203,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header row: "Tạo tài khoản" + Avatar upload
+                        // Header row: 'screens.createAnAccount'.tr() + Avatar upload
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Column(
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Tạo tài khoản',
+                                  'screens.createAnAccount'.tr(),
                                   style: TextStyle(
                                     fontSize: 26,
                                     fontWeight: FontWeight.bold,
@@ -220,7 +221,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  'Tham gia cộng đồng KLOO',
+                                  'screens.joinTheKLOOCommunity'.tr(),
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: _textGray,
@@ -234,7 +235,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.white,
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
                               ),
                               child: Image.asset(
                                 'assets/images/badminton-player.gif',
@@ -247,11 +251,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Họ và tên
                         _buildField(
                           controller: _displayNameController,
-                          label: 'Họ và tên',
-                          hint: 'Nhập họ và tên',
+                          label: 'screens.fullName'.tr(),
+                          hint: 'screens.enterFirstAndLastName'.tr(),
                           icon: Icons.person_outline,
                           validator: (val) => (val?.isEmpty ?? true)
-                              ? 'Vui lòng nhập họ và tên'
+                              ? 'screens.pleaseEnterYourFirstAndLa'.tr()
                               : null,
                         ),
                         const SizedBox(height: 14),
@@ -264,11 +268,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           icon: Icons.email_outlined,
                           validator: (val) {
                             if (val == null || val.isEmpty)
-                              return 'Vui lòng nhập email';
+                              return 'screens.pleaseEnterEmail'.tr();
                             if (!RegExp(
                               r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                             ).hasMatch(val)) {
-                              return 'Email không hợp lệ';
+                              return 'screens.invalidEmail'.tr();
                             }
                             return null;
                           },
@@ -278,13 +282,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Mật khẩu
                         _buildField(
                           controller: _passwordController,
-                          label: 'Mật khẩu',
+                          label: 'screens.password'.tr(),
                           hint: '••••••',
                           icon: Icons.lock_outline,
                           isPassword: true,
                           validator: (val) =>
                               (val?.isEmpty ?? true) || ((val?.length ?? 0) < 6)
-                              ? 'Mật khẩu ít nhất 6 ký tự'
+                              ? 'screens.passwordMustBeAtLeast6Ch'.tr()
                               : null,
                         ),
                         const SizedBox(height: 14),
@@ -292,13 +296,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Nhập lại mật khẩu
                         _buildField(
                           controller: _confirmPasswordController,
-                          label: 'Xác nhận mật khẩu',
+                          label: 'screens.confirmPassword'.tr(),
                           hint: '••••••',
                           icon: Icons.lock_outline,
                           isPassword: true,
                           isConfirmPassword: true,
                           validator: (val) => (val?.isEmpty ?? true)
-                              ? 'Vui lòng xác nhận mật khẩu'
+                              ? 'screens.pleaseConfirmYourPassword'.tr()
                               : null,
                         ),
                         const SizedBox(height: 24),
@@ -326,8 +330,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       strokeWidth: 2,
                                     ),
                                   )
-                                : const Text(
-                                    'Đăng ký ngay',
+                                : Text(
+                                    'screens.registerNow'.tr(),
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
@@ -342,8 +346,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text(
-                                'Đã có tài khoản? ',
+                              Text(
+                                'screens.alreadyHaveAnAccount'.tr(),
                                 style: TextStyle(
                                   color: _textGray,
                                   fontSize: 13,
@@ -351,8 +355,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               GestureDetector(
                                 onTap: () => Navigator.pop(context),
-                                child: const Text(
-                                  'Đăng nhập',
+                                child: Text(
+                                  'screens.logIn'.tr(),
                                   style: TextStyle(
                                     color: _orange,
                                     fontSize: 13,

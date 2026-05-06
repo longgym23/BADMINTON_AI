@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
@@ -104,7 +105,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
     if (_selectedSlots.isEmpty) {
       AppToast.show(
         context,
-        "Vui lòng chọn ít nhất một slot",
+        'screens.pleaseSelectAtLeastOneSlo'.tr(),
         type: ToastType.error,
       );
       return;
@@ -123,7 +124,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
     if (isPastDay) {
       AppToast.show(
         context,
-        'Không thể đặt sân cho ngày trong quá khứ',
+        'screens.coursesCannotBeBookedForD'.tr(),
         type: ToastType.error,
       );
       return;
@@ -132,7 +133,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
     if (_selectedSlots.any((s) => isToday && s.timeSlot <= now.hour)) {
       AppToast.show(
         context,
-        'Một số khung giờ bạn chọn đã trôi qua',
+        'screens.someOfTheTimeFramesYouSe'.tr(),
         type: ToastType.error,
       );
       return;
@@ -142,7 +143,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
     if (auth.authState != AuthState.authenticated) {
       AppToast.show(
         context,
-        'Vui lòng đăng nhập để đặt sân',
+        'screens.pleaseLogInToReserveAPit'.tr(),
         type: ToastType.error,
       );
       return;
@@ -169,12 +170,12 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const AlertDialog(
+      builder: (context) => AlertDialog(
         content: Row(
           children: [
             CircularProgressIndicator(color: AppColors.primary),
             SizedBox(width: 20),
-            Expanded(child: Text('Đang giữ chỗ...')),
+            Expanded(child: Text('screens.holdingASeat'.tr())),
           ],
         ),
       ),
@@ -196,8 +197,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
       if (!success) {
         final conflicts = result['conflicts'];
         final msg = conflicts is List && conflicts.isNotEmpty
-            ? 'Một số khung giờ vừa được người khác giữ/đặt. Vui lòng chọn lại.'
-            : 'Không thể giữ chỗ. Vui lòng thử lại.';
+            ? 'screens.someTimeSlotsHaveJustBeen'.tr()
+            : 'screens.reservationsCannotBeMadeP'.tr();
         AppToast.show(context, msg, type: ToastType.error);
         _fetchBookingsForCurrentDate();
         return;
@@ -244,7 +245,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: EdgeInsets.all(16.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -274,7 +275,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                       onPageChanged: (focusedDay) {
                         tempFocusedDate = focusedDay;
                       },
-                      headerStyle: const HeaderStyle(
+                      headerStyle: HeaderStyle(
                         titleCentered: true,
                         formatButtonVisible: false,
                         leftChevronIcon: Icon(
@@ -290,12 +291,12 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      daysOfWeekStyle: const DaysOfWeekStyle(
+                      daysOfWeekStyle: DaysOfWeekStyle(
                         weekdayStyle: TextStyle(color: AppColors.textGrey),
                         weekendStyle: TextStyle(color: AppColors.textGrey),
                       ),
                       calendarStyle: CalendarStyle(
-                        selectedDecoration: const BoxDecoration(
+                        selectedDecoration: BoxDecoration(
                           color: AppColors.primary,
                           shape: BoxShape.circle,
                         ),
@@ -306,29 +307,28 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                           ),
                           shape: BoxShape.circle,
                         ),
-                        todayTextStyle: const TextStyle(
+                        todayTextStyle: TextStyle(
                           color: AppColors.primary,
                           fontWeight: FontWeight.bold,
                         ),
-                        defaultDecoration: const BoxDecoration(
+                        defaultDecoration: BoxDecoration(
                           shape: BoxShape.circle,
                         ),
-                        weekendDecoration: const BoxDecoration(
+                        weekendDecoration: BoxDecoration(
                           shape: BoxShape.circle,
                         ),
-                        outsideDecoration: const BoxDecoration(
+                        outsideDecoration: BoxDecoration(
                           shape: BoxShape.circle,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text(
-                            'Hủy',
+                          child: Text('screens.cancel1'.tr(),
                             style: TextStyle(
                               color: AppColors.textGrey,
                               fontSize: 16,
@@ -336,7 +336,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         ElevatedButton(
                           onPressed: () =>
                               Navigator.pop(context, tempSelectedDate),
@@ -345,13 +345,12 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            padding: const EdgeInsets.symmetric(
+                            padding: EdgeInsets.symmetric(
                               horizontal: 24,
                               vertical: 12,
                             ),
                           ),
-                          child: const Text(
-                            'Xác nhận',
+                          child: Text('screens.confirm'.tr(),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -388,11 +387,10 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
     return Scaffold(
       appBar: CustomGradientAppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Đặt lịch trực tuyến',
+        title: Text('screens.scheduleOnline'.tr(),
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -403,8 +401,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
         elevation: 0,
         actions: [
           Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            margin: EdgeInsets.only(right: 16),
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(6),
@@ -415,14 +413,14 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                 children: [
                   Text(
                     DateFormat('dd/MM/yyyy').format(_currentDate),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(
+                  SizedBox(width: 8),
+                  Icon(
                     Icons.calendar_month,
                     color: Colors.white,
                     size: 16,
@@ -436,38 +434,38 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
           preferredSize: const Size.fromHeight(80),
           child: Container(
             color: Colors.transparent, // Background trong suốt
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const _LegendItem(
+                    _LegendItem(
                       color: Colors.white,
-                      label: 'Trống',
+                      label: 'screens.drum'.tr(),
                       labelColor: Colors.white,
                     ),
-                    const _LegendItem(
+                    _LegendItem(
                       color: Color(0xFFEF5350),
-                      label: 'Đã đặt',
+                      label: 'screens.booked'.tr(),
                       labelColor: Colors.white,
                     ),
-                    const _LegendItem(
+                    _LegendItem(
                       color: Color(0xFFE0E0E0),
-                      label: 'Khoá/Hết hạn',
+                      label: 'screens.lockedExpired'.tr(),
                       labelColor: AppColors.textGrey,
                       icon: Icons.block,
                       iconSize: 12,
                     ),
-                    const _LegendItem(
+                    _LegendItem(
                       color: Color(0xFFBA68C8),
-                      label: 'Sự kiện',
+                      label: 'screens.event'.tr(),
                       labelColor: Colors.white,
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
               ],
             ),
           ),
@@ -478,12 +476,12 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
           Container(
             width: double.infinity,
             color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
-                  'Lưu ý: ',
+                  'screens.note'.tr(),
                   style: TextStyle(
                     color: AppColors.primary,
                     fontSize: 13,
@@ -492,7 +490,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                 ),
                 Expanded(
                   child: Text(
-                    'Cụm sân có hệ thống mái che bạt rút (nắng mưa đều chơi được)',
+                    'screens.theYardHasARetractableCan'.tr(),
                     style: TextStyle(color: AppColors.textBlack, fontSize: 13),
                   ),
                 ),
@@ -505,7 +503,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
               stream: _eventsStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(child: CircularProgressIndicator());
                 }
                 final allEvents = snapshot.data ?? [];
                 final events = allEvents.where((e) {
@@ -516,7 +514,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                   builder: (context, bookingSnapshot) {
                     if (bookingSnapshot.connectionState ==
                         ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                      return Center(child: CircularProgressIndicator());
                     }
                     final bookings = bookingSnapshot.data ?? [];
                     return SingleChildScrollView(
@@ -528,7 +526,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                           children: [
                             // Header Row (Independent from Table to avoid vertical borders)
                             Container(
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 color: Color(0xFFFFF3E0), // Light orange header
                                 border: Border(
                                   bottom: BorderSide(color: Color(0xFFFFCC80)),
@@ -540,12 +538,11 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                                     width: 100,
                                     height: 48,
                                     alignment: Alignment.center,
-                                    padding: const EdgeInsets.only(
+                                    padding: EdgeInsets.only(
                                       left: 0,
                                       right: 20,
                                     ),
-                                    child: const Text(
-                                      'Sân / Giờ',
+                                    child: Text('screens.yardHour'.tr(),
                                       style: TextStyle(
                                         color: AppColors.textBlack,
                                         fontWeight: FontWeight.bold,
@@ -571,13 +568,13 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                                               children: [
                                                 Text(
                                                   _formatTime(t),
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                     color: AppColors.textBlack,
                                                     fontSize: 12,
                                                     fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
-                                                const SizedBox(height: 6),
+                                                SizedBox(height: 6),
                                                 Container(
                                                   width: 3,
                                                   height: 6,
@@ -615,13 +612,13 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                                                 _formatTime(
                                                   _timeSlots.last + 1,
                                                 ),
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   color: AppColors.textBlack,
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w500,
                                                 ),
                                               ),
-                                              const SizedBox(height: 6),
+                                              SizedBox(height: 6),
                                               Container(
                                                 width: 3,
                                                 height: 6,
@@ -643,7 +640,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                             // TABLE for cells
                             Table(
                               defaultColumnWidth: const FixedColumnWidth(60),
-                              border: const TableBorder(
+                              border: TableBorder(
                                 left: BorderSide(color: AppColors.borderColor),
                                 right: BorderSide(color: AppColors.borderColor),
                                 bottom: BorderSide(
@@ -670,10 +667,10 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                                       // Court Name Cell
                                       Container(
                                         height: 50,
-                                        color: const Color(
+                                        color: Color(
                                           0xFFFFF8E1,
                                         ), // Very light yellow-orange for court column
-                                        padding: const EdgeInsets.symmetric(
+                                        padding: EdgeInsets.symmetric(
                                           vertical: 8,
                                           horizontal: 4,
                                         ),
@@ -685,7 +682,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                                           children: [
                                             Text(
                                               'Sân $courtNum',
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 color: AppColors.textBlack,
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 13,
@@ -738,27 +735,27 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                                         Widget? child;
 
                                         if (isDisable) {
-                                          bgColor = const Color(
+                                          bgColor = Color(
                                             0xFFE0E0E0,
                                           ); // Grey for past/disabled
-                                          child = const Icon(
+                                          child = Icon(
                                             Icons.block,
                                             color: Colors.white,
                                             size: 16,
                                           );
                                         } else if (isBooked) {
-                                          bgColor = const Color(
+                                          bgColor = Color(
                                             0xFFEF5350,
                                           ); // Red
                                           child = null;
                                         } else if (isEventSlot) {
-                                          bgColor = const Color(
+                                          bgColor = Color(
                                             0xFFBA68C8,
                                           ); // Event purple
                                           child = null;
                                         } else if (isSelected) {
                                           bgColor = AppColors.primary;
-                                          child = const Icon(
+                                          child = Icon(
                                             Icons.check,
                                             color: Colors.white,
                                             size: 20,
@@ -823,8 +820,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
           ),
           // Footer
           Container(
-            padding: const EdgeInsets.all(16),
-            color: const Color(0xFFFFFDF7), // Very pale tint
+            padding: EdgeInsets.all(16),
+            color: Color(0xFFFFFDF7), // Very pale tint
             child: SafeArea(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -835,18 +832,17 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Tổng giờ',
+                          Text('screens.totalHours'.tr(),
                             style: TextStyle(
                               color: AppColors.textGrey,
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             _displayTotalHours(_getTotalHours()),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: AppColors.textBlack,
                               fontSize: 16,
@@ -857,21 +853,20 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Text(
-                            'Tổng tiền',
+                          Text('screens.totalAmount'.tr(),
                             style: TextStyle(
                               color: AppColors.textGrey,
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             NumberFormat.simpleCurrency(
                               locale: 'vi_VN',
                               decimalDigits: 0,
                             ).format(_getTotalPrice()),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Color(0xFFFF9800),
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
@@ -881,7 +876,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -895,8 +890,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text(
-                        'TIẾP THEO',
+                      child: Text('screens.nEXT'.tr(),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -1008,7 +1002,7 @@ class _LegendItem extends StatelessWidget {
               ? Icon(icon, color: Colors.white, size: iconSize ?? 14)
               : null,
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Text(
           label,
           style: TextStyle(

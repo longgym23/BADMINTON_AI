@@ -2,6 +2,7 @@ import 'package:badminton_ai/services/password_reset_service.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String email;
@@ -58,7 +59,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     } else {
       AppToast.show(
         context,
-        'Đặt lại mật khẩu thành công!',
+        'screens.passwordResetSuccessful'.tr(),
         type: ToastType.success,
       );
       await Future.delayed(const Duration(milliseconds: 1200));
@@ -81,27 +82,27 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: _textGray,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         TextFormField(
           controller: controller,
           obscureText: obscure,
-          style: const TextStyle(fontSize: 15, color: _textDark),
+          style: TextStyle(fontSize: 15, color: _textDark),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: _hintColor, fontSize: 14),
+            hintStyle: TextStyle(color: _hintColor, fontSize: 14),
             filled: true,
             fillColor: _inputBg,
-            contentPadding: const EdgeInsets.symmetric(
+            contentPadding: EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 14,
             ),
-            prefixIcon: const Icon(
+            prefixIcon: Icon(
               Icons.lock_outline_rounded,
               color: _orange,
               size: 20,
@@ -147,28 +148,28 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         onTap: () => FocusScope.of(context).unfocus(),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
+            padding: EdgeInsets.symmetric(horizontal: 28),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // Nút back
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    icon: Icon(Icons.arrow_back_ios_new_rounded),
                     padding: EdgeInsets.zero,
                     style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFF5F5F5),
+                      backgroundColor: Color(0xFFF5F5F5),
                       foregroundColor: _textDark,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
 
                   // Icon
                   Container(
@@ -178,17 +179,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       color: AppColors.primaryBg,
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.shield_outlined,
                       color: AppColors.brandOrange,
                       size: 34,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // Tiêu đề
-                  const Text(
-                    'Đặt mật khẩu mới',
+                  Text('screens.setANewPassword'.tr(),
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -196,55 +196,54 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       height: 1.2,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Mật khẩu mới phải khác mật khẩu cũ và có ít nhất 6 ký tự.',
+                  SizedBox(height: 8),
+                  Text('screens.theNewPasswordMustBeDiffe'.tr(),
                     style: TextStyle(
                       fontSize: 14,
                       color: _textGray,
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  SizedBox(height: 36),
 
                   // Mật khẩu mới
                   _buildPasswordField(
                     controller: _newPasswordController,
-                    label: 'Mật khẩu mới',
+                    label: 'screens.newPassword'.tr(),
                     hint: '••••••••',
                     obscure: _obscureNew,
                     onToggle: () => setState(() => _obscureNew = !_obscureNew),
                     validator: (val) {
                       if (val == null || val.isEmpty) {
-                        return 'Vui lòng nhập mật khẩu mới';
+                        return 'screens.pleaseEnterANewPassword'.tr();
                       }
                       if (val.length < 6) {
-                        return 'Mật khẩu phải có ít nhất 6 ký tự';
+                        return 'screens.passwordMustHaveAtLeast6'.tr();
                       }
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // Xác nhận mật khẩu
                   _buildPasswordField(
                     controller: _confirmPasswordController,
-                    label: 'Xác nhận mật khẩu',
+                    label: 'screens.confirmPassword'.tr(),
                     hint: '••••••••',
                     obscure: _obscureConfirm,
                     onToggle: () =>
                         setState(() => _obscureConfirm = !_obscureConfirm),
                     validator: (val) {
                       if (val == null || val.isEmpty) {
-                        return 'Vui lòng xác nhận mật khẩu';
+                        return 'screens.pleaseConfirmYourPassword'.tr();
                       }
                       if (val != _newPasswordController.text) {
-                        return 'Mật khẩu xác nhận không khớp';
+                        return 'screens.confirmationPasswordDoesNot1'.tr();
                       }
                       return null;
                     },
                   ),
-                  const SizedBox(height: 36),
+                  SizedBox(height: 36),
 
                   // Nút đặt lại mật khẩu
                   SizedBox(
@@ -261,7 +260,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         ),
                       ),
                       child: _isLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 22,
                               height: 22,
                               child: CircularProgressIndicator(
@@ -269,8 +268,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text(
-                              'Đặt lại mật khẩu',
+                          : Text('screens.resetPassword'.tr(),
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -278,7 +276,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                             ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
 
                   // Strength indicators
                   _buildPasswordStrengthHint(),
@@ -296,35 +294,34 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       valueListenable: _newPasswordController,
       builder: (_, value, __) {
         final password = value.text;
-        if (password.isEmpty) return const SizedBox.shrink();
+        if (password.isEmpty) return SizedBox.shrink();
 
         final hasLength = password.length >= 6;
         final hasUpper = password.contains(RegExp(r'[A-Z]'));
         final hasNumber = password.contains(RegExp(r'[0-9]'));
 
         return Container(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5),
+            color: Color(0xFFF5F5F5),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Độ mạnh mật khẩu:',
+              Text('screens.passwordStrength'.tr(),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: _textGray,
                 ),
               ),
-              const SizedBox(height: 8),
-              _buildHintRow('Ít nhất 6 ký tự', hasLength),
-              const SizedBox(height: 4),
-              _buildHintRow('Có chữ hoa (A-Z)', hasUpper),
-              const SizedBox(height: 4),
-              _buildHintRow('Có chữ số (0-9)', hasNumber),
+              SizedBox(height: 8),
+              _buildHintRow('screens.atLeast6Characters'.tr(), hasLength),
+              SizedBox(height: 4),
+              _buildHintRow('screens.withUppercaseLettersAZ'.tr(), hasUpper),
+              SizedBox(height: 4),
+              _buildHintRow('screens.hasDigits09'.tr(), hasNumber),
             ],
           ),
         );
@@ -340,7 +337,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           size: 14,
           color: satisfied ? AppColors.success : _hintColor,
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Text(
           label,
           style: TextStyle(

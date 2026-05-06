@@ -5,6 +5,7 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
+import 'package:easy_localization/easy_localization.dart';
 class AddFriendScreen extends StatefulWidget {
   const AddFriendScreen({super.key});
 
@@ -37,12 +38,12 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
         // Không cho phép tự kết bạn với chính mình
         final myId = context.read<AppAuthProvider>().userModel?.id;
         if (user.id == myId) {
-          _errorMessage = "Đây là số điện thoại của bạn.";
+          _errorMessage = 'screens.thisIsYourPhoneNumber'.tr();
         } else {
           _searchedUser = user;
         }
       } else {
-        _errorMessage = "Không tìm thấy người dùng với số điện thoại này.";
+        _errorMessage = 'screens.noUsersWereFoundWithThis'.tr();
       }
     });
   }
@@ -60,7 +61,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       );
 
       if (!mounted) return;
-      AppToast.show(context, 'Đã gửi lời mời kết bạn!', type: ToastType.success);
+      AppToast.show(context, 'screens.friendRequestSent'.tr(), type: ToastType.success);
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
@@ -75,11 +76,11 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Thêm bạn bè"),
+        title: Text('screens.addFriends'.tr()),
         backgroundColor: Colors.white,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16.0),
         child: Column(
           children: [
             Row(
@@ -89,8 +90,8 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                     controller: _searchController,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
-                      hintText: "Nhập số điện thoại...",
-                      prefixIcon: const Icon(Icons.search),
+                      hintText: 'screens.enterPhoneNumber1'.tr(),
+                      prefixIcon: Icon(Icons.search),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -98,16 +99,16 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                     onSubmitted: (_) => _search(),
                   ),
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(onPressed: _search, child: const Text("Tìm")),
+                SizedBox(width: 8),
+                ElevatedButton(onPressed: _search, child: Text('screens.find'.tr())),
               ],
             ),
-            const SizedBox(height: 24),
-            if (_isLoading) const CircularProgressIndicator(),
+            SizedBox(height: 24),
+            if (_isLoading) CircularProgressIndicator(),
             if (_errorMessage != null)
               Text(
                 _errorMessage!,
-                style: const TextStyle(color: AppColors.error),
+                style: TextStyle(color: AppColors.error),
               ),
             if (_searchedUser != null)
               ListTile(
@@ -116,11 +117,11 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                       ? NetworkImage(_searchedUser!.photoUrl!)
                       : null,
                   child: _searchedUser!.photoUrl == null
-                      ? const Icon(Icons.person)
+                      ? Icon(Icons.person)
                       : null,
                 ),
                 title: Text(
-                  _searchedUser!.displayName ?? 'Người dùng không tên',
+                  _searchedUser!.displayName ?? 'screens.anonymousUser'.tr(),
                 ),
                 subtitle: Text(_searchedUser!.phoneNumber ?? ''),
                 trailing: ElevatedButton(
@@ -128,7 +129,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                   ),
-                  child: const Text("Kết bạn"),
+                  child: Text('screens.makeFriend'.tr()),
                 ),
               ),
           ],

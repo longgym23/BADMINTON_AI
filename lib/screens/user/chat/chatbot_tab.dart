@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:io';
 import 'package:badminton_ai/blocs/chat/chat_bloc.dart';
 import 'package:badminton_ai/data/models/chat_message_model.dart';
@@ -18,7 +19,6 @@ import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 import 'package:badminton_ai/screens/user/booking/booking_history_screen.dart';
 import 'package:badminton_ai/screens/user/profile/statistics_screen.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -140,7 +140,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
     final auth = context.read<AppAuthProvider>();
     if (auth.authState != AuthState.authenticated) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng đăng nhập để chat')),
+        SnackBar(content: Text('screens.pleaseLogInToChat'.tr())),
       );
       return;
     }
@@ -193,8 +193,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Text(
-              'Trợ lý AI',
+            Text('screens.aIAssistant'.tr(),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -207,14 +206,13 @@ class _ChatbotTabState extends State<ChatbotTab> {
                 Container(
                   width: 8,
                   height: 8,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.success,
                     shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: 6),
-                const Text(
-                  'TRỰC TUYẾN',
+                SizedBox(width: 6),
+                Text('screens.oNLINE'.tr(),
                   style: TextStyle(
                     fontSize: 10,
                     color: Colors.grey,
@@ -228,7 +226,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
         centerTitle: true,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Colors.white),
           // Fix màn đen: dùng onBack callback thay Navigator.pop
           // vì tab này nằm trong IndexedStack, Navigator.pop sẽ pop HomeScreen
           onPressed: () {
@@ -246,7 +244,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
           if (!_isListening && !_isTranscribing) _buildSuggestionChips(),
           if (_pendingImagePath != null) _buildImagePreview(),
           _buildInputArea(),
-          if (!isKeyboardVisible) const SizedBox(height: 92),
+          if (!isKeyboardVisible) SizedBox(height: 92),
         ],
       ),
     );
@@ -256,7 +254,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
     return BlocBuilder<ChatBloc, ChatState>(
       builder: (context, state) {
         if (state is ChatLoading && state is! ChatLoaded) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator());
         }
 
         List<ChatMessageModel> messages = [];
@@ -268,7 +266,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
           // Sample Initial Message for Demo if empty
           return Center(
             child: Text(
-              'Bắt đầu trò chuyện!',
+              'screens.startChatting'.tr(),
               style: TextStyle(color: Colors.grey[400]),
             ),
           );
@@ -276,7 +274,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
 
         return ListView.builder(
           controller: _scrollController,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           reverse: true,
           itemCount: messages.length,
           itemBuilder: (context, index) {
@@ -293,7 +291,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
               children: [
                 if (showDate) _buildDateDivider(message.timestamp),
                 _MessageBubble(message: message),
-                if (isLast && !message.isUser) const SizedBox(height: 8),
+                if (isLast && !message.isUser) SizedBox(height: 8),
               ],
             );
           },
@@ -310,15 +308,15 @@ class _ChatbotTabState extends State<ChatbotTab> {
 
   Widget _buildDateDivider(DateTime date) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      margin: EdgeInsets.symmetric(vertical: 16),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.borderColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         "Hôm nay, ${DateFormat('HH:mm').format(date)}",
-        style: const TextStyle(color: AppColors.textGrey, fontSize: 12),
+        style: TextStyle(color: AppColors.textGrey, fontSize: 12),
       ),
     );
   }
@@ -326,18 +324,18 @@ class _ChatbotTabState extends State<ChatbotTab> {
   Widget _buildSuggestionChips() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          _Chip('Tìm sân cầu lông'),
-          _Chip('Tìm sân bóng đá'),
-          _Chip('Tìm sân Pickleball'),
-          _Chip('Tìm sân tennis'),
-          _Chip('Cách hủy sân'),
-          _Chip('Xem lịch đặt'),
-          _Chip('Xem chi tiêu'),
-          _Chip('Mua vợt cầu lông'),
-          _Chip('Cách chọn giày'),
+          _Chip('screens.findABadmintonCourt'.tr()),
+          _Chip('screens.findASoccerField'.tr()),
+          _Chip('screens.findPickleballCourts'.tr()),
+          _Chip('screens.findATennisCourt'.tr()),
+          _Chip('screens.howToCancelTheCourse'.tr()),
+          _Chip('screens.viewBookingSchedule'.tr()),
+          _Chip('screens.seeSpending'.tr()),
+          _Chip('screens.buyBadmintonRacket'.tr()),
+          _Chip('screens.howToChooseShoes'.tr()),
         ],
       ),
     );
@@ -345,10 +343,10 @@ class _ChatbotTabState extends State<ChatbotTab> {
 
   Widget _Chip(String label) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: EdgeInsets.only(right: 8),
       child: ActionChip(
         label: Text(label),
-        side: const BorderSide(color: AppColors.borderColor),
+        side: BorderSide(color: AppColors.borderColor),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         onPressed: () => _sendMessage(label),
       ),
@@ -360,10 +358,10 @@ class _ChatbotTabState extends State<ChatbotTab> {
     // === ĐANG GHI ÂM hoặc ĐANG TRANSCRIBE → hiện Recording Bar ===
     if (_isListening || _isTranscribing) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          border: const Border(top: BorderSide(color: AppColors.borderColor)),
+          border: Border(top: BorderSide(color: AppColors.borderColor)),
         ),
         child: Row(
           children: [
@@ -380,21 +378,21 @@ class _ChatbotTabState extends State<ChatbotTab> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: _isTranscribing
-                    ? const Padding(
+                    ? Padding(
                         padding: EdgeInsets.all(8),
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(
+                    : Icon(
                         Icons.stop_rounded,
                         color: Colors.white,
                         size: 20,
                       ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             // Waveform animation
             Expanded(
               child: Container(
@@ -404,9 +402,9 @@ class _ChatbotTabState extends State<ChatbotTab> {
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: _isTranscribing
-                    ? const Center(
+                    ? Center(
                         child: Text(
-                          'Đang nhận dạng...',
+                          'screens.identifying'.tr(),
                           style: TextStyle(
                             color: AppColors.textGrey,
                             fontSize: 13,
@@ -420,7 +418,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
                           // Waveform dots animation
                           ...List.generate(20, (i) {
                             return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 1.5),
+                              padding: EdgeInsets.symmetric(horizontal: 1.5),
                               child: _WaveformBar(index: i),
                             );
                           }),
@@ -428,7 +426,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
                       ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             // Nút Send (↑)
             GestureDetector(
               onTap: _isTranscribing ? null : _toggleEntryVoice,
@@ -441,7 +439,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
                       : AppColors.brandOrange,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.arrow_upward_rounded,
                   color: Colors.white,
                   size: 20,
@@ -455,15 +453,15 @@ class _ChatbotTabState extends State<ChatbotTab> {
 
     // === MODE BÌNH THƯỜNG → Input text + mic + send ===
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.borderColor)),
       ),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.add_circle,
               color: AppColors.brandOrange,
             ),
@@ -471,7 +469,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
           ),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(25),
@@ -479,8 +477,8 @@ class _ChatbotTabState extends State<ChatbotTab> {
               ),
               child: TextField(
                 controller: _textController,
-                decoration: const InputDecoration(
-                  hintText: 'Nhập tin nhắn...',
+                decoration: InputDecoration(
+                  hintText: 'screens.enterMessage'.tr(),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
@@ -491,31 +489,31 @@ class _ChatbotTabState extends State<ChatbotTab> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           GestureDetector(
             onTap: _toggleEntryVoice,
             child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.mic_none_rounded,
                 color: AppColors.brandOrange,
                 size: 24,
               ),
             ),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           GestureDetector(
             onTap: () => _sendMessage(),
             child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
                 color: AppColors.brandOrange,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 20),
+              child: Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 20),
             ),
           ),
         ],
@@ -648,16 +646,16 @@ class _ChatbotTabState extends State<ChatbotTab> {
       builder: (_) => Wrap(
         children: [
           ListTile(
-            leading: const Icon(Icons.image),
-            title: const Text('Thư viện'),
+            leading: Icon(Icons.image),
+            title: Text('screens.library'.tr()),
             onTap: () {
               Navigator.pop(context);
               _pickImage(ImageSource.gallery);
             },
           ),
           ListTile(
-            leading: const Icon(Icons.camera_alt),
-            title: const Text('Camera'),
+            leading: Icon(Icons.camera_alt),
+            title: Text('Camera'),
             onTap: () {
               Navigator.pop(context);
               _pickImage(ImageSource.camera);
@@ -688,7 +686,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
   /// Preview ảnh kiểu ChatGPT: thumbnail nhỏ phía trên input bar với nút X
   Widget _buildImagePreview() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
       color: AppColors.surface,
       child: Row(
         children: [
@@ -711,18 +709,18 @@ class _ChatbotTabState extends State<ChatbotTab> {
                   child: Container(
                     width: 22,
                     height: 22,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: Colors.black87,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.close, size: 14, color: Colors.white),
+                    child: Icon(Icons.close, size: 14, color: Colors.white),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 12),
-          const Text('Ảnh đã chọn', style: TextStyle(color: AppColors.textGrey, fontSize: 13)),
+          SizedBox(width: 12),
+          Text('screens.selectedPhoto'.tr(), style: TextStyle(color: AppColors.textGrey, fontSize: 13)),
         ],
       ),
     );
@@ -742,13 +740,13 @@ class _MessageBubble extends StatelessWidget {
 
   List<dynamic> _citations() {
     final md = message.metadata;
-    if (md == null) return const [];
+    if (md == null) return [];
     final c = md['citations'];
-    return c is List ? c : const [];
+    return c is List ? c : [];
   }
 
   Widget _buildSafeImage(String path) {
-    if (path.isEmpty) return const SizedBox.shrink();
+    if (path.isEmpty) return SizedBox.shrink();
     try {
       final file = File(path);
       if (!file.existsSync()) {
@@ -769,13 +767,13 @@ class _MessageBubble extends StatelessWidget {
       color: Colors.grey.shade200,
       width: double.infinity,
       height: 100,
-      child: const Center(
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.broken_image, color: Colors.grey, size: 24),
             SizedBox(height: 4),
-            Text('Ảnh đã hết hạn', style: TextStyle(color: Colors.grey, fontSize: 10)),
+            Text('screens.photoHasExpired'.tr(), style: TextStyle(color: Colors.grey, fontSize: 10)),
           ],
         ),
       ),
@@ -833,7 +831,7 @@ class _MessageBubble extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4),
       child: Column(
         crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
@@ -845,13 +843,13 @@ class _MessageBubble extends StatelessWidget {
             children: [
               if (!isUser) ...[
                 Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
+                  margin: EdgeInsets.only(right: 8),
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
                     color: AppColors.primary, // Blue avatar bg
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.smart_toy,
                     color: AppColors.surface,
                     size: 16,
@@ -860,11 +858,11 @@ class _MessageBubble extends StatelessWidget {
               ],
               Flexible(
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: isUser
-                        ? const Color(0xFFFF8C00) // Darker Orange
-                        : const Color(0xFFFFE0B2), // Light Orange
+                        ? Color(0xFFFF8C00) // Darker Orange
+                        : Color(0xFFFFE0B2), // Light Orange
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
@@ -874,7 +872,7 @@ class _MessageBubble extends StatelessWidget {
                     boxShadow: !isUser
                         ? [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             ),
@@ -886,7 +884,7 @@ class _MessageBubble extends StatelessWidget {
                     children: [
                       if (message.imagePath != null)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
+                          padding: EdgeInsets.only(bottom: 8),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: ConstrainedBox(
@@ -901,7 +899,7 @@ class _MessageBubble extends StatelessWidget {
                       if (cleanText.isNotEmpty)
                         Text(
                           (!isUser && searchSportType != null)
-                              ? 'Dưới đây là các sân bạn có thể tham khảo:'
+                              ? 'screens.belowAreTheCoursesYouCan'.tr()
                               : cleanText,
                           style: TextStyle(
                             color: isUser ? AppColors.surface : AppColors.textBlack,
@@ -912,27 +910,27 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 ),
               ),
-              if (isUser) const SizedBox(width: 40), // Spacer
+              if (isUser) SizedBox(width: 40), // Spacer
             ],
           ),
           
           // Thêm Carousel hiển thị sân nếu có action
           if (searchSportType != null)
             Padding(
-              padding: const EdgeInsets.only(top: 8, left: 40),
+              padding: EdgeInsets.only(top: 8, left: 40),
               child: _CourtListCarousel(sportType: searchSportType, backendCourts: backendCourts),
             ),
           
           // Thêm nút hành động cho các action
           if (!isUser && (viewSchedule || viewExpense || cancelBooking))
             Padding(
-              padding: const EdgeInsets.only(top: 8, left: 40),
+              padding: EdgeInsets.only(top: 8, left: 40),
               child: Row(
                 children: [
                   if (viewSchedule)
                     _ActionButton(
                       icon: Icons.calendar_today,
-                      label: 'Xem lịch',
+                      label: 'screens.viewCalendar'.tr(),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const BookingHistoryScreen()),
@@ -941,7 +939,7 @@ class _MessageBubble extends StatelessWidget {
                   if (viewExpense)
                     _ActionButton(
                       icon: Icons.account_balance_wallet,
-                      label: 'Xem chi tiêu',
+                      label: 'screens.seeSpending'.tr(),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const StatisticsScreen()),
@@ -950,7 +948,7 @@ class _MessageBubble extends StatelessWidget {
                   if (cancelBooking)
                     _ActionButton(
                       icon: Icons.cancel,
-                      label: 'Hủy sân',
+                      label: 'screens.cancelTheField1'.tr(),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const BookingHistoryScreen()),
@@ -966,12 +964,12 @@ class _MessageBubble extends StatelessWidget {
 
   Widget _buildSuccessCard(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(left: 40, top: 4, bottom: 4),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(left: 40, top: 4, bottom: 4),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.successBg, // Light Green
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.success.withOpacity(0.2)),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -979,20 +977,19 @@ class _MessageBubble extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
+                padding: EdgeInsets.all(4),
+                decoration: BoxDecoration(
                   color: AppColors.success,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.check,
                   color: AppColors.surface,
                   size: 16,
                 ),
               ),
-              const SizedBox(width: 8),
-              const Text(
-                "Giao dịch ghi nhận!",
+              SizedBox(width: 8),
+              Text('screens.transactionRecorded'.tr(),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.success,
@@ -1001,7 +998,7 @@ class _MessageBubble extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // Giả lập giao diện
           Row(
             children: [
@@ -1012,21 +1009,21 @@ class _MessageBubble extends StatelessWidget {
                   color: AppColors.primaryBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.sports_soccer,
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
-                    "Thanh toán hoàn tất",
+                    'screens.paymentCompleted'.tr(),
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    "Sân sẽ được giữ chỗ",
+                    'screens.theFieldWillBeReserved'.tr(),
                     style: TextStyle(color: Colors.black54, fontSize: 13),
                   ),
                 ],
@@ -1042,7 +1039,7 @@ class _MessageBubble extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Nguồn tham khảo'),
+        title: Text('screens.referenceSource'.tr()),
         content: Material(
           color: Colors.transparent,
           child: SizedBox(
@@ -1050,7 +1047,7 @@ class _MessageBubble extends StatelessWidget {
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: citations.length,
-              separatorBuilder: (_, __) => const Divider(height: 12),
+              separatorBuilder: (_, __) => Divider(height: 12),
               itemBuilder: (context, index) {
                 final c = citations[index];
                 final m = c is Map ? c : const {};
@@ -1060,11 +1057,11 @@ class _MessageBubble extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('\$id • \$title', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text('\$id • \$title', style: TextStyle(fontWeight: FontWeight.bold)),
                     if (excerpt.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(excerpt, style: const TextStyle(fontSize: 13)),
+                        padding: EdgeInsets.only(top: 6),
+                        child: Text(excerpt, style: TextStyle(fontSize: 13)),
                       ),
                   ],
                 );
@@ -1073,7 +1070,7 @@ class _MessageBubble extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đóng', style: TextStyle(color: Colors.blue))),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('screens.close'.tr(), style: TextStyle(color: Colors.blue))),
         ],
       ),
     );
@@ -1113,8 +1110,8 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
       courts = allCourts.where((c) {
         final t = (c.sportType ?? c.name).toLowerCase();
         final q = widget.sportType.toLowerCase();
-        if (q == 'football' && (t.contains('bóng đá') || t.contains('football'))) return true;
-        if (q == 'badminton' && (t.contains('cầu lông') || t.contains('badminton'))) return true;
+        if (q == 'football' && (t.contains('screens.football1'.tr()) || t.contains('football'))) return true;
+        if (q == 'badminton' && (t.contains('screens.badminton1'.tr()) || t.contains('badminton'))) return true;
         if (q == 'tennis' && (t.contains('tennis'))) return true;
         if (q == 'pickleball' && (t.contains('pickleball') || t.contains('pickle'))) return true;
         return t.contains(q);
@@ -1137,7 +1134,7 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const SizedBox(
+      return SizedBox(
         height: 120,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
@@ -1145,13 +1142,13 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
     
     if (courts.isEmpty) {
       return Container(
-         padding: const EdgeInsets.all(12),
+         padding: EdgeInsets.all(12),
          decoration: BoxDecoration(
            color: AppColors.surface,
            borderRadius: BorderRadius.circular(8),
            border: Border.all(color: AppColors.borderColor),
          ),
-         child: const Text('Hiện không có sân nào phù hợp ở khu vực bạn.', style: TextStyle(color: AppColors.textGrey, fontSize: 13)),
+         child: Text('screens.thereAreCurrentlyNoSuitabl'.tr(), style: TextStyle(color: AppColors.textGrey, fontSize: 13)),
       );
     }
 
@@ -1160,7 +1157,7 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: courts.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, __) => SizedBox(width: 12),
         itemBuilder: (context, index) {
           final court = courts[index];
           return Container(
@@ -1171,7 +1168,7 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
               border: Border.all(color: AppColors.borderColor),
               boxShadow: [
                  BoxShadow(
-                   color: Colors.black.withOpacity(0.04),
+                   color: Colors.black.withValues(alpha: 0.04),
                    blurRadius: 4,
                    offset: const Offset(0, 2),
                  )
@@ -1182,7 +1179,7 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
               children: [
                 // Hình ảnh sân
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
                   child: Container(
                     height: 60,
                     width: double.infinity,
@@ -1191,14 +1188,14 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
                          ? CachedNetworkImage(
                              imageUrl: court.imageUrl!,
                              fit: BoxFit.cover,
-                             errorWidget: (_,__,___) => const Icon(Icons.sports_tennis, color: AppColors.primary),
-                             placeholder: (_,__) => const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                             errorWidget: (_,__,___) => Icon(Icons.sports_tennis, color: AppColors.primary),
+                             placeholder: (_,__) => Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
                            )
-                         : const Icon(Icons.sports_score, color: AppColors.primary),
+                         : Icon(Icons.sports_score, color: AppColors.primary),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                  padding: EdgeInsets.fromLTRB(10, 8, 10, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -1207,29 +1204,29 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
                         court.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textBlack),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textBlack),
                       ),
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Row(
                         children: [
-                          const Icon(Icons.monetization_on_outlined, size: 12, color: AppColors.brandOrangeDark),
-                          const SizedBox(width: 4),
+                          Icon(Icons.monetization_on_outlined, size: 12, color: AppColors.brandOrangeDark),
+                          SizedBox(width: 4),
                           Text(
                             "${court.pricePerHour.toInt()}đ/h",
-                            style: const TextStyle(color: AppColors.brandOrangeDark, fontSize: 12, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: AppColors.brandOrangeDark, fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                           if (court.distanceKm != null) ...[
                              const Spacer(),
-                             const Icon(Icons.location_on, size: 12, color: AppColors.primary),
-                             const SizedBox(width: 2),
+                             Icon(Icons.location_on, size: 12, color: AppColors.primary),
+                             SizedBox(width: 2),
                              Text(
                                "${court.distanceKm!.toStringAsFixed(1)}km",
-                               style: const TextStyle(color: AppColors.textGrey, fontSize: 11),
+                               style: TextStyle(color: AppColors.textGrey, fontSize: 11),
                              ),
                           ],
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
                         height: 26,
@@ -1250,7 +1247,7 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
                              elevation: 0,
                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))
                           ),
-                          child: const Text('Đặt Ngay', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          child: Text('screens.bookNow'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                       )
                     ],
@@ -1279,25 +1276,25 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: EdgeInsets.only(right: 8),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: AppColors.primaryBg,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 16, color: AppColors.primary),
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.primary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -1364,3 +1361,4 @@ class _WaveformBarState extends State<_WaveformBar>
     );
   }
 }
+

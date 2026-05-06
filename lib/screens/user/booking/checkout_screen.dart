@@ -1,9 +1,9 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/booking_provider.dart';
 import 'package:badminton_ai/providers/notification_provider.dart';
@@ -128,7 +128,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
           if (mounted) {
             AppToast.show(
               context,
-              '⏰ Hết thời gian giữ chỗ. Vui lòng chọn lại slot.',
+              'checkout_screen.slotExpired'.tr(),
               type: ToastType.error,
             );
             Navigator.pop(context);
@@ -264,8 +264,8 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
 
   Future<void> _finishRegularBookingSuccess() async {
     if (!mounted) return;
-    final l = AppLocalizations.of(context);
-    AppToast.show(context, l.paymentSuccess, type: ToastType.success);
+    
+    AppToast.show(context, 'checkout_screen.paymentSuccess'.tr(), type: ToastType.success);
     await Future.delayed(const Duration(milliseconds: 250));
     if (!mounted) return;
     Navigator.pop(context);
@@ -277,7 +277,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
 
     if (vm.customerName.isEmpty || vm.customerPhone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng điền đủ Tên và Số điện thoại')),
+        SnackBar(content: Text('checkout_screen.fillNameAndPhone'.tr())),
       );
       return;
     }
@@ -287,12 +287,12 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const AlertDialog(
+        builder: (context) => AlertDialog(
           content: Row(
             children: [
               CircularProgressIndicator(color: AppColors.primary),
               SizedBox(width: 20),
-              Expanded(child: Text("Đang tạo đơn hàng...")),
+              Expanded(child: Text('checkout_screen.creatingOrder'.tr())),
             ],
           ),
         ),
@@ -304,8 +304,8 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
       if (!isCreated) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Lỗi tạo đơn hàng, vui lòng thử lại!"),
+            SnackBar(
+              content: Text('checkout_screen.orderError'.tr()),
               backgroundColor: AppColors.error,
             ),
           );
@@ -394,7 +394,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     if (mounted) {
       AppToast.show(
         context,
-        '⏰ Hết thời gian thanh toán. Đơn đặt sân đã bị huỷ.',
+        'checkout_screen.paymentExpired'.tr(),
         type: ToastType.error,
       );
       // Về màn trước (court selection) rồi về Home
@@ -422,7 +422,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    
     final vm = context.watch<CheckoutViewModel>();
 
     // Sort slots for display
@@ -445,7 +445,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
       child: Scaffold(
         appBar: CustomGradientAppBar(
           leading: IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.arrow_back_ios,
               color: Colors.white,
               size: 20,
@@ -453,8 +453,8 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
-            l.checkoutTitle,
-            style: const TextStyle(
+            'checkout_screen.title'.tr(),
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.white,
               fontSize: 18,
@@ -468,7 +468,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
             ? null
             : Container(
                 color: AppColors.surface,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 32),
                 child: SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -481,8 +481,8 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                       ),
                     ),
                     child: Text(
-                      l.createPayment,
-                      style: const TextStyle(
+                      'checkout_screen.createPayment'.tr(),
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
@@ -491,36 +491,36 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                 ),
               ),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildSectionCard(
-                title: l.courtInfo,
+                title: 'checkout_screen.courtInfo'.tr(),
                 icon: Icons.map_outlined,
                 children: [
-                  _buildInfoRow(l.clubName, widget.selectedCourt.name),
-                  const SizedBox(height: 8),
-                  _buildInfoRow(l.address, widget.selectedCourt.address),
+                  _buildInfoRow('checkout_screen.clubName'.tr(), widget.selectedCourt.name),
+                  SizedBox(height: 8),
+                  _buildInfoRow('checkout_screen.address'.tr(), widget.selectedCourt.address),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               _buildSectionCard(
-                title: l.bookingInfo,
+                title: 'checkout_screen.bookingInfo'.tr(),
                 icon: Icons.calendar_month_outlined,
                 children: [
                   _buildInfoRow(
-                    l.date,
+                    'checkout_screen.date'.tr(),
                     DateFormat('dd/MM/yyyy').format(widget.selectedDate),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   ...sortedSlots.map(
                     (slot) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4.0),
+                      padding: EdgeInsets.only(bottom: 4.0),
                       child: Text(
-                        "- ${l.court} ${slot.courtNumber}: ${_formatTime(slot.timeSlot)} - ${_formatTime(slot.timeSlot + 1)} | ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(widget.selectedCourt.pricePerHour)}",
-                        style: const TextStyle(
+                        "- ${'booking_history_screen.court'.tr()} ${slot.courtNumber}: ${_formatTime(slot.timeSlot)} - ${_formatTime(slot.timeSlot + 1)} | ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(widget.selectedCourt.pricePerHour)}",
+                        style: TextStyle(
                           color: AppColors.textBlack,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -528,16 +528,16 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  _buildInfoRow(l.sport, l.badminton),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
+                  _buildInfoRow('checkout_screen.sport'.tr(), 'checkout_screen.badminton'.tr()),
+                  SizedBox(height: 8),
                   _buildInfoRow(
-                    l.totalHours,
+                    'court_selection_screen.totalHours'.tr(),
                     _displayTotalHours(widget.totalHours),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _buildInfoRow(
-                    l.totalPrice,
+                    'court_selection_screen.totalPrice'.tr(),
                     NumberFormat.simpleCurrency(
                       locale: 'vi_VN',
                       decimalDigits: 0,
@@ -545,15 +545,15 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                     isTotal: true,
                   ),
                   if (vm.appliedBalance > 0) ...[
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     _buildInfoRow(
-                      'Trừ Số Dư Ví',
+                      'checkout_screen.deductWallet'.tr(),
                       '- ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(vm.appliedBalance)}',
                       color: Colors.green,
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     _buildInfoRow(
-                      'Cần thanh toán',
+                      'checkout_screen.amountToPay'.tr(),
                       NumberFormat.simpleCurrency(
                         locale: 'vi_VN',
                         decimalDigits: 0,
@@ -564,69 +564,69 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                   ],
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               Text(
-                l.customerName,
-                style: const TextStyle(
+                'checkout_screen.customerName'.tr(),
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textGrey,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               TextField(
                 controller: _nameController,
                 onChanged: vm.setCustomerName,
                 decoration: _inputDecoration(
-                  l.customerNameHint,
+                  'checkout_screen.customerNameHint'.tr(),
                   Icons.person_outline,
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               Text(
-                l.customerPhone,
-                style: const TextStyle(
+                'checkout_screen.customerPhone'.tr(),
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textGrey,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               TextField(
                 controller: _phoneController,
                 onChanged: vm.setCustomerPhone,
                 keyboardType: TextInputType.phone,
                 decoration: _inputDecoration(
-                  l.customerPhoneHint,
+                  'checkout_screen.customerPhoneHint'.tr(),
                   Icons.phone_outlined,
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               Text(
-                l.noteForOwner,
-                style: const TextStyle(
+                'checkout_screen.noteForOwner'.tr(),
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textGrey,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               TextField(
                 controller: _noteController,
                 onChanged: vm.setNote,
                 maxLines: 2,
-                decoration: _inputDecoration(l.noteHint, null),
+                decoration: _inputDecoration('checkout_screen.noteHint'.tr(), null),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // QR thanh toán (chỉ hiển thị khi user đã bấm Xác nhận)
               if (vm.isQrVisible)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFFFFF3E0), Color(0xFFFFCC80)],
@@ -641,14 +641,14 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.qr_code_2,
                             color: AppColors.primaryDark,
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Text(
-                            l.scanVietQR,
-                            style: const TextStyle(
+                            'checkout_screen.scanVietQR'.tr(),
+                            style: TextStyle(
                               color: AppColors.primaryDark,
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -656,7 +656,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Container(
                         width: 200,
                         height: 200,
@@ -664,7 +664,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        padding: const EdgeInsets.all(8),
+                        padding: EdgeInsets.all(8),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.network(
@@ -672,14 +672,14 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                             fit: BoxFit.contain,
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) return child;
-                              return const Center(
+                              return Center(
                                 child: CircularProgressIndicator(
                                   color: AppColors.primary,
                                 ),
                               );
                             },
                             errorBuilder: (context, error, stackTrace) {
-                              return const Center(
+                              return Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -688,7 +688,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                                       color: Colors.red,
                                     ),
                                     Text(
-                                      'Lỗi tải QR',
+                                      'checkout_screen.qrLoadError'.tr(),
                                       style: TextStyle(fontSize: 12),
                                     ),
                                   ],
@@ -698,17 +698,17 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Text(
-                        l.waitingPayment,
+                        'checkout_screen.waitingPayment'.tr(),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textBlack,
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       // Đồng hồ đếm ngược (không có loading spinner)
                       Consumer<CheckoutViewModel>(
                         builder: (_, vm, __) {
@@ -723,9 +723,9 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                                     ? Colors.red
                                     : AppColors.primaryDark,
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               Text(
-                                '${l.expiresIn} ${vm.remainingLabel}',
+                                '${'checkout_screen.expiresIn'.tr()} ${vm.remainingLabel}',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -738,11 +738,11 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
                           );
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                     ],
                   ),
                 ),
-              const SizedBox(height: 120),
+              SizedBox(height: 120),
             ],
           ),
         ),
@@ -757,7 +757,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -775,10 +775,10 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
           Row(
             children: [
               Icon(icon, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.primary,
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
@@ -786,9 +786,9 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: AppColors.borderColor),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
+          Divider(height: 1, color: AppColors.borderColor),
+          SizedBox(height: 12),
           ...children,
         ],
       ),
@@ -808,7 +808,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
           width: 100,
           child: Text(
             label,
-            style: const TextStyle(color: AppColors.textGrey, fontSize: 14),
+            style: TextStyle(color: AppColors.textGrey, fontSize: 14),
           ),
         ),
         Expanded(
@@ -818,7 +818,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
             style: TextStyle(
               color:
                   color ??
-                  (isTotal ? const Color(0xFFFF9800) : AppColors.textBlack),
+                  (isTotal ? Color(0xFFFF9800) : AppColors.textBlack),
               fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
               fontSize: isTotal ? 16 : 14,
             ),
@@ -834,18 +834,18 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
       prefixIcon: icon != null
           ? Icon(icon, color: AppColors.textGrey, size: 20)
           : null,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.borderColor),
+        borderSide: BorderSide(color: AppColors.borderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.borderColor),
+        borderSide: BorderSide(color: AppColors.borderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.primary),
+        borderSide: BorderSide(color: AppColors.primary),
       ),
       filled: true,
       fillColor: Colors.white,

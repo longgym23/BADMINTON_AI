@@ -5,6 +5,7 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class OtpVerifyScreen extends StatefulWidget {
   final String email;
@@ -62,15 +63,14 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
     });
   }
 
-  String get _otpValue =>
-      _controllers.map((c) => c.text).join();
+  String get _otpValue => _controllers.map((c) => c.text).join();
 
   Future<void> _verifyOtp() async {
     final otp = _otpValue;
     if (otp.length < _otpLength) {
       AppToast.show(
         context,
-        'Vui lòng nhập đủ 6 chữ số OTP',
+        'screens.pleaseEnterTheFull6Digit'.tr(),
         type: ToastType.error,
       );
       return;
@@ -88,7 +88,7 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
     } else {
       AppToast.show(
         context,
-        'Xác thực thành công!',
+        'screens.authenticationSuccessful'.tr(),
         type: ToastType.success,
       );
       await Future.delayed(const Duration(milliseconds: 800));
@@ -123,7 +123,7 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
       _startCountdown();
       AppToast.show(
         context,
-        'Đã gửi lại mã OTP!',
+        'screens.oTPCodeHasBeenSentAgain'.tr(),
         type: ToastType.success,
       );
     }
@@ -243,8 +243,8 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                 const SizedBox(height: 20),
 
                 // Tiêu đề
-                const Text(
-                  'Nhập mã OTP',
+                Text(
+                  'screens.enterOTPCode'.tr(),
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -261,7 +261,7 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                       height: 1.5,
                     ),
                     children: [
-                      const TextSpan(text: 'Mã OTP 6 số đã được gửi đến\n'),
+                      TextSpan(text: 'screens.the6DigitOTPCodeHasBeen'.tr()),
                       TextSpan(
                         text: maskedEmail,
                         style: const TextStyle(
@@ -277,10 +277,7 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                 // 6 ô OTP
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(
-                    _otpLength,
-                    (i) => _buildOtpBox(i),
-                  ),
+                  children: List.generate(_otpLength, (i) => _buildOtpBox(i)),
                 ),
                 const SizedBox(height: 40),
 
@@ -307,8 +304,8 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                               strokeWidth: 2,
                             ),
                           )
-                        : const Text(
-                            'Xác nhận OTP',
+                        : Text(
+                            'screens.confirmOTP'.tr(),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -328,7 +325,7 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                               fontSize: 13,
                             ),
                             children: [
-                              const TextSpan(text: 'Gửi lại mã sau '),
+                              TextSpan(text: 'screens.resendTheCodeLater'.tr()),
                               TextSpan(
                                 text: '${_countdown}s',
                                 style: const TextStyle(
@@ -350,8 +347,8 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                                     color: AppColors.brandOrange,
                                   ),
                                 )
-                              : const Text(
-                                  'Gửi lại mã OTP',
+                              : Text(
+                                  'screens.resendOTPCode'.tr(),
                                   style: TextStyle(
                                     color: AppColors.brandOrange,
                                     fontSize: 13,
@@ -372,7 +369,7 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
-                    children: const [
+                    children: [
                       Icon(
                         Icons.info_outline_rounded,
                         color: AppColors.brandOrange,
@@ -381,7 +378,7 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                       SizedBox(width: 10),
                       Flexible(
                         child: Text(
-                          'Kiểm tra hộp thư spam nếu không thấy email trong hộp thư đến.',
+                          'screens.checkYourSpamFolderIfYou'.tr(),
                           style: TextStyle(
                             fontSize: 12,
                             color: Color(0xFF888888),

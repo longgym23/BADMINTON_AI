@@ -4,6 +4,7 @@ import 'package:badminton_ai/providers/course_provider.dart';
 import 'package:badminton_ai/domain/entities/course.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/screens/course/course_player_screen.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class CourseListTab extends StatefulWidget {
   final String categoryId;
@@ -27,14 +28,15 @@ class _CourseListTabState extends State<CourseListTab> {
   Widget build(BuildContext context) {
     return Consumer<CourseProvider>(
       builder: (context, provider, child) {
-        if (provider.isLoadingCourses && provider.getCoursesFor(widget.categoryId).isEmpty) {
+        if (provider.isLoadingCourses &&
+            provider.getCoursesFor(widget.categoryId).isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 
         final courses = provider.getCoursesFor(widget.categoryId);
 
         if (courses.isEmpty) {
-          return const Center(child: Text('Chưa có khóa học nào cho danh mục này.'));
+          return Center(child: Text('screens.thereAreNoCoursesForThis'.tr()));
         }
 
         return ListView.builder(
@@ -57,7 +59,7 @@ class _CourseListTabState extends State<CourseListTab> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -77,66 +79,71 @@ class _CourseListTabState extends State<CourseListTab> {
             );
           },
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Thumbnail
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Image.network(
-                course.thumbnailUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.video_library, size: 50, color: Colors.grey),
-                  );
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    course.title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    course.description,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 16, color: AppColors.primary),
-                      const SizedBox(width: 4),
-                      Text(
-                        course.duration,
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Thumbnail
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.network(
+                  course.thumbnailUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[300],
+                      child: const Icon(
+                        Icons.video_library,
+                        size: 50,
+                        color: Colors.grey,
                       ),
-                    ],
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course.title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      course.description,
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          course.duration,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

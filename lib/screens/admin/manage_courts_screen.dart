@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
@@ -9,7 +10,6 @@ import 'package:badminton_ai/screens/admin/location_picker_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:badminton_ai/utils/dialog_utils.dart';
 import 'package:intl/intl.dart';
 
@@ -84,17 +84,17 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
 
         if (lat != null && lng != null) {
           _selectedLocation = LatLng(lat, lng);
-          _selectedAddress = "Đã lấy tọa độ từ link (Vui lòng kiểm tra lại)";
+          _selectedAddress = 'screens.coordinatesTakenFromLinkP'.tr();
           _addressController.text = _selectedAddress;
 
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Đã tìm thấy tọa độ thành công!'),
+            SnackBar(
+              content: Text('screens.coordinatesSuccessfullyFound'.tr()),
               backgroundColor: Colors.green,
             ),
           );
         } else {
-          throw Exception("Không tìm thấy tọa độ trong link");
+          throw Exception('screens.noCoordinatesFoundInTheLi'.tr());
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -170,8 +170,8 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                             ),
                             Text(
                               court == null
-                                  ? 'Trạm Thêm Mới Sân'
-                                  : 'Sửa Thông Tin Sân',
+                                  ? 'screens.stationAddsNewYard'.tr()
+                                  : 'screens.editCourseInformation'.tr(),
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
@@ -242,7 +242,8 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                               ),
                                               const SizedBox(height: 12),
                                               Text(
-                                                'Tải ảnh bìa lên',
+                                                'screens.uploadACoverPhoto'
+                                                    .tr(),
                                                 style: TextStyle(
                                                   color: Colors.grey.shade600,
                                                   fontWeight: FontWeight.w500,
@@ -259,10 +260,11 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                 TextFormField(
                                   controller: _nameController,
                                   decoration: inputDecoration.copyWith(
-                                    labelText: 'Tên cơ sở sân',
+                                    labelText: 'screens.nameOfTheYardFacility'
+                                        .tr(),
                                   ),
                                   validator: (value) => value!.isEmpty
-                                      ? 'Không được bỏ trống'
+                                      ? 'screens.cannotBeLeftBlank'.tr()
                                       : null,
                                 ),
                                 const SizedBox(height: 16),
@@ -274,7 +276,9 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                       child: TextFormField(
                                         controller: _linkController,
                                         decoration: inputDecoration.copyWith(
-                                          labelText: 'Dán Link Google Maps',
+                                          labelText:
+                                              'screens.pasteTheGoogleMapsLink'
+                                                  .tr(),
                                           hintText:
                                               'https://maps.app.goo.gl/...',
                                           prefixIcon: const Icon(Icons.link),
@@ -354,8 +358,8 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                   icon: const Icon(Icons.map_outlined),
                                   label: Text(
                                     _selectedLocation != null
-                                        ? 'Đã chốt vị trí trên bản đồ'
-                                        : 'Chọn vị trí thủ công',
+                                        ? 'screens.fixedLocationOnMap'.tr()
+                                        : 'screens.selectLocationManually'.tr(),
                                   ),
                                   style: OutlinedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
@@ -390,8 +394,9 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                               color: Colors.blue.shade700,
                                             ),
                                             const SizedBox(width: 4),
-                                            const Text(
-                                              'Đã nhận diện tọa độ',
+                                            Text(
+                                              'screens.coordinatesIdentified'
+                                                  .tr(),
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.bold,
@@ -413,14 +418,16 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                 TextFormField(
                                   controller: _addressController,
                                   decoration: inputDecoration.copyWith(
-                                    labelText: 'Địa chỉ cụ thể (có thể sửa)',
+                                    labelText:
+                                        'screens.specificAddressCanBeEdite'
+                                            .tr(),
                                     suffixIcon: const Icon(
                                       Icons.edit_location_alt,
                                       size: 20,
                                     ),
                                   ),
                                   validator: (value) => value!.isEmpty
-                                      ? 'Thay đổi địa chỉ'
+                                      ? 'screens.changeOfAddress'.tr()
                                       : null,
                                 ),
                                 const SizedBox(height: 16),
@@ -431,12 +438,14 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                       child: TextFormField(
                                         controller: _priceController,
                                         decoration: inputDecoration.copyWith(
-                                          labelText: 'Giá thuê / giờ',
-                                          suffixText: 'VNĐ',
+                                          labelText: 'screens.rentalPriceHour'
+                                              .tr(),
+                                          suffixText: 'screens.vND'.tr(),
                                         ),
                                         keyboardType: TextInputType.number,
-                                        validator: (value) =>
-                                            value!.isEmpty ? 'Nhập giá' : null,
+                                        validator: (value) => value!.isEmpty
+                                            ? 'screens.enterPrice'.tr()
+                                            : null,
                                       ),
                                     ),
                                     const SizedBox(width: 16),
@@ -444,11 +453,13 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                       child: TextFormField(
                                         controller: _totalCourtsController,
                                         decoration: inputDecoration.copyWith(
-                                          labelText: 'Số sân con',
+                                          labelText: 'screens.subyardNumber'
+                                              .tr(),
                                         ),
                                         keyboardType: TextInputType.number,
-                                        validator: (value) =>
-                                            value!.isEmpty ? 'Nhập số' : null,
+                                        validator: (value) => value!.isEmpty
+                                            ? 'screens.enterNumber'.tr()
+                                            : null,
                                       ),
                                     ),
                                   ],
@@ -456,9 +467,9 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                 const SizedBox(height: 16),
 
                                 DropdownButtonFormField<String>(
-                                  value: _selectedSportType,
+                                  initialValue: _selectedSportType,
                                   decoration: inputDecoration.copyWith(
-                                    labelText: 'Loại hình kinh doanh',
+                                    labelText: 'screens.typeOfBusiness'.tr(),
                                   ),
                                   items: [
                                     DropdownMenuItem(
@@ -471,7 +482,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                             height: 20,
                                           ),
                                           const SizedBox(width: 8),
-                                          const Text('Cầu lông'),
+                                          Text('screens.badminton'.tr()),
                                         ],
                                       ),
                                     ),
@@ -489,17 +500,17 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                         ],
                                       ),
                                     ),
-                                    const DropdownMenuItem(
+                                    DropdownMenuItem(
                                       value: 'football',
                                       child: Row(
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.sports_soccer,
                                             color: Colors.orange,
                                             size: 20,
                                           ),
-                                          SizedBox(width: 8),
-                                          Text('Bóng đá'),
+                                          const SizedBox(width: 8),
+                                          Text('screens.football'.tr()),
                                         ],
                                       ),
                                     ),
@@ -536,9 +547,10 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                               ScaffoldMessenger.of(
                                                 context,
                                               ).showSnackBar(
-                                                const SnackBar(
+                                                SnackBar(
                                                   content: Text(
-                                                    'Vui lòng chọn vị trí trên bản đồ',
+                                                    'screens.pleaseSelectLocationOnThe'
+                                                        .tr(),
                                                   ),
                                                   backgroundColor:
                                                       Colors.orange,
@@ -665,8 +677,8 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                             strokeWidth: 2,
                                           ),
                                         )
-                                      : const Text(
-                                          'Hoàn Tất & Lưu',
+                                      : Text(
+                                          'screens.completeSave'.tr(),
                                           style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
@@ -699,13 +711,13 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
   }
 
   Widget _buildSportTypeChip(String? type) {
-    String label = 'Cầu lông';
+    String label = 'screens.badminton'.tr();
     Color color = Colors.blue;
     if (type == 'pickleball') {
       label = 'Pickleball';
       color = Colors.green;
     } else if (type == 'football') {
-      label = 'Bóng đá';
+      label = 'screens.football'.tr();
       color = Colors.orange;
     } else if (type == 'tennis') {
       label = 'Tennis';
@@ -745,7 +757,11 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: CustomGradientAppBar(
-        title: Text(isOwner ? 'Sân Của Tôi' : 'Quản Lý Thuê Sân'),
+        title: Text(
+          isOwner
+              ? 'screens.myYard'.tr()
+              : 'screens.stadiumRentalManagement'.tr(),
+        ),
       ),
       body: StreamBuilder<List<CourtLocationModel>>(
         stream: firestoreRepo.getCourtLocationsStream(ownerId: ownerId),
@@ -774,7 +790,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Chưa có dịch vụ sân nào.\nBấm + để thêm cơ sở đầu tiên.',
+                    'screens.thereAreNoYardServicesYet'.tr(),
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
                   ),
@@ -801,7 +817,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha: 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -967,7 +983,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                   foregroundColor: Colors.blue,
                                 ),
                                 icon: const Icon(Icons.edit_outlined, size: 18),
-                                label: const Text('Chỉnh Sửa'),
+                                label: Text('screens.edit'.tr()),
                                 onPressed: () =>
                                     _showCourtFormDialog(context, court: court),
                               ),
@@ -980,15 +996,15 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                   Icons.delete_outline,
                                   size: 18,
                                 ),
-                                label: const Text('Xóa'),
+                                label: Text('screens.erase'.tr()),
                                 onPressed: () {
                                   DialogUtils.showConfirmDialog(
                                     context,
-                                    title: 'Xóa Cơ Sở Này?',
+                                    title: 'screens.deleteThisFacility'.tr(),
                                     content:
                                         'Bạn có chắc chắn muốn xóa sân "${court.name}"? Tác vụ này không thể hoàn tác.',
-                                    confirmText: 'Xóa Ngay',
-                                    cancelText: 'Hủy Vỏ',
+                                    confirmText: 'screens.deleteNow'.tr(),
+                                    cancelText: 'screens.cancelShell'.tr(),
                                     isDestructive: true,
                                     onConfirm: () async {
                                       try {
@@ -998,9 +1014,10 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
-                                          const SnackBar(
+                                          SnackBar(
                                             content: Text(
-                                              'Đã xóa cơ sở thành công!',
+                                              'screens.facilityDeletedSuccessfully'
+                                                  .tr(),
                                             ),
                                             backgroundColor: Colors.green,
                                           ),
@@ -1039,8 +1056,8 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
         foregroundColor: Colors.white,
         elevation: 4,
         icon: const Icon(Icons.add_business_rounded),
-        label: const Text(
-          'Thêm Sân Mới',
+        label: Text(
+          'screens.addNewYard'.tr(),
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

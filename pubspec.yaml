@@ -76,6 +76,7 @@ dependencies:
   flutter_local_notifications: ^20.1.0
   async: ^2.13.1
   rxdart: ^0.28.0
+  easy_localization: ^3.0.8
   # firebase_storage: ^13.0.5 # Removed
 dev_dependencies:
   flutter_native_splash: ^2.4.7
@@ -96,13 +97,14 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-  generate: true  # Bật flutter gen-l10n để sinh AppLocalizations
+  generate: false  # Bật flutter gen-l10n để sinh AppLocalizations
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
   assets:
+    - assets/
     - assets/images/
 flutter_launcher_icons:
   android: true

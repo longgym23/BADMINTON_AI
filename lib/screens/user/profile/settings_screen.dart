@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:badminton_ai/services/push_notification_service.dart';
 import 'package:badminton_ai/screens/user/profile/change_password_screen.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -53,39 +54,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: CustomGradientAppBar(
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          'Cài đặt',
+        title: Text('screens.setting'.tr(),
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16.0),
         child: Column(
           children: [
             // Cài đặt thông báo (Có Switch Tắt/Bật)
             Container(
-              margin: const EdgeInsets.only(bottom: 12),
+              margin: EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.borderColor, width: 0.5),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1))],
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1))],
               ),
               child: SwitchListTile(
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
                 value: _notificationsEnabled,
                 onChanged: _toggleNotification,
-                secondary: const Icon(Icons.notifications_active_outlined, color: AppColors.textBlack),
-                title: const Text('Nhận thông báo', style: TextStyle(color: AppColors.textBlack, fontWeight: FontWeight.w500)),
-                subtitle: const Text('Báo về hệ thống khi có thay đổi', style: TextStyle(fontSize: 12, color: AppColors.textGrey)),
+                secondary: Icon(Icons.notifications_active_outlined, color: AppColors.textBlack),
+                title: Text('screens.receiveNotifications'.tr(), style: TextStyle(color: AppColors.textBlack, fontWeight: FontWeight.w500)),
+                subtitle: Text('screens.reportToTheSystemWhenTher'.tr(), style: TextStyle(fontSize: 12, color: AppColors.textGrey)),
               ),
             ),
             _buildSettingItem(
               context,
               icon: Icons.lock_outline,
-              title: 'Đổi mật khẩu',
+              title: 'screens.changePassword'.tr(),
               onTap: () {
                 Navigator.push(
                   context,
@@ -96,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildSettingItem(
               context,
               icon: Icons.logout,
-              title: 'Đăng xuất tài khoản',
+              title: 'screens.signOutOfYourAccount'.tr(),
               onTap: () {
                 context.read<AppAuthProvider>().signOut();
                 Navigator.of(context).popUntil((route) => route.isFirst);
@@ -119,12 +119,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Color iconColor = AppColors.textBlack,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderColor, width: 0.5),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1)),
         ],
       ),
@@ -135,7 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title,
           style: TextStyle(color: titleColor, fontWeight: FontWeight.w500),
         ),
-        trailing: const Icon(Icons.chevron_right, color: AppColors.textGrey),
+        trailing: Icon(Icons.chevron_right, color: AppColors.textGrey),
       ),
     );
   }

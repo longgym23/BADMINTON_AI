@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/screens/user/booking/event_checkout_screen.dart';
@@ -59,93 +60,90 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final available = widget.event.availableParticipants;
     final canBook = widget.event.isBookable;
     final totalPrice = quantity * widget.event.price;
-    final formatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+    final formatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'screens.d'.tr());
 
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: const Text(
-          'Đặt lịch sự kiện',
+        title: Text('screens.scheduleAnEvent'.tr(),
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16.0),
         child: Column(
           children: [
             // Block 1: Thông tin sân
             _buildBlock(
-              title: "Thông tin sân",
+              title: 'screens.yardInformation'.tr(),
               icon: Icons.map,
               children: [
-                _buildRichText('Tên sân: ', widget.court.name),
-                const SizedBox(height: 8),
-                _buildRichText('Địa chỉ: ', widget.court.address),
+                _buildRichText('screens.stadiumName'.tr(), widget.court.name),
+                SizedBox(height: 8),
+                _buildRichText('screens.address'.tr(), widget.court.address),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Block 2: Thông tin sự kiện
             _buildBlock(
-              title: "Thông tin sự kiện",
+              title: 'screens.eventInformation'.tr(),
               icon: Icons.event_note,
               children: [
                 if (!canBook) ...[
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       widget.event.isEnded
-                          ? 'Sự kiện đã kết thúc, không thể đặt thêm vé.'
-                          : 'Sự kiện đã hết vé.',
-                      style: const TextStyle(
+                          ? 'screens.theEventHasEndedNoMoreT'.tr()
+                          : 'screens.theEventIsSoldOut'.tr(),
+                      style: TextStyle(
                         color: AppColors.error,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                 ],
-                _buildRichText('Mã sự kiện: ', widget.event.eventCode),
-                const SizedBox(height: 8),
-                _buildRichText('Tên sự kiện: ', widget.event.title),
-                const SizedBox(height: 8),
-                const Text(
-                  'Sân & Thời gian:',
+                _buildRichText('screens.eventCode'.tr(), widget.event.eventCode),
+                SizedBox(height: 8),
+                _buildRichText('screens.eventName2'.tr(), widget.event.title),
+                SizedBox(height: 8),
+                Text('screens.pitchTime'.tr(),
                   style: TextStyle(color: AppColors.textBlack),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   '  - ${widget.event.courtArea}: ${widget.event.startTime} - ${widget.event.endTime}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textBlack,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 _buildRichText(
-                  'Ngày: ',
+                  'screens.day'.tr(),
                   DateFormat('dd/MM/yyyy').format(widget.event.dateTime),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 _buildRichText(
-                  'Giá vé: ',
+                  'screens.ticketPrice'.tr(),
                   '${(widget.event.price / 1000).toStringAsFixed(0)}k/Người',
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Row(
                   children: [
-                    const Text(
-                      'Trình độ: ',
+                    Text('screens.level'.tr(),
                       style: TextStyle(color: AppColors.textBlack),
                     ),
                     Container(
-                      padding: const EdgeInsets.only(right: 12),
+                      padding: EdgeInsets.only(right: 12),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
@@ -161,17 +159,17 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               color: Colors.white,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Text(
                             widget.event.sportType,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.textBlack,
                               fontSize: 13,
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(
+                            padding: EdgeInsets.symmetric(
                               horizontal: 6,
                               vertical: 2,
                             ),
@@ -181,7 +179,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             ),
                             child: Text(
                               widget.event.level,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -193,39 +191,37 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                _buildRichText('Số lượng vé còn lại: ', '$available'),
+                SizedBox(height: 8),
+                _buildRichText('screens.numberOfRemainingTickets'.tr(), '$available'),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Block 3: Ghi chú
             _buildBlock(
               title: null,
               icon: null,
               children: [
-                const Text(
-                  'Ghi chú:',
+                Text('screens.note1'.tr(),
                   style: TextStyle(color: AppColors.textBlack, fontSize: 15),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Block 4: Số lượng vé muốn đặt & Tổng tiền
             _buildBlock(
               title: null,
               icon: null,
               children: [
-                const Text(
-                  'Số lượng vé muốn đặt',
+                Text('screens.numberOfTicketsYouWantTo'.tr(),
                   style: TextStyle(
                     color: AppColors.textBlack,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Row(
                   children: [
                     // Counter
@@ -240,7 +236,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               color: AppColors.primaryLight,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.remove,
                               color: Colors.white,
                             ),
@@ -252,7 +248,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           alignment: Alignment.center,
                           child: Text(
                             '$quantity',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.black,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -268,7 +264,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               color: AppColors.primary,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.add, color: Colors.white),
+                            child: Icon(Icons.add, color: Colors.white),
                           ),
                         ),
                       ],
@@ -278,8 +274,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     RichText(
                       text: TextSpan(
                         children: [
-                          const TextSpan(
-                            text: 'Tổng tiền: ',
+                          TextSpan(
+                            text: 'screens.totalAmount2'.tr(),
                             style: TextStyle(
                               color: AppColors.textGrey,
                               fontSize: 14,
@@ -287,7 +283,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           ),
                           TextSpan(
                             text: formatter.format(totalPrice),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.brandOrange,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -298,106 +294,104 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
                     onPressed: () => NotificationUtils.showComingSoon(context),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.primary),
+                      side: BorderSide(color: AppColors.primary),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text('Thêm dịch vụ'),
+                    child: Text('screens.addServices'.tr()),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Block 5: Contact info
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Tên khách hàng',
+                Text('screens.customerName'.tr(),
                   style: TextStyle(
                     color: AppColors.textBlack,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 TextField(
                   controller: _nameController,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    hintText: 'Nhập tên',
+                    hintText: 'screens.enterAName'.tr(),
                     filled: true,
                     fillColor: Colors.white,
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.cancel, color: Colors.grey),
+                      icon: Icon(Icons.cancel, color: Colors.grey),
                       onPressed: () => _nameController.clear(),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(
+                      borderSide: BorderSide(
                         color: AppColors.borderColor,
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(
+                      borderSide: BorderSide(
                         color: AppColors.borderColor,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Số điện thoại:',
+                SizedBox(height: 16),
+                Text('screens.phoneNumber'.tr(),
                   style: TextStyle(
                     color: AppColors.textBlack,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 TextField(
                   controller: _phoneController,
                   onChanged: (_) => setState(() {}),
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
-                    hintText: 'Nhập số điện thoại',
+                    hintText: 'screens.enterPhoneNumber'.tr(),
                     filled: true,
                     fillColor: Colors.white,
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.cancel, color: Colors.grey),
+                      icon: Icon(Icons.cancel, color: Colors.grey),
                       onPressed: () => _phoneController.clear(),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(
+                      borderSide: BorderSide(
                         color: AppColors.borderColor,
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(
+                      borderSide: BorderSide(
                         color: AppColors.borderColor,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 100), // Spacing for bottom button
+                SizedBox(height: 100), // Spacing for bottom button
               ],
             ),
           ],
         ),
       ),
       bottomSheet: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         color: bgColor,
         child: SizedBox(
           width: double.infinity,
@@ -412,7 +406,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     if (!widget.event.isBookable) {
                       AppToast.show(
                         context,
-                        'Sự kiện đã hết hạn hoặc hết vé',
+                        'screens.theEventHasExpiredOrIsSo'.tr(),
                         type: ToastType.error,
                       );
                       return;
@@ -437,8 +431,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
               disabledBackgroundColor: Colors.grey.shade300,
             ),
-            child: const Text(
-              'ĐĂNG KÝ NGAY',
+            child: Text('screens.rEGISTERNOW'.tr(),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
@@ -454,12 +447,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: blockColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderColor, width: 0.5),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
@@ -470,10 +463,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             Row(
               children: [
                 Icon(icon, color: AppColors.primary, size: 24),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.primaryDark,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -481,9 +474,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            const Divider(height: 1, color: AppColors.borderColor),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
+            Divider(height: 1, color: AppColors.borderColor),
+            SizedBox(height: 12),
           ],
           ...children,
         ],
@@ -497,11 +490,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         children: [
           TextSpan(
             text: label,
-            style: const TextStyle(color: AppColors.textGrey),
+            style: TextStyle(color: AppColors.textGrey),
           ),
           TextSpan(
             text: value,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textBlack,
               fontWeight: FontWeight.bold,
             ),

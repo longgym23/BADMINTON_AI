@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/models/notification_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:flutter/material.dart';

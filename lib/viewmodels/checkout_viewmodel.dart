@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:badminton_ai/services/sepay_service.dart';

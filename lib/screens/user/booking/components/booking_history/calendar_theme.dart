@@ -20,16 +20,16 @@ class BookingCalendarTheme {
     return HeaderStyle(
       formatButtonVisible: false,
       titleCentered: true,
-      leftChevronIcon: const Icon(Icons.chevron_left, color: AppColors.brandOrange),
-      rightChevronIcon: const Icon(Icons.chevron_right, color: AppColors.brandOrange),
-      titleTextStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+      leftChevronIcon: Icon(Icons.chevron_left, color: AppColors.brandOrange),
+      rightChevronIcon: Icon(Icons.chevron_right, color: AppColors.brandOrange),
+      titleTextStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       titleTextFormatter: formatter,
     );
   }
 
   // ─── Calendar cells ──────────────────────────────────────────────────────
 
-  static CalendarStyle get calendarStyle => const CalendarStyle(
+  static CalendarStyle get calendarStyle => CalendarStyle(
         // Range highlight band behind cells
         rangeHighlightColor: Color(0x26FF6B00), // 15% opacity orange
         // Start date: full orange circle
@@ -133,7 +133,7 @@ class BookingCalendarTheme {
         foregroundColor: AppColors.textGrey,
         backgroundColor: Colors.grey[200],
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       ),
       child: Text(label),
     );
@@ -145,10 +145,10 @@ class BookingCalendarTheme {
         backgroundColor: AppColors.brandOrange,
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       ),
       onPressed: onPressed,
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+      child: Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
     );
   }
 
@@ -163,12 +163,12 @@ class BookingCalendarTheme {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         IconButton(
-          icon: const Icon(Icons.chevron_left, color: AppColors.brandOrange),
+          icon: Icon(Icons.chevron_left, color: AppColors.brandOrange),
           onPressed: onPrevious,
         ),
-        Text(label, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         IconButton(
-          icon: const Icon(Icons.chevron_right, color: AppColors.brandOrange),
+          icon: Icon(Icons.chevron_right, color: AppColors.brandOrange),
           onPressed: onNext,
         ),
       ],

@@ -1,6 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/screens/user/booking/components/booking_history/booking_card.dart';
 import 'package:badminton_ai/screens/user/booking/components/booking_history/filter_section.dart';
@@ -8,7 +9,6 @@ import 'package:badminton_ai/viewmodels/mixins/filterable_viewmodel_mixin.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/viewmodels/booking_history_viewmodel.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 
@@ -33,23 +33,23 @@ class _BookingHistoryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    
     final vm = context.watch<BookingHistoryViewModel>();
     final repo = context.watch<SupabaseRepository>();
     final userId = context.watch<AppAuthProvider>().userModel?.id;
 
     return Scaffold(
-      appBar: _buildAppBar(l),
+      appBar: _buildAppBar(),
       body: userId == null
-          ? Center(child: Text(l.pleaseLogin))
+          ? Center(child: Text('common.pleaseLogin'.tr()))
           : StreamBuilder<List<BookingModel>>(
               stream: repo.getUserBookingHistoryStream(userId),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                  return Center(child: CircularProgressIndicator(color: AppColors.primary));
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('${l.error}: ${snapshot.error}'));
+                  return Center(child: Text('${'common.error'.tr()}: ${snapshot.error}'));
                 }
 
                 final bookings = snapshot.data ?? [];
@@ -59,19 +59,19 @@ class _BookingHistoryView extends StatelessWidget {
                 final currencyFmt = NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0);
 
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _SummaryRow(totalSpend: totalSpend, count: filtered.length, currencyFmt: currencyFmt, l: l),
-                      const SizedBox(height: 16),
-                      _FilterHeader(vm: vm, l: l),
-                      const SizedBox(height: 12),
+                      _SummaryRow(totalSpend: totalSpend, count: filtered.length, currencyFmt: currencyFmt),
+                      SizedBox(height: 16),
+                      _FilterHeader(vm: vm),
+                      SizedBox(height: 12),
                       if (filtered.isEmpty)
-                        _EmptyState(message: bookings.isEmpty ? l.noBookings : l.noBookingsInRange)
+                        _EmptyState(message: bookings.isEmpty ? 'booking_history_screen.noBookings'.tr() : 'booking_history_screen.noBookingsInRange'.tr())
                       else
-                        ...filtered.map((g) => BookingCard(group: g, repo: repo, l: l)),
-                      const SizedBox(height: 40),
+                        ...filtered.map((g) => BookingCard(group: g, repo: repo)),
+                      SizedBox(height: 40),
                     ],
                   ),
                 );
@@ -80,15 +80,15 @@ class _BookingHistoryView extends StatelessWidget {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(AppLocalizations l) {
+  PreferredSizeWidget _buildAppBar() {
     return CustomGradientAppBar(
-      title: Text(l.bookingHistory,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+      title: Text('booking_history_screen.title'.tr(),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
       centerTitle: true,
       elevation: 0,
       leading: Builder(
         builder: (context) => IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -102,22 +102,19 @@ class _SummaryRow extends StatelessWidget {
   final int totalSpend;
   final int count;
   final NumberFormat currencyFmt;
-  final AppLocalizations l;
-
-  const _SummaryRow({
+const _SummaryRow({
     required this.totalSpend,
     required this.count,
     required this.currencyFmt,
-    required this.l,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _SummaryCard(title: l.totalSpend, value: currencyFmt.format(totalSpend))),
-        const SizedBox(width: 16),
-        Expanded(child: _SummaryCard(title: l.courtsBooked, value: '$count ${l.times}')),
+        Expanded(child: _SummaryCard(title: 'booking_history_screen.totalSpend'.tr(), value: currencyFmt.format(totalSpend))),
+        SizedBox(width: 16),
+        Expanded(child: _SummaryCard(title: 'booking_history_screen.courtsBooked'.tr(), value: '$count ${'booking_history_screen.times'.tr()}')),
       ],
     );
   }
@@ -132,20 +129,20 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 8),
-          Text(value, style: const TextStyle(color: AppColors.textBlack, fontSize: 18, fontWeight: FontWeight.bold)),
+          SizedBox(height: 8),
+          Text(value, style: TextStyle(color: AppColors.textBlack, fontSize: 18, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -156,17 +153,15 @@ class _SummaryCard extends StatelessWidget {
 
 class _FilterHeader extends StatelessWidget {
   final BookingHistoryViewModel vm;
-  final AppLocalizations l;
-
-  const _FilterHeader({required this.vm, required this.l});
+const _FilterHeader({required this.vm});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         Text(
-          vm.filterMode == FilterMode.all ? l.sectionAll : l.filterResults,
-          style: const TextStyle(
+          vm.filterMode == FilterMode.all ? 'booking_history_screen.sectionAll'.tr() : 'booking_history_screen.filterResults'.tr(),
+          style: TextStyle(
             color: Colors.grey,
             fontWeight: FontWeight.w600,
             fontSize: 13,
@@ -174,7 +169,7 @@ class _FilterHeader extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        FilterRow(vm: vm, l: l),
+        FilterRow(vm: vm),
       ],
     );
   }
@@ -191,11 +186,11 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.only(top: 48),
+        padding: EdgeInsets.only(top: 48),
         child: Column(
           children: [
             Icon(Icons.event_busy, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(message, style: TextStyle(color: Colors.grey[500], fontSize: 14), textAlign: TextAlign.center),
           ],
         ),
@@ -203,3 +198,4 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
+

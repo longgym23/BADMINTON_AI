@@ -1,16 +1,16 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:io';
-
+import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/review_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/providers/favorite_courts_provider.dart';
 import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -77,21 +77,28 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
   String _sportLabel(String? type) {
     final t = type?.toLowerCase() ?? '';
     if (t.contains('pickleball')) return 'Pickleball';
-    if (t.contains('bóng đá') || t.contains('football') || t.contains('soccer')) return 'Bóng đá';
+    if (t.contains('screens.football1'.tr()) || t.contains('football') || t.contains('soccer'))
+      return 'court_detail_sheet.football'.tr();
     if (t.contains('tennis')) return 'Tennis';
-    if (t.contains('bóng rổ') || t.contains('basketball')) return 'Bóng rổ';
-    if (t.contains('bóng chuyền') || t.contains('volleyball')) return 'Bóng chuyền';
-    if (t.contains('cầu lông') || t.contains('badminton')) return 'Cầu lông';
-    return 'Thể thao';
+    if (t.contains('screens.basketball'.tr()) || t.contains('basketball'))
+      return 'court_detail_sheet.basketball'.tr();
+    if (t.contains('screens.volleyball'.tr()) || t.contains('volleyball'))
+      return 'court_detail_sheet.volleyball'.tr();
+    if (t.contains('screens.badminton1'.tr()) || t.contains('badminton'))
+      return 'court_detail_sheet.badminton'.tr();
+    return 'court_detail_sheet.sport'.tr();
   }
 
   Color _sportColor(String? type) {
     final t = type?.toLowerCase() ?? '';
     if (t.contains('pickleball')) return Colors.blue;
-    if (t.contains('bóng đá') || t.contains('football') || t.contains('soccer')) return Colors.orange;
+    if (t.contains('screens.football1'.tr()) || t.contains('football') || t.contains('soccer'))
+      return Colors.orange;
     if (t.contains('tennis')) return Colors.purple;
-    if (t.contains('bóng rổ') || t.contains('basketball')) return Colors.deepOrange;
-    if (t.contains('bóng chuyền') || t.contains('volleyball')) return Colors.teal;
+    if (t.contains('screens.basketball'.tr()) || t.contains('basketball'))
+      return Colors.deepOrange;
+    if (t.contains('screens.volleyball'.tr()) || t.contains('volleyball'))
+      return Colors.teal;
     return Colors.green; // cầu lông mặc định
   }
 
@@ -148,11 +155,11 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
       minChildSize: 0.0,
       maxChildSize: 0.95,
       snap: true,
-      snapSizes: const [0.55],
+      snapSizes: [0.55],
       builder: (context, scrollController) {
         return Container(
           clipBehavior: Clip.antiAlias, // Cắt bỏ các phần nhô ra để bo góc ảnh
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
@@ -179,15 +186,15 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                           unselectedLabelColor: AppColors.textGrey,
                           indicatorColor: AppColors.primary,
                           indicatorSize: TabBarIndicatorSize.label,
-                          labelStyle: const TextStyle(
+                          labelStyle: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                           ),
-                          tabs: const [
-                            Tab(text: 'Thông tin'),
-                            Tab(text: 'Dịch vụ'),
-                            Tab(text: 'Hình ảnh'),
-                            Tab(text: 'Đánh giá'),
+                          tabs: [
+                            Tab(text: 'court_detail_sheet.infoTab'.tr()),
+                            Tab(text: 'court_detail_sheet.servicesTab'.tr()),
+                            Tab(text: 'court_detail_sheet.imagesTab'.tr()),
+                            Tab(text: 'court_detail_sheet.reviewsTab'.tr()),
                           ],
                         ),
                       ),
@@ -232,7 +239,10 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.black.withOpacity(0.45), Colors.transparent],
+                colors: [
+                  Colors.black.withValues(alpha: 0.45),
+                  Colors.transparent,
+                ],
               ),
             ),
           ),
@@ -264,7 +274,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                 icon: Icons.directions_rounded,
                 onTap: _launchDirections,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               // Favorite
               Consumer<FavoriteCourtsProvider>(
                 builder: (_, fav, __) {
@@ -277,16 +287,9 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                     onTap: () {
                       fav.toggleFavorite(court);
                       final msg = isFav
-                          ? 'Đã xóa khỏi yêu thích'
-                          : 'Đã thêm vào yêu thích';
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(msg),
-                          duration: const Duration(seconds: 2),
-                          backgroundColor: AppColors.textBlack,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                          ? 'court_detail_sheet.removedFromFav'.tr()
+                          : 'court_detail_sheet.addedToFav'.tr();
+                      AppToast.show(context, msg, type: ToastType.success);
                     },
                   );
                 },
@@ -302,13 +305,13 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
           right: 0,
           child: Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.12),
+                    color: Colors.black.withValues(alpha: 0.12),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -317,13 +320,13 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
-                  const SizedBox(width: 4),
+                  Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                  SizedBox(width: 4),
                   Text(
                     court.rating > 0
-                        ? '${court.rating.toStringAsFixed(1)} · ${court.totalReviews} đánh giá'
-                        : 'Chưa có đánh giá',
-                    style: const TextStyle(
+                        ? '${court.rating.toStringAsFixed(1)} · ${court.totalReviews} ${'court_detail_sheet.reviewsCount'.tr()}'
+                        : 'court_detail_sheet.noReviewsYet'.tr(),
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textBlack,
@@ -340,7 +343,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
 
   Widget _buildCourtInfo(CourtLocationModel court) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -351,24 +354,24 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               Expanded(
                 child: Text(
                   court.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textBlack,
                   ),
                 ),
               ),
-              const SizedBox(width: 5),
+              SizedBox(width: 5),
               Container(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: _sportColor(court.sportType).withOpacity(0.12),
+                  color: _sportColor(court.sportType).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _sportColor(court.sportType).withOpacity(0.35),
+                    color: _sportColor(court.sportType).withValues(alpha: 0.35),
                   ),
                 ),
                 child: Text(
@@ -382,14 +385,14 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               ),
             ],
           ),
-          const SizedBox(height: 3),
+          SizedBox(height: 3),
           // Address
           _InfoRow(
             icon: Icons.location_on_rounded,
             iconColor: Colors.red,
             text: court.address,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
 
           // Open hours (placeholder – không có field trong model)
           _InfoRow(
@@ -397,7 +400,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
             iconColor: AppColors.primary,
             text: '05:00 – 23:00',
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
 
           // Available courts
           _InfoRow(
@@ -407,9 +410,10 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               height: 20,
               width: 20,
             ),
-            text: '${court.totalCourts} sân · Trống sân',
+            text:
+                '${court.totalCourts} ${'court_detail_sheet.courtsSuffix'.tr()} · ${'court_detail_sheet.emptyCourts'.tr()}',
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
         ],
       ),
     );
@@ -418,14 +422,14 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
   Widget _buildBookButton() {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 100),
         child: SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -434,10 +438,9 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
             onPressed: _bookCourt,
             child: Builder(
               builder: (context) {
-                final l = AppLocalizations.of(context)!;
                 return Text(
-                  l.bookingNow,
-                  style: const TextStyle(
+                  'home_screen.bookingNow'.tr(),
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -475,7 +478,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
   List<Widget> _buildInfoTabSlivers(CourtLocationModel court) {
     return [
       SliverPadding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         sliver: SliverList(
           delegate: SliverChildListDelegate([
             _InfoCard(
@@ -485,17 +488,17 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Giá thuê',
+                      Text(
+                        'court_detail_sheet.rentPrice'.tr(),
                         style: TextStyle(
                           color: AppColors.textGrey,
                           fontSize: 12,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
-                        '${_formatPrice(court.pricePerHour)}đ/giờ',
-                        style: const TextStyle(
+                        '${_formatPrice(court.pricePerHour)}${'court_detail_sheet.perHour'.tr()}',
+                        style: TextStyle(
                           color: AppColors.primaryDark,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -506,17 +509,17 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text(
-                        'Số sân',
+                      Text(
+                        'court_detail_sheet.numberOfCourts'.tr(),
                         style: TextStyle(
                           color: AppColors.textGrey,
                           fontSize: 12,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
-                        '${court.totalCourts} sân',
-                        style: const TextStyle(
+                        '${court.totalCourts} ${'court_detail_sheet.courtsSuffix'.tr()}',
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -526,19 +529,19 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _InfoCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Link đặt sân online',
+                  Text(
+                    'court_detail_sheet.onlineBookingLink'.tr(),
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: AppColors.textBlack,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   if (court.website != null && court.website!.isNotEmpty)
                     GestureDetector(
                       onTap: () async {
@@ -549,7 +552,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                       },
                       child: Text(
                         court.website!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.blue,
                           fontSize: 13,
                           decoration: TextDecoration.underline,
@@ -557,20 +560,20 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                       ),
                     )
                   else
-                    const Text(
-                      'Đặt sân qua ứng dụng · Hệ thống tự động xác nhận',
+                    Text(
+                      'court_detail_sheet.appBooking'.tr(),
                       style: TextStyle(color: AppColors.textGrey, fontSize: 13),
                     ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _InfoCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
-                    'Mô tả',
+                    'court_detail_sheet.description'.tr(),
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: AppColors.textBlack,
@@ -578,7 +581,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   ),
                   SizedBox(height: 6),
                   Text(
-                    'Sân chất lượng cao, hệ thống đèn chiếu sáng đầy đủ, bãi đậu xe rộng rãi. Phù hợp cho các buổi tập luyện và thi đấu.',
+                    'court_detail_sheet.defaultDescription'.tr(),
                     style: TextStyle(
                       color: AppColors.textGrey,
                       fontSize: 13,
@@ -607,19 +610,31 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
   }
 
   List<Widget> _buildServicesTabSlivers(BuildContext context) {
-    const services = [
-      _ServiceItem(icon: Icons.local_parking_rounded, label: 'Bãi đỗ xe'),
-      _ServiceItem(icon: Icons.shower_rounded, label: 'Phòng tắm'),
-      _ServiceItem(icon: Icons.sports_rounded, label: 'Cho thuê vợt'),
+    final services = [
+      _ServiceItem(
+        icon: Icons.local_parking_rounded,
+        label: 'court_detail_sheet.parking'.tr(),
+      ),
+      _ServiceItem(
+        icon: Icons.shower_rounded,
+        label: 'court_detail_sheet.shower'.tr(),
+      ),
+      _ServiceItem(
+        icon: Icons.sports_rounded,
+        label: 'court_detail_sheet.racketRental'.tr(),
+      ),
       _ServiceItem(
         icon: Icons.local_drink_rounded,
-        label: 'Nước uống / Căn tin',
+        label: 'court_detail_sheet.canteen'.tr(),
       ),
-      _ServiceItem(icon: Icons.wifi_rounded, label: 'Wi-Fi miễn phí'),
+      _ServiceItem(
+        icon: Icons.wifi_rounded,
+        label: 'court_detail_sheet.freeWifi'.tr(),
+      ),
     ];
     return [
       SliverPadding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         sliver: SliverToBoxAdapter(
           child: Wrap(
             spacing: 12,
@@ -628,7 +643,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                 .map(
                   (s) => Container(
                     width: (MediaQuery.of(context).size.width - 56) / 2,
-                    padding: const EdgeInsets.all(14),
+                    padding: EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(12),
@@ -637,11 +652,11 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                     child: Row(
                       children: [
                         Icon(s.icon, color: AppColors.primary, size: 22),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             s.label,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                             ),
@@ -662,11 +677,11 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
     final hasImage = court.imageUrl != null && court.imageUrl!.isNotEmpty;
     if (!hasImage) {
       return [
-        const SliverFillRemaining(
+        SliverFillRemaining(
           hasScrollBody: false,
           child: Center(
             child: Text(
-              'Chưa có hình ảnh',
+              'court_detail_sheet.noImages'.tr(),
               style: TextStyle(color: AppColors.textGrey),
             ),
           ),
@@ -675,7 +690,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
     }
     return [
       SliverPadding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         sliver: SliverGrid(
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
@@ -704,7 +719,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
     // Loading state
     if (_loadingReviews) {
       return [
-        const SliverFillRemaining(
+        SliverFillRemaining(
           hasScrollBody: false,
           child: Center(child: CircularProgressIndicator()),
         ),
@@ -718,7 +733,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
 
     return [
       SliverPadding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         sliver: SliverList(
           delegate: SliverChildListDelegate([
             // --- Summary Header ---
@@ -729,9 +744,9 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
 
             // --- Prompt to book if hasn't booked ---
             if (_hasBooked == false) ...[
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: AppColors.primaryBg,
                   borderRadius: BorderRadius.circular(12),
@@ -746,10 +761,10 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                       color: AppColors.primary,
                       size: 20,
                     ),
-                    const SizedBox(width: 10),
-                    const Expanded(
+                    SizedBox(width: 10),
+                    Expanded(
                       child: Text(
-                        'Bạn cần đặt sân tại đây để có thể viết đánh giá.',
+                        'court_detail_sheet.needBookingToReview'.tr(),
                         style: TextStyle(
                           color: AppColors.primary,
                           fontSize: 13,
@@ -761,27 +776,27 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               ),
             ],
 
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // --- Empty State ---
             if (reviews.isEmpty)
               Center(
                 child: Column(
                   children: [
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     Icon(
                       Icons.rate_review_rounded,
                       size: 56,
                       color: Colors.grey.shade300,
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Chưa có đánh giá nào',
+                    SizedBox(height: 12),
+                    Text(
+                      'court_detail_sheet.noReviews'.tr(),
                       style: TextStyle(color: AppColors.textGrey, fontSize: 15),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Hãy đặt sân và chia sẻ trải nghiệm của bạn!',
+                    SizedBox(height: 4),
+                    Text(
+                      'court_detail_sheet.promptToReview'.tr(),
                       style: TextStyle(
                         color: AppColors.textLight,
                         fontSize: 13,
@@ -817,7 +832,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
             children: [
               Text(
                 avg.toStringAsFixed(1),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 48,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textBlack,
@@ -837,14 +852,14 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 '${reviews.length} đánh giá',
-                style: const TextStyle(color: AppColors.textGrey, fontSize: 12),
+                style: TextStyle(color: AppColors.textGrey, fontSize: 12),
               ),
             ],
           ),
-          const SizedBox(width: 20),
+          SizedBox(width: 20),
           Expanded(
             child: Column(
               children: List.generate(5, (i) {
@@ -852,22 +867,22 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                 final count = counts[i];
                 final ratio = reviews.isEmpty ? 0.0 : count / reviews.length;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  padding: EdgeInsets.symmetric(vertical: 2),
                   child: Row(
                     children: [
                       Text(
                         '$star',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textGrey,
                         ),
                       ),
-                      const Icon(
+                      Icon(
                         Icons.star_rounded,
                         color: Colors.amber,
                         size: 12,
                       ),
-                      const SizedBox(width: 6),
+                      SizedBox(width: 6),
                       Expanded(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(4),
@@ -881,12 +896,12 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      SizedBox(width: 6),
                       SizedBox(
                         width: 20,
                         child: Text(
                           '$count',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textGrey,
                           ),
@@ -900,7 +915,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
           ),
         ],
       ),
-      const Divider(height: 24),
+      Divider(height: 24),
     ];
   }
 
@@ -909,24 +924,24 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
     String userId,
   ) {
     return [
-      const SizedBox(height: 4),
+      SizedBox(height: 4),
       SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
-          icon: const Icon(Icons.edit_rounded, size: 18),
-          label: const Text('Viết đánh giá'),
+          icon: Icon(Icons.edit_rounded, size: 18),
+          label: Text('Viết đánh giá'),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
-            side: const BorderSide(color: AppColors.primary),
+            side: BorderSide(color: AppColors.primary),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: 12),
           ),
           onPressed: () => _showReviewDialog(court, userId),
         ),
       ),
-      const SizedBox(height: 8),
+      SizedBox(height: 8),
     ];
   }
 
@@ -959,7 +974,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   // Header
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Viết đánh giá',
                           style: TextStyle(
@@ -969,26 +984,26 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close_rounded),
+                        icon: Icon(Icons.close_rounded),
                         onPressed: () => Navigator.pop(ctx),
                       ),
                     ],
                   ),
                   Text(
                     court.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textGrey,
                       fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // Star selector
-                  const Text(
+                  Text(
                     'Chất lượng sân',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(5, (i) {
@@ -996,7 +1011,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                       return GestureDetector(
                         onTap: () => setModalState(() => selectedRating = star),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          padding: EdgeInsets.symmetric(horizontal: 6),
                           child: Icon(
                             star <= selectedRating
                                 ? Icons.star_rounded
@@ -1011,44 +1026,44 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   Center(
                     child: Text(
                       _ratingLabel(selectedRating),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // Comment
-                  const Text(
+                  Text(
                     'Nhận xét của bạn',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   TextField(
                     controller: commentController,
                     maxLines: 3,
                     maxLength: 300,
                     decoration: InputDecoration(
                       hintText: 'Chia sẻ trải nghiệm của bạn...',
-                      hintStyle: const TextStyle(color: AppColors.textLight),
+                      hintStyle: TextStyle(color: AppColors.textLight),
                       filled: true,
                       fillColor: AppColors.background,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
+                        borderSide: BorderSide(
                           color: AppColors.borderColor,
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
+                        borderSide: BorderSide(
                           color: AppColors.borderColor,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
 
                   // Submit
                   SizedBox(
@@ -1057,7 +1072,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -1084,7 +1099,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                               }
                             },
                       child: submitting
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
@@ -1092,7 +1107,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text(
+                          : Text(
                               'Gửi đánh giá',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
@@ -1150,7 +1165,7 @@ class _ActionCircleButton extends StatelessWidget {
         height: 38,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.black.withOpacity(0.42),
+          color: Colors.black.withValues(alpha: 0.42),
         ),
         child: Icon(icon, color: iconColor, size: 20),
       ),
@@ -1177,11 +1192,11 @@ class _InfoRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         customIcon ?? Icon(icon, color: iconColor, size: 18),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               color: AppColors.textGrey,
               height: 1.4,
@@ -1202,7 +1217,7 @@ class _PlaceholderCover extends StatelessWidget {
         child: Icon(
           Icons.sports_tennis_rounded,
           size: 64,
-          color: AppColors.primary.withOpacity(0.3),
+          color: AppColors.primary.withValues(alpha: 0.3),
         ),
       ),
     );
@@ -1239,7 +1254,7 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
@@ -1265,17 +1280,18 @@ class _ReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reviewer = review.reviewer;
-    final displayName = reviewer?.displayName ?? review.reviewerName ?? 'Người dùng';
+    final displayName =
+        reviewer?.displayName ?? review.reviewerName ?? 'Người dùng';
     final avatarUrl = reviewer?.photoUrl ?? review.reviewerAvatar;
-    
+
     final initials = displayName.isNotEmpty
         ? displayName.substring(0, 1).toUpperCase()
         : '?';
     final dateStr = DateFormat('dd/MM/yyyy').format(review.createdAt.toLocal());
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      margin: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1304,28 +1320,28 @@ class _ReviewCard extends StatelessWidget {
                 child: avatarUrl == null
                     ? Text(
                         initials,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       )
                     : null,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       displayName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
                     ),
                     Text(
                       dateStr,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textGrey,
                         fontSize: 12,
                       ),
@@ -1350,10 +1366,10 @@ class _ReviewCard extends StatelessWidget {
           ),
           // Comment
           if (review.comment != null && review.comment!.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Text(
               review.comment!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textBlack,
                 height: 1.5,

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_event.dart';
 import 'package:badminton_ai/data/models/filter_criteria.dart';
@@ -7,7 +8,6 @@ import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 
 class HomeFilterModal extends StatefulWidget {
   final FilterCriteria initialCriteria;
@@ -27,25 +27,27 @@ class _HomeFilterModalState extends State<HomeFilterModal> {
   String? _eventTimeFilter;
   late double _maxPrice;
 
-  static final List<Map<String, dynamic>> _sports = [
-    {'label': 'Pickleball', 'value': 'pickleball', 'icon': 'pickleball', 'color': Colors.orange},
-    {'label': 'Cầu lông', 'value': 'badminton', 'icon': 'caulong', 'color': Colors.blue},
-    {'label': 'Bóng đá', 'value': 'football', 'icon': 'soccer', 'color': Colors.green},
-    {'label': 'Tennis', 'value': 'tennis', 'icon': 'tennis', 'color': Colors.yellow[700]!},
+  // ─── Instance getters thay vì static const ──────────────────────────────
+  // Dùng getter để .tr() được gọi mỗi lần render → đúng ngôn ngữ hiện tại
+  List<Map<String, dynamic>> get _sports => [
+    {'label': 'Pickleball',                  'value': 'pickleball', 'icon': 'pickleball', 'color': Colors.orange},
+    {'label': 'screens.badminton'.tr(),       'value': 'badminton',  'icon': 'caulong',    'color': Colors.blue},
+    {'label': 'screens.football'.tr(),        'value': 'football',   'icon': 'soccer',     'color': Colors.green},
+    {'label': 'Tennis',                       'value': 'tennis',     'icon': 'tennis',     'color': Colors.yellow[700]!},
   ];
 
-  static const List<Map<String, String>> _eventFilters = [
-    {'label': 'Hôm nay', 'value': 'today'},
-    {'label': 'Ngày mai', 'value': 'tomorrow'},
-    {'label': '3 ngày gần nhất', 'value': '3days'},
-    {'label': '1 tuần gần nhất', 'value': '1week'},
-    {'label': '2 tuần gần nhất', 'value': '2weeks'},
+  List<Map<String, String>> get _eventFilters => [
+    {'label': 'screens.today'.tr(),           'value': 'today'},
+    {'label': 'screens.tomorrow'.tr(),        'value': 'tomorrow'},
+    {'label': 'screens.theLast3Days'.tr(),    'value': '3days'},
+    {'label': 'screens.theLast1Week'.tr(),    'value': '1week'},
+    {'label': 'screens.theLast2Weeks'.tr(),   'value': '2weeks'},
   ];
 
-  static const List<String> _keywords = [
-    'Cầu lông gần tôi',
-    'Pickleball gần tôi',
-    'Sự kiện gần tôi',
+  List<String> get _keywords => [
+    'screens.badmintonNearMe'.tr(),
+    'screens.pickleballNearMe'.tr(),
+    'screens.eventsNearMe'.tr(),
   ];
 
   @override
@@ -88,12 +90,17 @@ class _HomeFilterModalState extends State<HomeFilterModal> {
 
   void _applyKeyword(String keyword) {
     setState(() {
-      if (keyword.contains('Cầu lông')) {
+      // So sánh với bản dịch hiện tại — luôn đúng dù đang dùng ngôn ngữ nào
+      if (keyword == 'screens.badmintonNearMe'.tr()) {
         _selectedSport = 'badminton';
-      } else if (keyword.contains('Pickleball')) {
+        _scheduleType  = 'empty';
+      } else if (keyword == 'screens.pickleballNearMe'.tr()) {
         _selectedSport = 'pickleball';
+        _scheduleType  = 'empty';
+      } else if (keyword == 'screens.eventsNearMe'.tr()) {
+        _scheduleType  = 'event';
+        _selectedSport = null;
       }
-      _scheduleType = keyword.contains('Xé vé') ? 'event' : 'empty';
       _maxPrice = 500000;
     });
   }

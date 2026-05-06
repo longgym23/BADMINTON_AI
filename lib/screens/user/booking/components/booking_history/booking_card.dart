@@ -1,37 +1,33 @@
-import 'package:badminton_ai/data/models/booking_model.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+
 import 'package:badminton_ai/services/court_info_service.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/viewmodels/booking_history_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/utils/dialog_utils.dart';
-import 'package:flutter/cupertino.dart';
 
 /// Card hiển thị thông tin 1 booking (nhóm slot liên tiếp).
 class BookingCard extends StatelessWidget {
   final BookingGroup group;
   final SupabaseRepository repo;
-  final AppLocalizations l;
-
-  const BookingCard({super.key, required this.group, required this.repo, required this.l});
+const BookingCard({super.key, required this.group, required this.repo});
 
   Future<void> _launchMaps(BuildContext context) async {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l.gettingLocation), duration: const Duration(seconds: 1)),
+      SnackBar(content: Text('booking_history_screen.gettingLocation'.tr()), duration: const Duration(seconds: 1)),
     );
     try {
       final court = await repo.getCourtLocationById(group.base.courtId);
       if (court == null || (court.latitude == 0 && court.longitude == 0)) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l.locationNotFound)),
+            SnackBar(content: Text('booking_history_screen.locationNotFound'.tr())),
           );
         }
         return;
@@ -46,15 +42,15 @@ class BookingCard extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.error}: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${'common.error'.tr()}: $e')));
       }
     }
   }
 
   (String, Color, Color, IconData) _resolveStatus(bool isCancelled, bool isCompleted) {
-    if (isCancelled) return (l.statusCancelled, AppColors.textGrey, AppColors.borderColor, Icons.cancel);
-    if (isCompleted) return (l.statusCompleted, AppColors.success, AppColors.successBg, Icons.check_circle);
-    return (l.statusUpcoming, AppColors.primary, AppColors.primaryBg, Icons.calendar_today);
+    if (isCancelled) return ('booking_history_screen.statusCancelled'.tr(), AppColors.textGrey, AppColors.borderColor, Icons.cancel);
+    if (isCompleted) return ('booking_history_screen.statusCompleted'.tr(), AppColors.success, AppColors.successBg, Icons.check_circle);
+    return ('booking_history_screen.statusUpcoming'.tr(), AppColors.primary, AppColors.primaryBg, Icons.calendar_today);
   }
 
   Future<void> _onCancelBooking(BuildContext context) async {
@@ -81,22 +77,22 @@ class BookingCard extends StatelessWidget {
       refundMsg = "Bạn hủy trong vòng 2 giờ (chưa tới giờ chơi), sẽ được hoàn 50% (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(expectedRefund)}) vào Số Dư Ví.";
     } else {
       expectedRefund = 0;
-      refundMsg = "Đã tới hoặc quá giờ chơi, bạn sẽ không được hoàn tiền theo quy định.";
+      refundMsg = 'screens.ifThePlayingTimeHasReache'.tr();
     }
 
     DialogUtils.showConfirmDialog(
       context,
-      title: "Xác nhận hủy sân",
+      title: 'screens.confirmationOfCancellation'.tr(),
       content: "Bạn có chắc chắn muốn hủy lịch đặt sân này?\n\n$refundMsg",
-      confirmText: "Xác nhận hủy",
-      cancelText: "Không",
+      confirmText: 'screens.confirmCancellation'.tr(),
+      cancelText: 'screens.areNot'.tr(),
       isDestructive: true,
       onConfirm: () async {
         // Hiển thị dialog đang tải
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const Center(child: CircularProgressIndicator()),
+          builder: (context) => Center(child: CircularProgressIndicator()),
         );
 
         try {
@@ -106,7 +102,7 @@ class BookingCard extends StatelessWidget {
           if (context.mounted) {
             await context.read<AppAuthProvider>().reloadUserModel();
             Navigator.pop(context); // Tắt loading
-            AppToast.show(context, 'Đã huỷ sân thành công. Số dư ví đã được cập nhật!', type: ToastType.success);
+            AppToast.show(context, 'screens.theFieldHasBeenCanceledSu'.tr(), type: ToastType.success);
           }
         } catch (e) {
           if (context.mounted) {
@@ -131,18 +127,18 @@ class BookingCard extends StatelessWidget {
     final currencyFmt = NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -167,21 +163,21 @@ class BookingCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
 
                 // ── Court icon + Details ────────────────────────────────────
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _CourtIcon(courtNumber: booking.courtNumber, label: l.court),
-                    const SizedBox(width: 14),
+                    _CourtIcon(courtNumber: booking.courtNumber, label: 'booking_history_screen.court'.tr()),
+                    SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             booking.courtName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
                               color: AppColors.textBlack,
@@ -189,16 +185,16 @@ class BookingCard extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6),
                           _InfoRow(
                             icon: Icons.calendar_today_outlined,
                             text: DateFormat('dd/MM/yyyy').format(booking.date),
                           ),
-                          const SizedBox(height: 3),
+                          SizedBox(height: 3),
                           _InfoRow(
                             icon: Icons.access_time,
                             text:
-                                '${group.startSlot}:00 - ${group.endSlot}:00 (${group.endSlot - group.startSlot}${l.hours})',
+                                '${group.startSlot}:00 - ${group.endSlot}:00 (${group.endSlot - group.startSlot}${'booking_history_screen.hours'.tr()})',
                           ),
                         ],
                       ),
@@ -213,20 +209,20 @@ class BookingCard extends StatelessWidget {
 
           // ── Actions ──────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
                 if (!isCancelled && !isCompleted)
                   TextButton.icon(
                     onPressed: () => _onCancelBooking(context),
-                    icon: const Icon(Icons.cancel_outlined, size: 16, color: AppColors.error),
-                    label: const Text('Huỷ sân', style: TextStyle(color: AppColors.error, fontSize: 14)),
+                    icon: Icon(Icons.cancel_outlined, size: 16, color: AppColors.error),
+                    label: Text('screens.cancelTheField'.tr(), style: TextStyle(color: AppColors.error, fontSize: 14)),
                   )
                 else if (isCancelled)
                   TextButton.icon(
                     onPressed: null, // Disabled
-                    icon: const Icon(Icons.cancel_outlined, size: 16, color: Colors.grey),
-                    label: const Text('Đã huỷ sân', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                    icon: Icon(Icons.cancel_outlined, size: 16, color: Colors.grey),
+                    label: Text('screens.canceledCourse'.tr(), style: TextStyle(color: Colors.grey, fontSize: 14)),
                   ),
                 const Spacer(),
                 if (!isCancelled)
@@ -235,19 +231,19 @@ class BookingCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: Colors.grey[300]!),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
-                    icon: const Icon(Icons.directions, size: 15, color: AppColors.primary),
-                    label: Text(l.getDirections,
-                        style: const TextStyle(color: AppColors.textBlack, fontWeight: FontWeight.w500, fontSize: 13)),
+                    icon: Icon(Icons.directions, size: 15, color: AppColors.primary),
+                    label: Text('booking_history_screen.getDirections'.tr(),
+                        style: TextStyle(color: AppColors.textBlack, fontWeight: FontWeight.w500, fontSize: 13)),
                   )
                 else
                   TextButton.icon(
                     onPressed: () {
-                      AppToast.show(context, l.rebookComingSoon, type: ToastType.success);
+                      AppToast.show(context, 'booking_history_screen.rebookComingSoon'.tr(), type: ToastType.success);
                     },
-                    icon: const Icon(Icons.refresh, size: 15, color: AppColors.primary),
-                    label: Text(l.rebook, style: const TextStyle(color: AppColors.primary)),
+                    icon: Icon(Icons.refresh, size: 15, color: AppColors.primary),
+                    label: Text('booking_history_screen.rebook'.tr(), style: TextStyle(color: AppColors.primary)),
                   ),
               ],
             ),
@@ -271,12 +267,12 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(20)),
       child: Row(
         children: [
           Icon(icon, size: 13, color: color),
-          const SizedBox(width: 5),
+          SizedBox(width: 5),
           Text(text, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
         ],
       ),
@@ -299,11 +295,11 @@ class _CourtIcon extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.sports_tennis, color: AppColors.primary, size: 18),
-          const SizedBox(height: 2),
+          Icon(Icons.sports_tennis, color: AppColors.primary, size: 18),
+          SizedBox(height: 2),
           Text(
             '$label $courtNumber',
-            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 9),
+            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 9),
             textAlign: TextAlign.center,
           ),
         ],
@@ -323,9 +319,10 @@ class _InfoRow extends StatelessWidget {
     return Row(
       children: [
         Icon(icon, size: 13, color: Colors.grey[500]),
-        const SizedBox(width: 5),
+        SizedBox(width: 5),
         Text(text, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
       ],
     );
   }
 }
+

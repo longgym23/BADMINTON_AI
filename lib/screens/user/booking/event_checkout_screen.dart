@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/viewmodels/checkout_viewmodel.dart';
@@ -83,17 +84,16 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.check_circle,
                 color: AppColors.success,
                 size: 60,
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Xác nhận thành công!',
+              SizedBox(height: 16),
+              Text('screens.confirmedSuccessfully'.tr(),
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'Bạn đã đặt ${widget.quantity} vé tham gia sự kiện:\n"${widget.event.title}"',
                 textAlign: TextAlign.center,
@@ -108,8 +108,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
               Navigator.pop(context);
               Navigator.pop(context);
             },
-            child: const Text(
-              'Hoàn tất',
+            child: Text('screens.completed'.tr(),
               style: TextStyle(
                 color: Colors.deepOrange,
                 fontWeight: FontWeight.bold,
@@ -182,8 +181,8 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
       AppToast.show(
         context,
         widget.event.isEnded
-            ? 'Sự kiện đã kết thúc, không thể thanh toán.'
-            : 'Sự kiện đã hết vé.',
+            ? 'screens.eventHasEndedPaymentsCann'.tr()
+            : 'screens.theEventIsSoldOut'.tr(),
         type: ToastType.error,
       );
       return;
@@ -239,7 +238,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
     if (mounted) {
       AppToast.show(
         context,
-        '⏰ Hết thời gian thanh toán. Chỗ của bạn đã bị hủy.',
+        'screens.PaymentTimeHasExpiredYo'.tr(),
         type: ToastType.error,
       );
       Navigator.pop(context);
@@ -293,22 +292,21 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
 
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: const Text(
-          'Thanh toán Sự kiện',
+        title: Text('screens.eventPayments'.tr(),
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Bill Info Card
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
@@ -316,43 +314,42 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Thông tin thanh toán',
+                  Text('screens.paymentInformation'.tr(),
                     style: TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  const Divider(),
-                  const SizedBox(height: 12),
-                  _buildRow('Tên sự kiện:', widget.event.title),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 12),
+                  Divider(),
+                  SizedBox(height: 12),
+                  _buildRow('screens.eventName1'.tr(), widget.event.title),
+                  SizedBox(height: 8),
                   _buildRow(
-                    'Thời gian:',
+                    'screens.time'.tr(),
                     '${widget.event.startTime} - ${widget.event.endTime} | ${DateFormat('dd/MM/yyyy').format(widget.event.dateTime)}',
                   ),
-                  const SizedBox(height: 8),
-                  _buildRow('Số lượng vé:', '${widget.quantity} vé'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
+                  _buildRow('screens.numberOfTickets'.tr(), '${widget.quantity} vé'),
+                  SizedBox(height: 8),
                   _buildRow(
-                    'Tổng tiền:',
+                    'screens.totalAmount1'.tr(),
                     NumberFormat.currency(
                       locale: 'vi_VN',
-                      symbol: 'đ',
+                      symbol: 'screens.d'.tr(),
                     ).format(widget.totalPrice),
                     isTotal: true,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
 
             if (vm.isBookingCreated)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFFFFF3E0), Color(0xFFFFCC80)],
@@ -364,13 +361,13 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                 ),
                 child: Column(
                   children: [
-                    const Row(
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.qr_code_2, color: AppColors.primaryDark),
                         SizedBox(width: 8),
                         Text(
-                          'QUÉT MÃ VIETQR',
+                          'screens.sCANVIETQRCODE'.tr(),
                           style: TextStyle(
                             color: AppColors.primaryDark,
                             fontWeight: FontWeight.bold,
@@ -379,7 +376,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Container(
                       width: 200,
                       height: 200,
@@ -387,7 +384,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(8),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: Image.network(
@@ -395,7 +392,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                           fit: BoxFit.contain,
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
-                            return const Center(
+                            return Center(
                               child: CircularProgressIndicator(
                                 color: AppColors.primary,
                               ),
@@ -404,9 +401,8 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Đang chờ hệ thống xác nhận thanh toán...',
+                    SizedBox(height: 12),
+                    Text('screens.waitingForTheSystemToConf'.tr(),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.textBlack,
@@ -414,7 +410,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     Consumer<CheckoutViewModel>(
                       builder: (_, vm, __) {
                         final isLow = vm.remainingSeconds <= 60;
@@ -426,7 +422,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                               size: 18,
                               color: isLow ? Colors.red : AppColors.primaryDark,
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Text(
                               'Giao dịch tự hủy sau ${vm.remainingLabel}',
                               style: TextStyle(
@@ -441,8 +437,8 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                         );
                       },
                     ),
-                    const SizedBox(height: 8),
-                    const CircularProgressIndicator(strokeWidth: 2),
+                    SizedBox(height: 8),
+                    CircularProgressIndicator(strokeWidth: 2),
                   ],
                 ),
               ),
@@ -451,9 +447,9 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
       ),
       bottomSheet: Container(
         color: bgColor,
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         child: vm.isBookingCreated
-            ? const SizedBox.shrink()
+            ? SizedBox.shrink()
             : SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -464,8 +460,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'Tạo QR Thanh Toán',
+                  child: Text('screens.createQRPayment'.tr(),
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
@@ -482,7 +477,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
           width: 100,
           child: Text(
             label,
-            style: const TextStyle(color: AppColors.textGrey, fontSize: 14),
+            style: TextStyle(color: AppColors.textGrey, fontSize: 14),
           ),
         ),
         Expanded(

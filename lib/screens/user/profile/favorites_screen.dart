@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/providers/favorite_courts_provider.dart';
 import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 import 'package:badminton_ai/screens/user/map/court_detail_sheet.dart';
@@ -14,17 +15,20 @@ class FavoritesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: Text('Sân yêu thích', style: TextStyle(color: Colors.white)),
+        title: Text(
+          'profile_screen.favoriteCourts'.tr(),
+          style: TextStyle(color: Colors.white),
+        ),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.favorite_rounded, color: Colors.red),
+            icon: Icon(Icons.favorite_rounded, color: Colors.red),
             onPressed: null,
-            tooltip: 'Danh sách yêu thích',
+            tooltip: 'screens.favoritesList'.tr(),
           ),
         ],
       ),
@@ -37,7 +41,7 @@ class FavoritesScreen extends StatelessWidget {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             itemCount: courts.length,
             itemBuilder: (context, index) {
               final court = courts[index];
@@ -46,14 +50,18 @@ class FavoritesScreen extends StatelessWidget {
                 direction: DismissDirection.endToStart,
                 background: Container(
                   alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 20),
-                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: EdgeInsets.only(right: 20),
+                  margin: EdgeInsets.only(bottom: 14),
                   decoration: BoxDecoration(
                     color: Colors.red.shade100,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Image(image: AssetImage('assets/images/delete.png'),
-                      color: Colors.red, height: 28, width: 28),
+                  child: const Image(
+                    image: AssetImage('assets/images/delete.png'),
+                    color: Colors.red,
+                    height: 28,
+                    width: 28,
+                  ),
                 ),
                 onDismissed: (_) => fav.removeFavorite(court.id),
                 child: GestureDetector(
@@ -65,13 +73,13 @@ class FavoritesScreen extends StatelessWidget {
                     );
                   },
                   child: Container(
-                    margin: const EdgeInsets.only(bottom: 14),
+                    margin: EdgeInsets.only(bottom: 14),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.06),
+                          color: Colors.black.withValues(alpha: 0.06),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -82,12 +90,14 @@ class FavoritesScreen extends StatelessWidget {
                       children: [
                         // Image
                         ClipRRect(
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(16)),
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(16),
+                          ),
                           child: SizedBox(
                             height: 140,
                             width: double.infinity,
-                            child: court.imageUrl != null &&
+                            child:
+                                court.imageUrl != null &&
                                     court.imageUrl!.isNotEmpty
                                 ? CachedNetworkImage(
                                     imageUrl: court.imageUrl!,
@@ -103,7 +113,7 @@ class FavoritesScreen extends StatelessWidget {
 
                         // Info
                         Padding(
-                          padding: const EdgeInsets.all(14),
+                          padding: EdgeInsets.all(14),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -114,24 +124,27 @@ class FavoritesScreen extends StatelessWidget {
                                   Expanded(
                                     child: Text(
                                       court.name,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         color: AppColors.textBlack,
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   Row(
                                     children: [
-                                      const Icon(Icons.star_rounded,
-                                          color: Colors.amber, size: 16),
-                                      const SizedBox(width: 3),
+                                      Icon(
+                                        Icons.star_rounded,
+                                        color: Colors.amber,
+                                        size: 16,
+                                      ),
+                                      SizedBox(width: 3),
                                       Text(
                                         court.rating > 0
                                             ? court.rating.toStringAsFixed(1)
                                             : '—',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 14,
                                         ),
@@ -140,41 +153,48 @@ class FavoritesScreen extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
+                              SizedBox(height: 6),
 
                               // Sport chip
                               _SportChip(sportType: court.sportType),
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
 
                               // Address
                               Row(
                                 children: [
-                                  const Icon(Icons.location_on_rounded,
-                                      color: Colors.red, size: 14),
-                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.location_on_rounded,
+                                    color: Colors.red,
+                                    size: 14,
+                                  ),
+                                  SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
                                       court.address,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textGrey),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textGrey,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
 
                               // Price
                               Row(
                                 children: [
-                                  const Icon(Icons.monetization_on_rounded,
-                                      color: AppColors.primary, size: 14),
-                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.monetization_on_rounded,
+                                    color: AppColors.primary,
+                                    size: 14,
+                                  ),
+                                  SizedBox(width: 4),
                                   Text(
                                     '${court.pricePerHour.toStringAsFixed(0)}đ/giờ',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.primaryDark,
@@ -182,7 +202,7 @@ class FavoritesScreen extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
 
                               // Action buttons
                               Row(
@@ -190,44 +210,52 @@ class FavoritesScreen extends StatelessWidget {
                                   OutlinedButton.icon(
                                     onPressed: () =>
                                         fav.removeFavorite(court.id),
-                                    icon: const Icon(
-                                        Icons.favorite_border_rounded,
-                                        size: 16),
-                                    label: const Text('Bỏ lưu'),
+                                    icon: Icon(
+                                      Icons.favorite_border_rounded,
+                                      size: 16,
+                                    ),
+                                    label: Text('screens.unsave'.tr()),
                                     style: OutlinedButton.styleFrom(
                                       side: const BorderSide(color: Colors.red),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 8),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
                                       shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10)),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
+                                  SizedBox(width: 10),
                                   Expanded(
                                     child: ElevatedButton.icon(
                                       onPressed: () {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (_) => CourtSelectionScreen(
-                                              selectedCourt: court,
-                                              selectedDate: DateTime.now(),
-                                            ),
+                                            builder: (_) =>
+                                                CourtSelectionScreen(
+                                                  selectedCourt: court,
+                                                  selectedDate: DateTime.now(),
+                                                ),
                                           ),
                                         );
                                       },
-                                      icon: const Icon(
-                                          Icons.sports_tennis_rounded,
-                                          size: 16),
-                                      label: const Text('Đặt sân'),
+                                      icon: Icon(
+                                        Icons.sports_tennis_rounded,
+                                        size: 16,
+                                      ),
+                                      label: Text('screens.setThePitch1'.tr()),
                                       style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 10),
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 10,
+                                        ),
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(10)),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -258,22 +286,29 @@ class _EmptyFavorites extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.favorite_border_rounded,
-              size: 80, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          Text(
-            'Chưa có sân yêu thích',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade500),
+          Icon(
+            Icons.favorite_border_rounded,
+            size: 80,
+            color: Colors.grey.shade300,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 16),
           Text(
-            'Nhấn ♡ khi xem chi tiết sân\nđể lưu vào danh sách này',
+            'screens.noFavoriteCourseYet'.tr(),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade500,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'screens.pressWhenViewingCourseDe'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 14, color: Colors.grey.shade400, height: 1.5),
+              fontSize: 14,
+              color: Colors.grey.shade400,
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -287,8 +322,11 @@ class _CourtImagePlaceholder extends StatelessWidget {
     return Container(
       color: AppColors.primaryBg,
       child: Center(
-        child: Icon(Icons.sports_rounded,
-            size: 48, color: AppColors.primary.withOpacity(0.25)),
+        child: Icon(
+          Icons.sports_rounded,
+          size: 48,
+          color: AppColors.primary.withValues(alpha: 0.25),
+        ),
       ),
     );
   }
@@ -303,11 +341,11 @@ class _SportChip extends StatelessWidget {
       case 'pickleball':
         return 'Pickleball';
       case 'football':
-        return 'Bóng đá';
+        return 'screens.football'.tr();
       case 'tennis':
         return 'Tennis';
       default:
-        return 'Cầu lông';
+        return 'screens.badminton'.tr();
     }
   }
 
@@ -327,17 +365,21 @@ class _SportChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: _color.withOpacity(0.12),
+        color: _color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _color.withOpacity(0.35)),
+        border: Border.all(color: _color.withValues(alpha: 0.35)),
       ),
       child: Text(
         _label,
         style: TextStyle(
-            fontSize: 11, fontWeight: FontWeight.w600, color: _color),
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: _color,
+        ),
       ),
     );
   }
 }
+

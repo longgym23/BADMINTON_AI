@@ -3,6 +3,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class LocationPickerScreen extends StatefulWidget {
   final LatLng? initialLocation;
@@ -41,7 +42,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        _showMessage('Vui lòng bật dịch vụ vị trí');
+        _showMessage('screens.pleaseEnableLocationService'.tr());
         return;
       }
 
@@ -49,13 +50,13 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          _showMessage('Quyền truy cập vị trí bị từ chối');
+          _showMessage('screens.locationAccessDenied'.tr());
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _showMessage('Quyền truy cập vị trí bị từ chối vĩnh viễn');
+        _showMessage('screens.locationAccessIsPermanently'.tr());
         return;
       }
 
@@ -77,7 +78,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       }
     } catch (e) {
       print("Lỗi lấy vị trí: $e");
-      _showMessage('Không thể lấy vị trí hiện tại');
+      _showMessage('screens.unableToGetCurrentLocation'.tr());
     }
   }
 
@@ -122,19 +123,19 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
         ].where((part) => part != null && part.isNotEmpty).join(', ');
 
         setState(() {
-          _selectedAddress = address.isNotEmpty ? address : 'Không có địa chỉ';
+          _selectedAddress = address.isNotEmpty ? address : 'screens.noAddressAvailable'.tr();
           _isLoadingAddress = false;
         });
       } else {
         setState(() {
-          _selectedAddress = 'Không tìm thấy địa chỉ';
+          _selectedAddress = 'screens.addressNotFound'.tr();
           _isLoadingAddress = false;
         });
       }
     } catch (e) {
       print("Lỗi lấy địa chỉ: $e");
       setState(() {
-        _selectedAddress = 'Không thể lấy địa chỉ';
+        _selectedAddress = 'screens.unableToGetAddress'.tr();
         _isLoadingAddress = false;
       });
     }
@@ -160,7 +161,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
 
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: const Text('Chọn vị trí trên bản đồ'),
+        title: Text('screens.selectLocationOnTheMap'.tr()),
       ),
       body: Stack(
         children: [
@@ -189,7 +190,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             child: Card(
               elevation: 4,
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -197,21 +198,20 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                     Row(
                       children: [
                         Icon(Icons.location_on, color: colors.primary),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Vị trí đã chọn:',
+                              Text('screens.selectedLocation'.tr(),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               _isLoadingAddress
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       height: 20,
                                       width: 20,
                                       child: CircularProgressIndicator(
@@ -220,7 +220,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                                     )
                                   : Text(
                                       _selectedAddress,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -230,7 +230,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       'Tọa độ: ${_selectedLocation.latitude.toStringAsFixed(6)}, ${_selectedLocation.longitude.toStringAsFixed(6)}',
                       style: TextStyle(
@@ -261,12 +261,12 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             left: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 4,
                     offset: const Offset(0, -2),
                   ),
@@ -278,12 +278,12 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: const Text('Hủy'),
+                      child: Text('screens.cancel1'.tr()),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
@@ -294,10 +294,9 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                         });
                       },
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: const Text(
-                        'Xác nhận',
+                      child: Text('screens.confirm'.tr(),
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -311,4 +310,5 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     );
   }
 }
+
 

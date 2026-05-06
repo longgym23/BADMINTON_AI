@@ -1,5 +1,6 @@
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class BookingMethodModal extends StatelessWidget {
   final CourtLocationModel court;
@@ -18,12 +19,12 @@ class BookingMethodModal extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: EdgeInsets.all(20.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,7 +34,7 @@ class BookingMethodModal extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Chọn hình thức đặt',
+                  'screens.chooseTheOrderForm'.tr(),
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -41,32 +42,32 @@ class BookingMethodModal extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // Option 1: Đặt lịch ngày trực quan
             _BookingOption(
-              title: 'Đặt lịch ngày trực quan',
+              title: 'screens.setTheDateIntuitively'.tr(),
               description:
-                  'Đặt lịch ngày khi khách chơi nhiều khung giờ, nhiều sân.',
+                  'screens.setAScheduleForDaysWhenG'.tr(),
               color: Colors.lightGreen[100]!,
               textColor: colors.primary,
               onTap: onVisualBooking,
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Option 2: Đặt lịch sự kiện
             Stack(
               children: [
                 _BookingOption(
-                  title: 'Đặt lịch sự kiện',
+                  title: 'screens.scheduleAnEvent'.tr(),
                   description:
-                      'Sự kiện giúp bạn chơi chung với người có cùng niềm đam mê, trình độ. Hay những giải đấu mang tính cạnh tranh cao, nâng cao trình độ do chủ sân tổ chức.',
+                      'screens.theEventHelpsYouPlayWith'.tr(),
                   color: Colors.pink[100]!,
                   textColor: Colors.purple[700]!,
                   onTap: onEventBooking,
@@ -76,18 +77,18 @@ class BookingMethodModal extends StatelessWidget {
                   top: 0,
                   right: 0,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
+                    padding: EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.red,
-                      borderRadius: const BorderRadius.only(
+                      borderRadius: BorderRadius.only(
                         topRight: Radius.circular(12),
                         bottomLeft: Radius.circular(12),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'New',
                       style: TextStyle(
                         color: Colors.white,
@@ -100,7 +101,7 @@ class BookingMethodModal extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
           ],
         ),
       ),
@@ -128,7 +129,7 @@ class _BookingOption extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(12),
@@ -147,18 +148,18 @@ class _BookingOption extends StatelessWidget {
                       color: textColor,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     description,
                     style: TextStyle(
                       fontSize: 13,
-                      color: textColor.withOpacity(0.8),
+                      color: textColor.withValues(alpha: 0.8),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Container(
               width: 40,
               height: 40,
@@ -178,4 +179,5 @@ class _BookingOption extends StatelessWidget {
     );
   }
 }
+
 

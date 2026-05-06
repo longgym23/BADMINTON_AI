@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class HighlightsTab extends StatelessWidget {
   const HighlightsTab({super.key});
@@ -8,10 +9,10 @@ class HighlightsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: const Text('Nổi bật'),
+        title: Text('screens.outstanding'.tr()),
         automaticallyImplyLeading: false,
       ),
-      body: const Center(child: Text('Chức năng Nổi bật đang được phát triển')),
+      body: Center(child: Text('screens.featuredFunctionalityIsUnde'.tr())),
     );
   }
 }

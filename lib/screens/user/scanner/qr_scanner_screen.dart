@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
@@ -23,10 +24,10 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: const Text('Quét mã QR'),
+        title: Text('qr_scanner_screen.title'.tr()),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.of(context).pop();
           },
@@ -34,13 +35,13 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         actions: [
           IconButton(
             color: Colors.white,
-            icon: const Icon(Icons.flash_on),
+            icon: Icon(Icons.flash_on),
             iconSize: 32.0,
             onPressed: () => cameraController.toggleTorch(),
           ),
           IconButton(
             color: Colors.white,
-            icon: const Icon(Icons.cameraswitch),
+            icon: Icon(Icons.cameraswitch),
             iconSize: 32.0,
             onPressed: () => cameraController.switchCamera(),
           ),
@@ -82,7 +83,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                     child: Container(
                       width: 20,
                       height: 20,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(
                           top: BorderSide(color: Colors.greenAccent, width: 4),
                           left: BorderSide(color: Colors.greenAccent, width: 4),
@@ -95,7 +96,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                     child: Container(
                       width: 20,
                       height: 20,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(
                           top: BorderSide(color: Colors.greenAccent, width: 4),
                           right: BorderSide(
@@ -111,7 +112,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                     child: Container(
                       width: 20,
                       height: 20,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
                             color: Colors.greenAccent,
@@ -127,7 +128,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                     child: Container(
                       width: 20,
                       height: 20,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
                             color: Colors.greenAccent,
@@ -145,12 +146,12 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             bottom: 50,
             left: 0,
             right: 0,
             child: Text(
-              'Di chuyển camera đến mã QR',
+              'qr_scanner_screen.instruction'.tr(),
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white, fontSize: 16),
             ),

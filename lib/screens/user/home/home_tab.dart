@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/notification_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
@@ -11,11 +12,9 @@ import 'package:badminton_ai/screens/user/booking/court_reviews_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
-import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';  
+import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_state.dart';
@@ -23,7 +22,6 @@ import 'package:badminton_ai/screens/user/home/components/home_search_bar.dart';
 import 'package:badminton_ai/screens/user/home/components/home_filter_bar.dart';
 import 'package:badminton_ai/screens/user/home/components/home_filter_modal.dart';
 import 'package:badminton_ai/screens/user/profile/edit_profile_screen.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class HomeTab extends StatefulWidget {
@@ -99,9 +97,9 @@ class _HomeTabState extends State<HomeTab> {
     } else if (await canLaunchUrl(appleUrl)) {
       await launchUrl(appleUrl, mode: LaunchMode.externalApplication);
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể mở ứng dụng bản đồ')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('home_tab.cannotOpenMap'.tr())));
     }
   }
 
@@ -128,9 +126,7 @@ class _HomeTabState extends State<HomeTab> {
           Navigator.pop(ctx);
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => EventListScreen(court: court),
-            ),
+            MaterialPageRoute(builder: (_) => EventListScreen(court: court)),
           );
         },
       ),
@@ -140,9 +136,9 @@ class _HomeTabState extends State<HomeTab> {
   Future<void> _handleQRCodeResult(String scannedCode) async {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đang xử lý mã QR...'),
-        duration: Duration(seconds: 1),
+      SnackBar(
+        content: Text('home_tab.processingQR'.tr()),
+        duration: const Duration(seconds: 1),
       ),
     );
 
@@ -164,12 +160,17 @@ class _HomeTabState extends State<HomeTab> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isLink ? 'Mở liên kết?' : 'Kết quả quét'),
+        title: Text(
+          isLink ? 'home_tab.openLink'.tr() : 'home_tab.scanResult'.tr(),
+        ),
         content: Text(scannedCode),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: Colors.blue)),
+            child: Text(
+              'common.cancel'.tr(),
+              style: TextStyle(color: Colors.blue),
+            ),
           ),
           if (isLink)
             TextButton(
@@ -177,7 +178,10 @@ class _HomeTabState extends State<HomeTab> {
                 Navigator.pop(ctx);
                 launchUrl(uri, mode: LaunchMode.externalApplication);
               },
-              child: const Text('Mở', style: TextStyle(color: Colors.blue)),
+              child: Text(
+                'home_tab.open'.tr(),
+                style: TextStyle(color: Colors.blue),
+              ),
             ),
         ],
       ),
@@ -236,17 +240,19 @@ class _HomeTabState extends State<HomeTab> {
 
   Widget _buildHeader(user) {
     return Container(
-      padding: const EdgeInsets.only(top: 50, left: 16, right: 16, bottom: 20),
+      padding: EdgeInsets.only(top: 50, left: 16, right: 16, bottom: 20),
       decoration: BoxDecoration(
         image: DecorationImage(
           image: const AssetImage('assets/images/home.jpg'),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            AppColors.brandOrange.withValues(alpha: 0.4), // Darken slightly for readability of white text
+            AppColors.brandOrange.withValues(
+              alpha: 0.4,
+            ), // Darken slightly for readability of white text
             BlendMode.darken,
           ),
         ),
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
       ),
       child: Column(
         children: [
@@ -269,7 +275,8 @@ class _HomeTabState extends State<HomeTab> {
                   backgroundColor: Colors.orange[100],
                   child: user?.photoUrl == null
                       ? Text(
-                          user?.displayName?.substring(0, 1).toUpperCase() ?? 'U',
+                          user?.displayName?.substring(0, 1).toUpperCase() ??
+                              'U',
                           style: TextStyle(
                             fontSize: 20,
                             color: Colors.orange[800],
@@ -278,7 +285,7 @@ class _HomeTabState extends State<HomeTab> {
                       : null,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,14 +295,14 @@ class _HomeTabState extends State<HomeTab> {
                         'EEEE, dd/MM/yyyy',
                         'vi_VN',
                       ).format(DateTime.now()),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
                       ),
                     ),
                     Text(
                       user?.displayName ?? '',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -307,7 +314,7 @@ class _HomeTabState extends State<HomeTab> {
               _buildNotificationIcon(),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           HomeSearchBar(
             controller: _searchController,
             onQrScan: () async {
@@ -319,7 +326,7 @@ class _HomeTabState extends State<HomeTab> {
             },
             onFilterTap: _showFilterModal,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           const HomeFilterBar(),
         ],
       ),
@@ -335,12 +342,15 @@ class _HomeTabState extends State<HomeTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 20),
-                  _buildSectionHeader(title: 'Ưu đãi đặc biệt', onSeeAll: () {}),
+                  SizedBox(height: 20),
+                  _buildSectionHeader(
+                    title: 'home_tab.specialOffers'.tr(),
+                    onSeeAll: () {},
+                  ),
                   _buildSpecialOfferCard(),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   _buildCourtsListHeader(),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                 ],
               ),
             ),
@@ -354,20 +364,23 @@ class _HomeTabState extends State<HomeTab> {
 
   Widget _buildSectionHeader({required String title, VoidCallback? onSeeAll}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           if (onSeeAll != null)
             TextButton(
               onPressed: onSeeAll,
-              child: const Text(
-                'XEM TẤT CẢ',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              child: Text(
+                'home_tab.seeAll'.tr(),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
         ],
@@ -377,30 +390,30 @@ class _HomeTabState extends State<HomeTab> {
 
   Widget _buildCourtsListHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'Danh sách sân',
+          Text(
+            'home_tab.courtList'.tr(),
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.borderColor),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            // child: const Row(
-            //   children: [
-            //     Text(
-            //       'SẮP XẾP',
-            //       style: TextStyle(fontSize: 10, color: Colors.grey),
-            //     ),
-            //     Icon(Icons.sort, size: 14, color: Colors.grey),
-            //   ],
-            // ),
-          ),
+          // Container(
+          //   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          //   decoration: BoxDecoration(
+          //     border: Border.all(color: AppColors.borderColor),
+          //     borderRadius: BorderRadius.circular(4),
+          //   ),
+          //   child: Row(
+          //     children: [
+          //       Text(
+          //         'screens.aRRANGE'.tr(),
+          //         style: TextStyle(fontSize: 10, color: Colors.grey),
+          //       ),
+          //       Icon(Icons.sort, size: 14, color: Colors.grey),
+          //     ],
+          //   ),
+          // ),
         ],
       ),
     );
@@ -419,12 +432,12 @@ class _HomeTabState extends State<HomeTab> {
                 MaterialPageRoute(builder: (_) => const NotificationsScreen()),
               ),
               icon: Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.notifications, color: Colors.white),
+                child: Icon(Icons.notifications, color: Colors.white),
               ),
             ),
             if (unreadCount > 0)
@@ -432,14 +445,14 @@ class _HomeTabState extends State<HomeTab> {
                 right: 8,
                 top: 8,
                 child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
+                  padding: EdgeInsets.all(4),
+                  decoration: BoxDecoration(
                     color: AppColors.error,
                     shape: BoxShape.circle,
                   ),
                   child: Text(
                     unreadCount > 9 ? '9+' : '$unreadCount',
-                    style: const TextStyle(color: Colors.white, fontSize: 10),
+                    style: TextStyle(color: Colors.white, fontSize: 10),
                   ),
                 ),
               ),
@@ -452,20 +465,34 @@ class _HomeTabState extends State<HomeTab> {
   Widget _buildSliverCourtsList(HomeFilterState state) {
     if (state.status == HomeFilterStatus.loading ||
         state.status == HomeFilterStatus.initial) {
-      return const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())));
+      return const SliverToBoxAdapter(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
     }
     if (state.status == HomeFilterStatus.failure) {
-      return SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(20), child: Text(state.errorMessage ?? "Có lỗi xảy ra"))));
+      return SliverToBoxAdapter(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Text(state.errorMessage ?? 'home_tab.errorOccurred'.tr()),
+          ),
+        ),
+      );
     }
 
     final courts = state.filteredCourts;
     if (courts.isEmpty) {
-      return const SliverToBoxAdapter(
+      return SliverToBoxAdapter(
         child: Center(
           child: Padding(
             padding: EdgeInsets.all(20.0),
             child: Text(
-              "Không có sân nào phù hợp với bộ lọc",
+              'home_tab.noCourtsMatchFilter'.tr(),
               style: TextStyle(color: Colors.grey),
             ),
           ),
@@ -481,21 +508,15 @@ class _HomeTabState extends State<HomeTab> {
     }
 
     return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final court = sorted[index];
-          return _CourtListItem(
-            court: court,
-            distance: _currentLocation != null
-                ? _calculateDistance(court)
-                : 0.0,
-            onTap: () => _showBookingMethodModal(court),
-            onDirections: () =>
-                _launchMaps(court.latitude, court.longitude),
-          );
-        },
-        childCount: sorted.length,
-      ),
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final court = sorted[index];
+        return _CourtListItem(
+          court: court,
+          distance: _currentLocation != null ? _calculateDistance(court) : 0.0,
+          onTap: () => _showBookingMethodModal(court),
+          onDirections: () => _launchMaps(court.latitude, court.longitude),
+        );
+      }, childCount: sorted.length),
     );
   }
 
@@ -504,17 +525,17 @@ class _HomeTabState extends State<HomeTab> {
       height: 140,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: 16),
         children: [
           _buildOfferItem(
-            'Cuối tuần bùng nổ',
-            'Giảm 20% đặt sân',
-            'assets/images/logo.jpg',
+            'home_tab.weekendExplosion'.tr(),
+            'home_tab.discount20'.tr(),
+            null,
             AppColors.primary,
           ),
           _buildOfferItem(
-            'Khung giờ vàng',
-            'Đồng giá 50k/h',
+            'home_tab.goldenHour'.tr(),
+            'home_tab.flatRate50k'.tr(),
             null,
             AppColors.success,
           ),
@@ -531,16 +552,19 @@ class _HomeTabState extends State<HomeTab> {
   ) {
     return Container(
       width: 280,
-      margin: const EdgeInsets.only(right: 16, bottom: 8),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(right: 16, bottom: 8),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [bannerColor.withOpacity(0.1), bannerColor.withOpacity(0.05)],
+          colors: [
+            bannerColor.withValues(alpha: 0.1),
+            bannerColor.withValues(alpha: 0.05),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: bannerColor.withOpacity(0.3)),
+        border: Border.all(color: bannerColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -550,7 +574,7 @@ class _HomeTabState extends State<HomeTab> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
                   ),
@@ -558,8 +582,8 @@ class _HomeTabState extends State<HomeTab> {
                     color: bannerColor,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text(
-                    'ƯU ĐÃI',
+                  child: Text(
+                    'home_tab.offers'.tr(),
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 10,
@@ -567,19 +591,19 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                     color: AppColors.textBlack,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textGrey,
                     fontSize: 13,
                   ),
@@ -604,7 +628,7 @@ class _HomeTabState extends State<HomeTab> {
               width: 70,
               height: 70,
               decoration: BoxDecoration(
-                color: bannerColor.withOpacity(0.2),
+                color: bannerColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(Icons.local_offer, color: bannerColor, size: 30),
@@ -635,13 +659,13 @@ class _CourtListItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, 16),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -652,14 +676,14 @@ class _CourtListItem extends StatelessWidget {
           children: [
             _buildImageSection(),
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInfoRow(),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _buildRatingAndDistance(context),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   _buildFullWidthButton(),
                 ],
               ),
@@ -675,7 +699,7 @@ class _CourtListItem extends StatelessWidget {
       children: [
         // Court image
         ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
           child: court.imageUrl != null
               ? CachedNetworkImage(
                   imageUrl: court.imageUrl!,
@@ -685,12 +709,12 @@ class _CourtListItem extends StatelessWidget {
                   placeholder: (context, url) => Container(
                     height: 180,
                     color: Colors.grey[200],
-                    child: const Center(child: CircularProgressIndicator()),
+                    child: Center(child: CircularProgressIndicator()),
                   ),
                   errorWidget: (context, url, error) => Container(
                     height: 180,
                     color: Colors.grey[200],
-                    child: const Center(
+                    child: Center(
                       child: Icon(Icons.image, size: 50, color: Colors.grey),
                     ),
                   ),
@@ -699,28 +723,28 @@ class _CourtListItem extends StatelessWidget {
                   height: 180,
                   width: double.infinity,
                   color: Colors.grey[200],
-                  child: const Center(
+                  child: Center(
                     child: Icon(Icons.image, size: 50, color: Colors.grey),
                   ),
                 ),
         ),
-        // 'Trống sân' badge
+        // 'screens.emptyYard1'.tr() badge
         Positioned(
           top: 12,
           left: 12,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.successBg,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.circle, size: 8, color: AppColors.success),
                 SizedBox(width: 4),
                 Text(
-                  'Trống sân',
+                  'home_tab.emptyCourt'.tr(),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -745,7 +769,7 @@ class _CourtListItem extends StatelessWidget {
               Flexible(
                 child: Text(
                   court.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                     color: AppColors.textBlack,
@@ -754,18 +778,18 @@ class _CourtListItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 6),
-              const Icon(Icons.verified, size: 16, color: AppColors.primary),
+              SizedBox(width: 6),
+              Icon(Icons.verified, size: 16, color: AppColors.primary),
             ],
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Text(
           NumberFormat.simpleCurrency(
             locale: 'vi_VN',
             decimalDigits: 0,
           ).format(court.pricePerHour),
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.primaryDark,
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -790,36 +814,40 @@ class _CourtListItem extends StatelessWidget {
           },
           child: Row(
             children: [
-              const Icon(Icons.star, size: 16, color: Colors.amber),
-              const SizedBox(width: 4),
+              Icon(Icons.star, size: 16, color: Colors.amber),
+              SizedBox(width: 4),
               Text(
                 '$rating',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                   color: AppColors.textBlack,
                 ),
               ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, size: 16, color: AppColors.textGrey),
+              SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: AppColors.textGrey,
+              ),
             ],
           ),
         ),
-        const SizedBox(width: 4),
-        const Text('•', style: TextStyle(color: AppColors.textLight)),
-        const SizedBox(width: 8),
-        const Icon(Icons.location_on, size: 14, color: AppColors.textGrey),
-        const SizedBox(width: 4),
+        SizedBox(width: 4),
+        Text('•', style: TextStyle(color: AppColors.textLight)),
+        SizedBox(width: 8),
+        Icon(Icons.location_on, size: 14, color: AppColors.textGrey),
+        SizedBox(width: 4),
         Text(
           '${distance.toStringAsFixed(1)} km',
-          style: const TextStyle(color: AppColors.textGrey, fontSize: 13),
+          style: TextStyle(color: AppColors.textGrey, fontSize: 13),
         ),
-        const SizedBox(width: 8),
-        const Text('•', style: TextStyle(color: AppColors.textLight)),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
+        Text('•', style: TextStyle(color: AppColors.textLight)),
+        SizedBox(width: 8),
         Text(
-          '${court.totalCourts} sân',
-          style: const TextStyle(color: AppColors.textGrey, fontSize: 13),
+          '${court.totalCourts} ${'home_tab.courts'.tr()}',
+          style: TextStyle(color: AppColors.textGrey, fontSize: 13),
         ),
       ],
     );
@@ -834,19 +862,19 @@ class _CourtListItem extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               elevation: 0,
             ),
-            child: const Text(
-              'Đặt ngay',
+            child: Text(
+              'home_tab.bookNow'.tr(),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Container(
           height: 48,
           width: 48,
@@ -856,8 +884,8 @@ class _CourtListItem extends StatelessWidget {
           ),
           child: IconButton(
             onPressed: onDirections,
-            icon: const Icon(Icons.directions, color: AppColors.primary),
-            tooltip: 'Chỉ đường',
+            icon: Icon(Icons.directions, color: AppColors.primary),
+            tooltip: 'home_tab.directions'.tr(),
           ),
         ),
       ],

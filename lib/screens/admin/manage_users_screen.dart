@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 import 'package:badminton_ai/data/models/user_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
@@ -10,8 +11,7 @@ import 'package:badminton_ai/viewmodels/manage_users_viewmodel.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/utils/dialog_utils.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+
 
 class ManageUsersScreen extends StatelessWidget {
   const ManageUsersScreen({super.key});
@@ -42,7 +42,7 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
   }
 
   void _showUserEditDialog(BuildContext context, UserModel user) {
-    final l10n = AppLocalizations.of(context);
+    
     final _formKey = GlobalKey<FormState>();
     final _nameController = TextEditingController(text: user.displayName);
     final _emailController = TextEditingController(text: user.email);
@@ -55,11 +55,11 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(l10n.updateUser, style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text('admin_screen.updateUser'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
               content: Material(
                 color: Colors.transparent,
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
+                  padding: EdgeInsets.only(top: 16.0),
                   child: Form(
                     key: _formKey,
                     child: SingleChildScrollView(
@@ -68,28 +68,28 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                         children: [
                           TextFormField(
                             controller: _nameController,
-                            decoration: InputDecoration(labelText: l10n.displayName, filled: true, fillColor: Colors.white),
-                            validator: (value) => value!.isEmpty ? l10n.cannotBeEmpty : null,
+                            decoration: InputDecoration(labelText: 'admin_screen.displayName'.tr(), filled: true, fillColor: Colors.white),
+                            validator: (value) => value!.isEmpty ? 'admin_screen.cannotBeEmpty'.tr() : null,
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           TextFormField(
                             controller: _emailController,
-                            decoration: InputDecoration(labelText: l10n.email, filled: true, fillColor: Colors.white),
+                            decoration: InputDecoration(labelText: 'auth_screen.email'.tr(), filled: true, fillColor: Colors.white),
                             enabled: false,
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           TextFormField(
                             controller: _phoneController,
-                            decoration: InputDecoration(labelText: l10n.phoneNumber, filled: true, fillColor: Colors.white),
+                            decoration: InputDecoration(labelText: 'admin_screen.phoneNumber'.tr(), filled: true, fillColor: Colors.white),
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           DropdownButtonFormField<String>(
                             initialValue: _selectedRole,
-                            decoration: InputDecoration(labelText: l10n.role, filled: true, fillColor: Colors.white),
+                            decoration: InputDecoration(labelText: 'admin_screen.role'.tr(), filled: true, fillColor: Colors.white),
                             items: [
-                              DropdownMenuItem(value: 'user', child: Text(l10n.roleUser)),
-                              DropdownMenuItem(value: 'court_owner', child: Text(l10n.roleCourtOwner)),
-                              DropdownMenuItem(value: 'admin', child: Text(l10n.roleAdmin)),
+                              DropdownMenuItem(value: 'user', child: Text('admin_screen.roleUser'.tr())),
+                              DropdownMenuItem(value: 'court_owner', child: Text('admin_screen.roleCourtOwner'.tr())),
+                              DropdownMenuItem(value: 'admin', child: Text('admin_screen.roleAdmin'.tr())),
                             ],
                             onChanged: (value) {
                               if (value != null) setDialogState(() => _selectedRole = value);
@@ -102,7 +102,7 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(l10n.cancel, style: const TextStyle(color: Colors.blue))),
+                TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text('common.cancel'.tr(), style: TextStyle(color: Colors.blue))),
                 TextButton(
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
@@ -116,14 +116,14 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                         await repo.updateUser(updatedUser);
                         if (!ctx.mounted) return;
                         Navigator.of(ctx).pop();
-                        AppToast.show(ctx, l10n.updateSuccess, type: ToastType.success);
+                        AppToast.show(ctx, 'admin_screen.updateSuccess'.tr(), type: ToastType.success);
                         setState(() {});
                       } catch (e) {
-                        AppToast.show(ctx, l10n.errorWithDetails(e.toString()), type: ToastType.error);
+                        AppToast.show(ctx, 'admin_screen.errorWithDetails'.tr(namedArgs: {'error': e.toString()}), type: ToastType.error);
                       }
                     }
                   },
-                  child: Text(l10n.save, style: const TextStyle(color: Colors.blue)),
+                  child: Text('common.save'.tr(), style: TextStyle(color: Colors.blue)),
                 ),
               ],
             );
@@ -134,21 +134,21 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
   }
 
   void _showDeleteConfirmDialog(BuildContext context, UserModel user) {
-    final l10n = AppLocalizations.of(context);
+    
     DialogUtils.showConfirmDialog(
       context,
-      title: l10n.confirmDelete,
-      content: l10n.deleteUserConfirmText(user.displayName ?? user.email ?? ''),
-      confirmText: l10n.delete,
+      title: 'admin_screen.confirmDelete'.tr(),
+      content: 'admin_screen.deleteUserConfirmText'.tr(namedArgs: {'name': user.displayName ?? user.email ?? ''}),
+      confirmText: 'common.delete'.tr(),
       isDestructive: true,
       onConfirm: () async {
         try {
           await context.read<SupabaseRepository>().deleteUser(user.id);
           if (!context.mounted) return;
-          AppToast.show(context, l10n.userDeleted, type: ToastType.success);
+          AppToast.show(context, 'admin_screen.userDeleted'.tr(), type: ToastType.success);
           setState(() {});
         } catch (e) {
-          AppToast.show(context, l10n.errorWithDetails(e.toString()), type: ToastType.error);
+          AppToast.show(context, 'admin_screen.errorWithDetails'.tr(namedArgs: {'error': e.toString()}), type: ToastType.error);
         }
       },
     );
@@ -159,21 +159,21 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
     final vm = context.watch<ManageUsersViewModel>();
     final repo = context.watch<SupabaseRepository>();
     final auth = context.watch<AppAuthProvider>();
-    final l10n = AppLocalizations.of(context);
+    
 
     if (auth.userModel?.role != 'admin') {
-      return Scaffold(body: Center(child: Text(l10n.adminOnly)));
+      return Scaffold(body: Center(child: Text('admin_screen.adminOnly'.tr())));
     }
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: CustomGradientAppBar(title: Text(l10n.manageUsers)),
+      appBar: CustomGradientAppBar(title: Text('admin_screen.manageUsers'.tr())),
       body: Column(
         children: [
           // Search & Filter Section
           Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
               boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
@@ -184,10 +184,10 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: l10n.searchNameEmailPhone,
-                    prefixIcon: const Icon(Icons.search, color: AppColors.brandOrange),
+                    hintText: 'home_screen.searchNameEmailPhone'.tr(),
+                    prefixIcon: Icon(Icons.search, color: AppColors.brandOrange),
                     suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(icon: const Icon(Icons.clear), onPressed: () {
+                        ? IconButton(icon: Icon(Icons.clear), onPressed: () {
                             setState(() => _searchController.clear());
                             vm.setSearchQuery('');
                           })
@@ -198,18 +198,18 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                   ),
                   onChanged: (value) => vm.setSearchQuery(value),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _FilterChip(label: l10n.all, isSelected: vm.selectedRole == 'all', onTap: () => vm.setSelectedRole('all')),
-                      const SizedBox(width: 8),
-                      _FilterChip(label: l10n.admin, isSelected: vm.selectedRole == 'admin', onTap: () => vm.setSelectedRole('admin')),
-                      const SizedBox(width: 8),
-                      _FilterChip(label: l10n.roleCourtOwner, isSelected: vm.selectedRole == 'court_owner', onTap: () => vm.setSelectedRole('court_owner')),
-                      const SizedBox(width: 8),
-                      _FilterChip(label: l10n.user, isSelected: vm.selectedRole == 'user', onTap: () => vm.setSelectedRole('user')),
+                      _FilterChip(label: 'common.all'.tr(), isSelected: vm.selectedRole == 'all', onTap: () => vm.setSelectedRole('all')),
+                      SizedBox(width: 8),
+                      _FilterChip(label: 'admin_screen.admin'.tr(), isSelected: vm.selectedRole == 'admin', onTap: () => vm.setSelectedRole('admin')),
+                      SizedBox(width: 8),
+                      _FilterChip(label: 'admin_screen.roleCourtOwner'.tr(), isSelected: vm.selectedRole == 'court_owner', onTap: () => vm.setSelectedRole('court_owner')),
+                      SizedBox(width: 8),
+                      _FilterChip(label: 'admin_screen.user'.tr(), isSelected: vm.selectedRole == 'user', onTap: () => vm.setSelectedRole('user')),
                     ],
                   ),
                 ),
@@ -222,8 +222,8 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
             child: StreamBuilder<List<UserModel>>(
               stream: repo.getAllUsersStream(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                if (snapshot.hasError) return Center(child: Text(l10n.errorWithDetails(snapshot.error.toString())));
+                if (snapshot.connectionState == ConnectionState.waiting) return Center(child: CircularProgressIndicator());
+                if (snapshot.hasError) return Center(child: Text('admin_screen.errorWithDetails'.tr(namedArgs: {'error': snapshot.error.toString()})));
 
                 final allUsers = snapshot.data ?? [];
                 final filtered = vm.applyFilters(allUsers);
@@ -234,15 +234,15 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.person_search, size: 64, color: Colors.grey[300]),
-                        const SizedBox(height: 16),
-                        Text(l10n.noUsersFound, style: TextStyle(color: Colors.grey[500])),
+                        SizedBox(height: 16),
+                        Text('admin_screen.noUsersFound'.tr(), style: TextStyle(color: Colors.grey[500])),
                       ],
                     ),
                   );
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16),
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final user = filtered[index];
@@ -274,7 +274,7 @@ class _FilterChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.brandOrange : Colors.grey[100],
           borderRadius: BorderRadius.circular(20),
@@ -298,29 +298,29 @@ class _UserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    
     Color roleColor;
     String roleName;
     switch (user.role) {
       case 'admin':
         roleColor = Colors.red;
-        roleName = l10n.admin;
+        roleName = 'admin_screen.admin'.tr();
         break;
       case 'court_owner':
         roleColor = Colors.orange;
-        roleName = l10n.roleCourtOwner;
+        roleName = 'admin_screen.roleCourtOwner'.tr();
         break;
       default:
         roleColor = AppColors.primary;
-        roleName = l10n.user;
+        roleName = 'admin_screen.user'.tr();
     }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12),
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey[200]!)),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12),
         child: Row(
           children: [
             CircleAvatar(
@@ -334,7 +334,7 @@ class _UserCard extends StatelessWidget {
                         width: 48,
                         height: 48,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => const CircularProgressIndicator(strokeWidth: 2),
+                        placeholder: (context, url) => CircularProgressIndicator(strokeWidth: 2),
                         errorWidget: (context, url, error) => Text(
                           (user.displayName ?? user.email ?? 'U').substring(0, 1).toUpperCase(),
                           style: TextStyle(color: roleColor, fontWeight: FontWeight.bold),
@@ -346,23 +346,23 @@ class _UserCard extends StatelessWidget {
                       style: TextStyle(color: roleColor, fontWeight: FontWeight.bold),
                     ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(user.displayName?.isNotEmpty == true ? user.displayName! : l10n.noName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 4),
+                  Text(user.displayName?.isNotEmpty == true ? user.displayName! : 'profile_screen.noName'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(Icons.email, size: 12, color: Colors.grey[500]),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Expanded(child: Text(user.email ?? '', style: TextStyle(color: Colors.grey[600], fontSize: 12), overflow: TextOverflow.ellipsis)),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(color: roleColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                     child: Text(roleName, style: TextStyle(color: roleColor, fontSize: 10, fontWeight: FontWeight.bold)),
                   ),

@@ -4,6 +4,7 @@ import 'package:badminton_ai/providers/course_provider.dart';
 import 'package:badminton_ai/screens/course/course_list_tab.dart';
 import 'package:badminton_ai/screens/course/watched_courses_screen.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class CourseMainScreen extends StatefulWidget {
   const CourseMainScreen({super.key});
@@ -12,7 +13,8 @@ class CourseMainScreen extends StatefulWidget {
   State<CourseMainScreen> createState() => _CourseMainScreenState();
 }
 
-class _CourseMainScreenState extends State<CourseMainScreen> with TickerProviderStateMixin {
+class _CourseMainScreenState extends State<CourseMainScreen>
+    with TickerProviderStateMixin {
   TabController? _tabController;
 
   @override
@@ -23,7 +25,10 @@ class _CourseMainScreenState extends State<CourseMainScreen> with TickerProvider
       provider.loadCategories().then((_) {
         if (mounted && provider.categories.isNotEmpty) {
           setState(() {
-            _tabController = TabController(length: provider.categories.length, vsync: this);
+            _tabController = TabController(
+              length: provider.categories.length,
+              vsync: this,
+            );
           });
         }
       });
@@ -50,8 +55,8 @@ class _CourseMainScreenState extends State<CourseMainScreen> with TickerProvider
         if (provider.categories.isEmpty) {
           return Scaffold(
             appBar: CustomGradientAppBar(
-              title: const Text(
-                'Khóa học thể thao',
+              title: Text(
+                'screens.sportsCourse'.tr(),
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -60,14 +65,16 @@ class _CourseMainScreenState extends State<CourseMainScreen> with TickerProvider
               centerTitle: false,
               leading: const BackButton(color: Colors.white),
             ),
-            body: const Center(child: Text('Không có danh mục khóa học nào')),
+            body: Center(
+              child: Text('screens.thereAreNoCourseCategories'.tr()),
+            ),
           );
         }
 
         return Scaffold(
           appBar: CustomGradientAppBar(
-            title: const Text(
-              'Khóa học thể thao',
+            title: Text(
+              'screens.sportsCourse'.tr(),
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -78,7 +85,7 @@ class _CourseMainScreenState extends State<CourseMainScreen> with TickerProvider
             actions: [
               IconButton(
                 icon: const Icon(Icons.history, color: Colors.white),
-                tooltip: 'Khóa học đã xem',
+                tooltip: 'screens.courseViewed'.tr(),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -98,7 +105,9 @@ class _CourseMainScreenState extends State<CourseMainScreen> with TickerProvider
                     unselectedLabelColor: Colors.white70,
                     indicatorColor: Colors.white,
                     dividerColor: Colors.transparent,
-                    tabs: provider.categories.map((c) => Tab(text: c.name)).toList(),
+                    tabs: provider.categories
+                        .map((c) => Tab(text: c.name))
+                        .toList(),
                   ),
           ),
           body: _tabController == null

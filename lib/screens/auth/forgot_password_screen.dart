@@ -3,6 +3,7 @@ import 'package:badminton_ai/services/password_reset_service.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -44,16 +45,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     } else {
       AppToast.show(
         context,
-        'Mã OTP đã được gửi đến email của bạn!',
+        'screens.oTPCodeHasBeenSentToYour'.tr(),
         type: ToastType.success,
       );
       await Future.delayed(const Duration(milliseconds: 800));
       if (!mounted) return;
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => OtpVerifyScreen(email: email),
-        ),
+        MaterialPageRoute(builder: (_) => OtpVerifyScreen(email: email)),
       );
     }
   }
@@ -89,7 +88,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back_ios_new_rounded),
                 style: IconButton.styleFrom(
-                  // backgroundColor: Colors.white.withOpacity(0.85),
+                  // backgroundColor: Colors.white.withValues(alpha: 0.85),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -134,8 +133,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
-                          'Quên mật khẩu?',
+                        Text(
+                          'screens.forgotPassword'.tr(),
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
@@ -144,8 +143,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Nhập email đăng ký để nhận mã xác thực OTP.',
+                        Text(
+                          'screens.enterRegistrationEmailToRe'.tr(),
                           style: TextStyle(
                             fontSize: 14,
                             color: _textGray,
@@ -174,7 +173,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             color: _textDark,
                           ),
                           decoration: InputDecoration(
-                            hintText: 'Nhập email của bạn',
+                            hintText: 'screens.enterYourEmail'.tr(),
                             hintStyle: const TextStyle(
                               color: _hintColor,
                               fontSize: 14,
@@ -207,18 +206,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             ),
                             errorBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide:
-                                  const BorderSide(color: Colors.red),
+                              borderSide: const BorderSide(color: Colors.red),
                             ),
                           ),
                           validator: (val) {
                             if (val == null || val.isEmpty) {
-                              return 'Vui lòng nhập email';
+                              return 'screens.pleaseEnterEmail'.tr();
                             }
                             if (!RegExp(
                               r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$',
                             ).hasMatch(val)) {
-                              return 'Email không hợp lệ';
+                              return 'screens.invalidEmail'.tr();
                             }
                             return null;
                           },
@@ -248,8 +246,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                       strokeWidth: 2,
                                     ),
                                   )
-                                : const Text(
-                                    'Gửi mã OTP',
+                                : Text(
+                                    'screens.sendOTPCode'.tr(),
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
@@ -264,15 +262,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           child: TextButton(
                             onPressed: () => Navigator.pop(context),
                             child: RichText(
-                              text: const TextSpan(
-                                text: 'Nhớ mật khẩu rồi? ',
+                              text: TextSpan(
+                                text: 'screens.rememberYourPassword'.tr(),
                                 style: TextStyle(
                                   color: _textGray,
                                   fontSize: 13,
                                 ),
                                 children: [
                                   TextSpan(
-                                    text: 'Đăng nhập',
+                                    text: 'screens.logIn'.tr(),
                                     style: TextStyle(
                                       color: _orange,
                                       fontWeight: FontWeight.bold,

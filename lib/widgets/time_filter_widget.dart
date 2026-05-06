@@ -1,4 +1,5 @@
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+import 'package:easy_localization/easy_localization.dart';
+
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/viewmodels/mixins/filterable_viewmodel_mixin.dart';
 import 'package:badminton_ai/screens/user/booking/components/booking_history/calendar_theme.dart';
@@ -9,16 +10,14 @@ import 'package:flutter/cupertino.dart';
 class TimeFilterWidget<T extends FilterableViewModelMixin>
     extends StatelessWidget {
   final T viewModel;
-  final AppLocalizations l;
-
-  const TimeFilterWidget({super.key, required this.viewModel, required this.l});
+const TimeFilterWidget({super.key, required this.viewModel});
 
   Future<void> _pickDateRange(BuildContext context) async {
     final result = await showCustomDateRangePicker(
       context: context,
       initialDateRange: viewModel.selectedDateRange,
-      cancelLabel: l.cancel,
-      confirmLabel: l.confirm,
+      cancelLabel: 'common.cancel'.tr(),
+      confirmLabel: 'common.confirm'.tr(),
     );
 
     if (result != null) {
@@ -90,7 +89,7 @@ class TimeFilterWidget<T extends FilterableViewModelMixin>
                 children: [
                   BookingCalendarTheme.cancelButton(
                     onPressed: () => Navigator.pop(ctx),
-                    label: l.cancel,
+                    label: 'common.cancel'.tr(),
                   ),
                   const SizedBox(width: 16),
                   BookingCalendarTheme.confirmButton(
@@ -98,7 +97,7 @@ class TimeFilterWidget<T extends FilterableViewModelMixin>
                       Navigator.pop(ctx);
                       viewModel.setFilterMonth(tempMonth, tempYear);
                     },
-                    label: l.confirm,
+                    label: 'common.confirm'.tr(),
                   ),
                 ],
               ),
@@ -175,7 +174,7 @@ class TimeFilterWidget<T extends FilterableViewModelMixin>
                 children: [
                   BookingCalendarTheme.cancelButton(
                     onPressed: () => Navigator.pop(ctx),
-                    label: l.cancel,
+                    label: 'common.cancel'.tr(),
                   ),
                   const SizedBox(width: 16),
                   BookingCalendarTheme.confirmButton(
@@ -183,7 +182,7 @@ class TimeFilterWidget<T extends FilterableViewModelMixin>
                       Navigator.pop(ctx);
                       viewModel.setFilterYear(tempYear);
                     },
-                    label: l.confirm,
+                    label: 'common.confirm'.tr(),
                   ),
                 ],
               ),
@@ -224,19 +223,19 @@ class TimeFilterWidget<T extends FilterableViewModelMixin>
           }
         },
         itemBuilder: (context) => [
-          _buildMenuItem(context, 0, Icons.date_range, l.filterByDateRange),
+          _buildMenuItem(context, 0, Icons.date_range, 'booking_history_screen.filterByDateRange'.tr()),
           _buildMenuItem(
             context,
             1,
             Icons.calendar_view_month,
-            l.filterByMonth,
+            'booking_history_screen.filterByMonth'.tr(),
           ),
-          _buildMenuItem(context, 2, Icons.calendar_today, l.filterByYear),
+          _buildMenuItem(context, 2, Icons.calendar_today, 'booking_history_screen.filterByYear'.tr()),
           PopupMenuDivider(height: 1, color: Colors.grey[200]),
-          _buildMenuItem(context, 3, Icons.list, l.viewAll),
+          _buildMenuItem(context, 3, Icons.list, 'booking_history_screen.viewAll'.tr()),
         ],
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: AppColors.brandOrange.withOpacity(0.5)),
@@ -254,7 +253,7 @@ class TimeFilterWidget<T extends FilterableViewModelMixin>
             children: [
               Text(
                 viewModel.filterMode == FilterMode.all
-                    ? l.viewAll
+                    ? 'booking_history_screen.viewAll'.tr()
                     : viewModel.filterLabel(context),
                 style: const TextStyle(
                   color: AppColors.textBlack,
@@ -318,12 +317,12 @@ class _DialogActions extends StatelessWidget {
       children: [
         BookingCalendarTheme.cancelButton(
           onPressed: onCancel,
-          label: cancelLabel,
+          label: 'common.cancel'.tr(),
         ),
         const SizedBox(width: 12),
         BookingCalendarTheme.confirmButton(
           onPressed: onConfirm,
-          label: confirmLabel,
+          label: 'common.confirm'.tr(),
         ),
       ],
     );

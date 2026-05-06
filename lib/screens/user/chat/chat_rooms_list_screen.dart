@@ -1,6 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/repositories/chat_room_repository.dart';
 import 'package:badminton_ai/domain/usecases/chat_rooms/watch_user_chat_rooms_usecase.dart';
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/screens/user/chat/direct_chat_screen.dart';
 import 'package:badminton_ai/screens/user/chat/create_group_screen.dart';
@@ -38,7 +39,7 @@ class _ChatRoomsListScreenState extends State<ChatRoomsListScreen> {
   Widget build(BuildContext context) {
     final userId = context.read<AppAuthProvider>().userModel?.id;
     if (userId == null) {
-      return const Scaffold(body: Center(child: Text('Vui lòng đăng nhập')));
+      return Scaffold(body: Center(child: Text('screens.pleaseLogIn'.tr())));
     }
 
     return BlocProvider(
@@ -62,21 +63,21 @@ class _ChatRoomsListScreenState extends State<ChatRoomsListScreen> {
 
   Widget _buildSearchField() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Container(
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.grey[200]!.withOpacity(0.8),
+          color: Colors.grey[200]!.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Builder(
           builder: (context) {
-            final l = AppLocalizations.of(context)!;
+            
             return TextField(
               controller: _searchController,
               onChanged: (val) => setState(() => _searchQuery = val),
               decoration: InputDecoration(
-                hintText: l.searchUsersOrGroups,
+                hintText: 'home_screen.searchUsersOrGroups'.tr(),
                 hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
                 prefixIcon: Icon(
                   Icons.search,
@@ -84,7 +85,7 @@ class _ChatRoomsListScreenState extends State<ChatRoomsListScreen> {
                   size: 20,
                 ),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                contentPadding: EdgeInsets.symmetric(vertical: 10),
               ),
             );
           },
@@ -115,7 +116,7 @@ class _ChatRoomsListContent extends StatelessWidget {
     final body = BlocBuilder<ChatRoomsBloc, ChatRoomsState>(
       builder: (context, state) {
         if (state is ChatRoomsLoading || state is ChatRoomsInitial) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(color: AppColors.primary),
           );
         }
@@ -150,7 +151,7 @@ class _ChatRoomsListContent extends StatelessWidget {
                   roomType: roomType,
                 );
         }
-        return const SizedBox.shrink();
+        return SizedBox.shrink();
       },
     );
 
@@ -166,8 +167,7 @@ class _ChatRoomsListContent extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Tin nhắn',
+        title: Text('screens.message'.tr(),
           style: TextStyle(
             color: AppColors.textBlack,
             fontWeight: FontWeight.bold,
@@ -206,7 +206,7 @@ class _RoomsList extends StatelessWidget {
       itemCount: rooms.length,
       itemBuilder: (context, index) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.only(bottom: 12),
           child: _RoomCard(room: rooms[index]),
         );
       },
@@ -263,20 +263,20 @@ class _RoomCard extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => DirectChatScreen(room: room)),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 12,
                 ),
                 child: Row(
                   children: [
                     _RoomAvatar(room: room),
-                    const SizedBox(width: 14),
+                    SizedBox(width: 14),
                     Expanded(child: _RoomInfo(room: room)),
                     if (room.unreadCount > 0) ...[
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
+                        padding: EdgeInsets.all(6),
+                        decoration: BoxDecoration(
                           color: AppColors.error,
                           shape: BoxShape.circle,
                         ),
@@ -284,7 +284,7 @@ class _RoomCard extends StatelessWidget {
                           room.unreadCount > 9
                               ? '9+'
                               : room.unreadCount.toString(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -349,7 +349,7 @@ class _RoomAvatar extends StatelessWidget {
                 ? CachedNetworkImage(
                     imageUrl: room.displayAvatar!,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => const Center(
+                    placeholder: (_, __) => Center(
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: AppColors.primary,
@@ -426,10 +426,10 @@ class _RoomInfo extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                room.displayTitle ?? 'Không tên',
+                room.displayTitle ?? 'screens.nameless'.tr(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
                   color: AppColors.textBlack,
@@ -439,9 +439,9 @@ class _RoomInfo extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
-          room.lastMessage ?? 'Chạm để nhắn tin...',
+          room.lastMessage ?? 'screens.tapToText'.tr(),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
@@ -471,15 +471,15 @@ class _ActiveFriendsRow extends StatelessWidget {
       builder: (context, provider, child) {
         // Lọc những người bạn đang online (hoặc hiện tất cả nhưng ưu tiên online)
         final friends = provider.friends;
-        if (friends.isEmpty) return const SizedBox.shrink();
+        if (friends.isEmpty) return SizedBox.shrink();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(left: 4, bottom: 12),
               child: Text(
-                "Đang hoạt động",
+                'screens.active'.tr(),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -516,7 +516,7 @@ class _ActiveFriendsRow extends StatelessWidget {
                           isGroup: false,
                           createdAt: DateTime.now(),
                         );
-                        room.displayTitle = friend.displayName ?? 'Người dùng';
+                        room.displayTitle = friend.displayName ?? 'screens.user'.tr();
                         room.displayAvatar = friend.photoUrl;
                         room.members = [friend]; // Mock members for navigation
 
@@ -531,7 +531,7 @@ class _ActiveFriendsRow extends StatelessWidget {
                       }
                     },
                     child: Padding(
-                      padding: const EdgeInsets.only(right: 20),
+                      padding: EdgeInsets.only(right: 20),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -556,7 +556,7 @@ class _ActiveFriendsRow extends StatelessWidget {
                                       : null,
                                   color: !isOnline ? Colors.grey[300] : null,
                                 ),
-                                padding: const EdgeInsets.all(2.5),
+                                padding: EdgeInsets.all(2.5),
                                 child: Container(
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
@@ -571,7 +571,7 @@ class _ActiveFriendsRow extends StatelessWidget {
                                         : null,
                                     backgroundColor: Colors.grey[200],
                                     child: friend.photoUrl == null
-                                        ? const Icon(
+                                        ? Icon(
                                             Icons.person,
                                             color: Colors.grey,
                                           )
@@ -598,7 +598,7 @@ class _ActiveFriendsRow extends StatelessWidget {
                                 ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           SizedBox(
                             width: 65,
                             child: Text(
@@ -642,7 +642,7 @@ class _TimeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
@@ -680,33 +680,31 @@ class _EmptyView extends StatelessWidget {
             size: 80,
             color: Colors.grey.shade300,
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Theo dõi cuộc hội thoại',
+          SizedBox(height: 16),
+          Text('screens.followTheConversation'.tr(),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppColors.textBlack,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Bạn chưa có đoạn hội thoại nào.\nHãy bắt đầu nhắn tin với bạn bè nhé!',
+          SizedBox(height: 8),
+          Text('screens.youDonTHaveAnyConversatio'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textGrey),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const CreateGroupScreen()),
             ),
-            icon: const Icon(Icons.group_add),
-            label: const Text('Tạo nhóm mới'),
+            icon: Icon(Icons.group_add),
+            label: Text('screens.createANewGroup'.tr()),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
               ),
@@ -732,7 +730,7 @@ class _ErrorView extends StatelessWidget {
         error.contains('RealtimeSubscribeStatus.timedOut') ||
         error.toLowerCase().contains('timeout');
     String displayMessage = isTimeout
-        ? 'Mất kết nối thời gian thực. Bị gián đoạn kết nối...\nVui lòng kiểm tra mạng.'
+        ? 'screens.lossOfRealTimeConnection'.tr()
         : 'Đã xảy ra lỗi: $error';
 
     return Center(
@@ -744,16 +742,16 @@ class _ErrorView extends StatelessWidget {
             color: isTimeout ? Colors.orange : AppColors.error,
             size: 48,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: EdgeInsets.symmetric(horizontal: 32),
             child: Text(
               displayMessage,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textGrey, height: 1.5),
+              style: TextStyle(color: AppColors.textGrey, height: 1.5),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {
               final userId = context.read<AppAuthProvider>().userModel?.id;
@@ -763,7 +761,7 @@ class _ErrorView extends StatelessWidget {
                 );
               }
             },
-            child: const Text('Thử lại'),
+            child: Text('screens.retry'.tr()),
           ),
         ],
       ),
@@ -780,7 +778,7 @@ class _CreateGroupFAB extends StatelessWidget {
     return BlocBuilder<ChatRoomsBloc, ChatRoomsState>(
       builder: (context, state) {
         if (state is ChatRoomsLoaded && state.rooms.isEmpty) {
-          return const SizedBox.shrink();
+          return SizedBox.shrink();
         }
         return FloatingActionButton(
           onPressed: () => Navigator.push(
@@ -792,9 +790,10 @@ class _CreateGroupFAB extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          child: const Icon(Icons.edit_square, color: Colors.white),
+          child: Icon(Icons.edit_square, color: Colors.white),
         );
       },
     );
   }
 }
+

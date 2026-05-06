@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:async';
 import 'package:badminton_ai/data/models/user_model.dart';
 import 'package:badminton_ai/data/repositories/auth_repository.dart';

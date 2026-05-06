@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
@@ -25,8 +26,8 @@ class _EventListScreenState extends State<EventListScreen> {
     final result = await showCustomDateRangePicker(
       context: context,
       initialDateRange: _selectedDateRange,
-      cancelLabel: 'Huỷ',
-      confirmLabel: 'Xác nhận',
+      cancelLabel: 'screens.cancel'.tr(),
+      confirmLabel: 'screens.confirm'.tr(),
     );
 
     if (result != null) {
@@ -46,8 +47,7 @@ class _EventListScreenState extends State<EventListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: const Text(
-          'Đặt lịch sự kiện',
+        title: Text('screens.scheduleAnEvent'.tr(),
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color:Colors.white),
         ),
         centerTitle: true,
@@ -57,22 +57,22 @@ class _EventListScreenState extends State<EventListScreen> {
         children: [
           // Date Filter Section
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 if (_selectedDateRange != null)
                   TextButton.icon(
                     onPressed: _clearDateFilter,
-                    icon: const Icon(Icons.clear, size: 16, color: Colors.red),
-                    label: const Text('Bỏ lọc', style: TextStyle(color: Colors.red)),
+                    icon: Icon(Icons.clear, size: 16, color: Colors.red),
+                    label: Text('screens.unfilter'.tr(), style: TextStyle(color: Colors.red)),
                   )
                 else
-                  const SizedBox.shrink(),
+                  SizedBox.shrink(),
                 GestureDetector(
                   onTap: _presentDateRangePicker,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
@@ -82,12 +82,12 @@ class _EventListScreenState extends State<EventListScreen> {
                       children: [
                         Text(
                           _selectedDateRange == null
-                              ? 'Hôm nay trở đi'
+                              ? 'screens.todayOnwards'.tr()
                               : '${DateFormat('dd/MM').format(_selectedDateRange!.start)} - ${DateFormat('dd/MM').format(_selectedDateRange!.end)}',
-                          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.calendar_month, color: AppColors.primary, size: 18),
+                        SizedBox(width: 8),
+                        Icon(Icons.calendar_month, color: AppColors.primary, size: 18),
                       ],
                     ),
                   ),
@@ -100,10 +100,10 @@ class _EventListScreenState extends State<EventListScreen> {
               stream: context.read<SupabaseRepository>().getEventsStream(courtId: widget.court.id),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                  return Center(child: CircularProgressIndicator(color: AppColors.primary));
                 }
                 if (snapshot.hasError) {
-                  return const Center(child: Text('Lỗi tải dữ liệu.', style: TextStyle(color: AppColors.textGrey)));
+                  return Center(child: Text('screens.errorLoadingData'.tr(), style: TextStyle(color: AppColors.textGrey)));
                 }
 
                 final allEvents = snapshot.data ?? [];
@@ -133,7 +133,7 @@ class _EventListScreenState extends State<EventListScreen> {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 16),
                   itemCount: events.length,
                   itemBuilder: (context, index) {
                     return _buildEventCard(context, events[index]);
@@ -148,14 +148,14 @@ class _EventListScreenState extends State<EventListScreen> {
   }
 
   Widget _buildEmptyState() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.event_busy, size: 80, color: AppColors.textGrey),
           SizedBox(height: 16),
           Text(
-            'Chưa có sự kiện nào đang mở',
+            'screens.thereAreNoOpenEventsYet'.tr(),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -164,7 +164,7 @@ class _EventListScreenState extends State<EventListScreen> {
           ),
           SizedBox(height: 8),
           Text(
-            'Vui lòng thử khoảng thời gian thay thế.',
+            'screens.pleaseTryAnAlternateInterv'.tr(),
             style: TextStyle(color: AppColors.textGrey),
           ),
         ],
@@ -175,13 +175,13 @@ class _EventListScreenState extends State<EventListScreen> {
   Widget _buildEventCard(BuildContext context, EventModel event) {
     final isBookable = event.isBookable;
     final statusText = event.isEnded
-        ? 'Đã kết thúc'
-        : (event.availableParticipants == 0 ? 'Hết vé' : 'Đang mở');
+        ? 'screens.itSOver'.tr()
+        : (event.availableParticipants == 0 ? 'screens.ticketsSoldOut'.tr() : 'screens.open'.tr());
     final statusColor = event.isEnded
         ? Colors.grey
         : (event.availableParticipants == 0
               ? AppColors.error
-              : const Color(0xFF22B97A));
+              : Color(0xFF22B97A));
 
     return GestureDetector(
       onTap: !isBookable
@@ -195,7 +195,7 @@ class _EventListScreenState extends State<EventListScreen> {
               );
             },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -205,7 +205,7 @@ class _EventListScreenState extends State<EventListScreen> {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -216,7 +216,7 @@ class _EventListScreenState extends State<EventListScreen> {
                   Expanded(
                     child: Text(
                       '${event.eventCode}: ${event.title}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.primaryDark,
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -224,10 +224,10 @@ class _EventListScreenState extends State<EventListScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Text(
                     DateFormat('dd/MM/yyyy').format(event.dateTime),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.brandOrange, // Highlight date
                       fontSize: 13,
                       fontWeight: FontWeight.bold
@@ -235,23 +235,23 @@ class _EventListScreenState extends State<EventListScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               // Time and Court
               Text(
                 '${event.startTime} - ${event.endTime} | ${event.courtArea}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textBlack,
                   fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               
               // Sport Badge and Info Icon Row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.only(right: 12),
+                    padding: EdgeInsets.only(right: 12),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -263,21 +263,21 @@ class _EventListScreenState extends State<EventListScreen> {
                           radius: 14,
                           child: Icon(Icons.sports_tennis, size: 16, color: Colors.white),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           event.sportType,
-                          style: const TextStyle(color: AppColors.textBlack, fontSize: 13, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: AppColors.textBlack, fontSize: 13, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: AppColors.brandOrange,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
                             event.level,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -287,24 +287,24 @@ class _EventListScreenState extends State<EventListScreen> {
                       ],
                     ),
                   ),
-                  const Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                  Icon(Icons.info_outline, color: AppColors.primary, size: 20),
                 ],
               ),
-              const SizedBox(height: 16),
-              const Divider(color: AppColors.borderColor, height: 1),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
+              Divider(color: AppColors.borderColor, height: 1),
+              SizedBox(height: 16),
               // Bottom Row (Avatars, Slots, Price, Arrow)
               Row(
                 children: [
                    Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: statusColor,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
                       '$statusText · ${event.currentParticipants}/${event.maxParticipants}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
@@ -316,14 +316,14 @@ class _EventListScreenState extends State<EventListScreen> {
                   
                   // Price Tag
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       border: Border.all(color: AppColors.brandOrange, width: 1.5),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
                       '${(event.price / 1000).toStringAsFixed(0)}k/Vé',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.brandOrange,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
@@ -333,9 +333,8 @@ class _EventListScreenState extends State<EventListScreen> {
                 ],
               ),
               if (!isBookable) ...[
-                const SizedBox(height: 10),
-                const Text(
-                  'Sự kiện này không còn khả dụng để đặt vé.',
+                SizedBox(height: 10),
+                Text('screens.thisEventIsNoLongerAvaila'.tr(),
                   style: TextStyle(
                     color: AppColors.textGrey,
                     fontSize: 12,

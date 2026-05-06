@@ -1,6 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_event.dart';
-import 'package:badminton_ai/l10n/generated/app_localizations.dart';
+
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -24,15 +25,15 @@ class HomeSearchBar extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(30),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          const Icon(Icons.search, color: Colors.grey),
-          const SizedBox(width: 8),
+          Icon(Icons.search, color: Colors.grey),
+          SizedBox(width: 8),
           Expanded(
             child: Builder(
               builder: (context) {
-                final l = AppLocalizations.of(context)!;
+                
                 return TextField(
                   controller: controller,
                   onChanged: (value) {
@@ -41,7 +42,7 @@ class HomeSearchBar extends StatelessWidget {
                     );
                   },
                   decoration: InputDecoration(
-                    hintText: l.searchLocation,
+                    hintText: 'home_screen.searchLocation'.tr(),
                     border: InputBorder.none,
                     hintStyle: TextStyle(
                       color: AppColors.textLight,
@@ -53,12 +54,12 @@ class HomeSearchBar extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.qr_code_scanner, color: Colors.grey),
+            icon: Icon(Icons.qr_code_scanner, color: Colors.grey),
             onPressed: onQrScan,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           GestureDetector(
             onTap: onFilterTap,
             child: const Image(

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/viewmodels/mixins/filterable_viewmodel_mixin.dart';

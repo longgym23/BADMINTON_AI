@@ -52,8 +52,8 @@ const supabaseAdmin = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
-// ─── OTP Store (in-memory) ────────────────────────────────────────────────────
-const otpStore = new Map(); // email → { otp, expiresAt, verified, resetToken }
+// ─── OTP — dùng Supabase thay vì in-memory để tồn tại sau khi restart server ─
+// Bảng: otp_verifications (email PK, otp, expires_at, verified, reset_token, reset_token_expires_at)
 
 // ─── Multer ───────────────────────────────────────────────────────────────────
 const upload = multer({ dest: 'uploads/', limits: { fileSize: 10 * 1024 * 1024 } });
@@ -521,7 +521,7 @@ function buildCitations(kbRows) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// FORGOT PASSWORD FLOW
+// FORGOT PASSWORD FLOW  (OTP lưu trong Supabase — tồn tại sau restart server)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 app.post('/forgot-password', async (req, res) => {
@@ -531,17 +531,34 @@ app.post('/forgot-password', async (req, res) => {
   }
   const normalizedEmail = email.toLowerCase().trim();
 
+  // Kiểm tra email tồn tại trong Supabase Auth
   const { data: users, error: fetchError } = await supabaseAdmin.auth.admin.listUsers();
   if (fetchError) return res.status(500).json({ error: 'Lỗi kết nối server.' });
-
   const userExists = users.users.some(u => u.email?.toLowerCase() === normalizedEmail);
   if (!userExists) {
+    // Không lộ thông tin email có tồn tại hay không (bảo mật)
     return res.json({ message: 'Nếu email tồn tại, bạn sẽ nhận được mã OTP.' });
   }
 
   const otp       = crypto.randomInt(100000, 999999).toString();
-  const expiresAt = Date.now() + 10 * 60 * 1000;
-  otpStore.set(normalizedEmail, { otp, expiresAt, verified: false, resetToken: null });
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 phút
+
+  // Upsert OTP vào Supabase (ghi đè nếu email đã có OTP cũ)
+  const { error: upsertError } = await supabaseAdmin
+    .from('otp_verifications')
+    .upsert({
+      email:                  normalizedEmail,
+      otp,
+      expires_at:             expiresAt,
+      verified:               false,
+      reset_token:            null,
+      reset_token_expires_at: null,
+    }, { onConflict: 'email' });
+
+  if (upsertError) {
+    console.error('[OTP] Upsert error:', upsertError.message);
+    return res.status(500).json({ error: 'Không thể tạo mã OTP. Vui lòng thử lại.' });
+  }
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -600,55 +617,97 @@ app.post('/forgot-password', async (req, res) => {
   }
 });
 
-app.post('/verify-otp', (req, res) => {
+app.post('/verify-otp', async (req, res) => {
   const { email, otp } = req.body;
   if (!email || !otp) return res.status(400).json({ error: 'Thiếu email hoặc mã OTP.' });
 
   const normalizedEmail = email.toLowerCase().trim();
-  const record          = otpStore.get(normalizedEmail);
 
-  if (!record)                           return res.status(400).json({ error: 'Không tìm thấy yêu cầu OTP.' });
-  if (Date.now() > record.expiresAt)   { otpStore.delete(normalizedEmail); return res.status(400).json({ error: 'Mã OTP đã hết hạn.' }); }
-  if (record.otp !== otp.trim())         return res.status(400).json({ error: 'Mã OTP không đúng.' });
+  // Đọc record từ Supabase
+  const { data: record, error } = await supabaseAdmin
+    .from('otp_verifications')
+    .select('*')
+    .eq('email', normalizedEmail)
+    .single();
 
-  const resetToken = crypto.randomBytes(32).toString('hex');
-  record.verified  = true;
-  record.resetToken = resetToken;
-  record.resetTokenExpiresAt = Date.now() + 15 * 60 * 1000;
-  otpStore.set(normalizedEmail, record);
+  if (error || !record)            return res.status(400).json({ error: 'Không tìm thấy yêu cầu OTP.' });
+  if (new Date(record.expires_at) < new Date()) {
+    // Xóa record hết hạn
+    await supabaseAdmin.from('otp_verifications').delete().eq('email', normalizedEmail);
+    return res.status(400).json({ error: 'Mã OTP đã hết hạn.' });
+  }
+  if (record.otp !== otp.trim())   return res.status(400).json({ error: 'Mã OTP không đúng.' });
+
+  const resetToken           = crypto.randomBytes(32).toString('hex');
+  const resetTokenExpiresAt  = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 phút
+
+  // Cập nhật trạng thái verified + reset token
+  const { error: updateError } = await supabaseAdmin
+    .from('otp_verifications')
+    .update({
+      verified:               true,
+      reset_token:            resetToken,
+      reset_token_expires_at: resetTokenExpiresAt,
+    })
+    .eq('email', normalizedEmail);
+
+  if (updateError) {
+    console.error('[OTP] Update verified error:', updateError.message);
+    return res.status(500).json({ error: 'Lỗi server khi xác thực OTP.' });
+  }
 
   res.json({ message: 'Xác thực OTP thành công.', resetToken });
 });
 
 app.post('/reset-password', async (req, res) => {
   const { email, resetToken, newPassword } = req.body;
-  if (!email || !resetToken || !newPassword) return res.status(400).json({ error: 'Dữ liệu không đầy đủ.' });
-  if (newPassword.length < 6)                return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự.' });
+  if (!email || !resetToken || !newPassword)
+    return res.status(400).json({ error: 'Dữ liệu không đầy đủ.' });
+  if (newPassword.length < 6)
+    return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự.' });
 
   const normalizedEmail = email.toLowerCase().trim();
-  const record          = otpStore.get(normalizedEmail);
 
-  if (!record || !record.verified)                       return res.status(400).json({ error: 'Phiên không hợp lệ.' });
-  if (record.resetToken !== resetToken)                  return res.status(400).json({ error: 'Token không hợp lệ.' });
-  if (Date.now() > record.resetTokenExpiresAt) { otpStore.delete(normalizedEmail); return res.status(400).json({ error: 'Phiên đã hết hạn.' }); }
+  // Đọc record từ Supabase
+  const { data: record, error } = await supabaseAdmin
+    .from('otp_verifications')
+    .select('*')
+    .eq('email', normalizedEmail)
+    .single();
 
+  if (error || !record || !record.verified)
+    return res.status(400).json({ error: 'Phiên không hợp lệ.' });
+  if (record.reset_token !== resetToken)
+    return res.status(400).json({ error: 'Token không hợp lệ.' });
+  if (new Date(record.reset_token_expires_at) < new Date()) {
+    await supabaseAdmin.from('otp_verifications').delete().eq('email', normalizedEmail);
+    return res.status(400).json({ error: 'Phiên đã hết hạn. Vui lòng yêu cầu lại.' });
+  }
+
+  // Tìm user ID từ Auth
   const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
   if (listError) return res.status(500).json({ error: 'Lỗi kết nối server.' });
 
   const user = users.users.find(u => u.email?.toLowerCase() === normalizedEmail);
   if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản.' });
 
-  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, { password: newPassword });
+  // Đổi mật khẩu qua Supabase Admin
+  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+    user.id, { password: newPassword },
+  );
   if (updateError) {
     console.error('[ERROR] Supabase update password:', updateError);
     return res.status(500).json({ error: 'Không thể cập nhật mật khẩu.' });
   }
 
-  otpStore.delete(normalizedEmail);
+  // Xóa OTP record sau khi reset thành công
+  await supabaseAdmin.from('otp_verifications').delete().eq('email', normalizedEmail);
+
   res.json({ message: 'Mật khẩu đã được cập nhật thành công.' });
 });
 
 // ─── Audio endpoint (placeholder) ────────────────────────────────────────────
+
 app.post('/ask/audio', upload.single('audio'), (req, res) => {
   cleanupFile(req.file?.path);
   res.json({ answer: 'Tính năng xử lý audio đang được phát triển. Vui lòng dùng nhận diện giọng nói để chuyển sang text nhé!' });
@@ -696,21 +755,38 @@ app.post('/api/send-notification', express.json(), async (req, res) => {
     }
 
     const message = {
-      notification: {
-        title: title,
-        body: body,
-      },
-      data: data || { type: 'chat' },
+      notification: { title, body },
+      data: data || { type: 'general' },
       token: userData.fcm_token,
     };
 
     const response = await admin.messaging().send(message);
     res.json({ success: true, messageId: response });
+
   } catch (error) {
-    console.error('Error sending push notification:', error);
+    console.error('[FCM] Send error:', error.code, error.message);
+
+    // FIX #7: Token hết hạn → tự động xóa khỏi Supabase để tránh lỗi lặp lại
+    if (
+      error.code === 'messaging/registration-token-not-registered' ||
+      error.code === 'messaging/invalid-registration-token'
+    ) {
+      console.warn(`[FCM] Stale token detected for receiver_id=${req.body.receiver_id} — clearing from DB`);
+      try {
+        await supabaseAdmin
+          .from('profiles')
+          .update({ fcm_token: null })
+          .eq('id', req.body.receiver_id);
+      } catch (dbErr) {
+        console.error('[FCM] Failed to clear stale token:', dbErr.message);
+      }
+      return res.status(410).json({ error: 'FCM token expired and has been cleared' });
+    }
+
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 app.listen(port, '0.0.0.0', () => {

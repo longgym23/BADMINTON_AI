@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/viewmodels/mixins/filterable_viewmodel_mixin.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:flutter/material.dart';

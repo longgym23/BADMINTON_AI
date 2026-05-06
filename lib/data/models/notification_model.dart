@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 class NotificationModel {
   final String? id;
   final String userId;

@@ -5,6 +5,7 @@ import 'package:badminton_ai/screens/user/map/map_tab.dart' show SportType;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class MapViewModel extends ChangeNotifier {
   final SupabaseRepository _repository;
@@ -110,9 +111,9 @@ class MapViewModel extends ChangeNotifier {
         final sportTypeMatch =
             court.sportType?.toLowerCase().contains(queryLower) ?? false;
 
-        if (queryLower.contains('cầu lông') || queryLower.contains('badminton')) {
+        if (queryLower.contains('screens.badminton1'.tr()) || queryLower.contains('badminton')) {
           return (court.sportType?.toLowerCase() == 'badminton' ||
-              court.name.toLowerCase().contains('cầu lông') ||
+              court.name.toLowerCase().contains('screens.badminton1'.tr()) ||
               court.name.toLowerCase().contains('badminton'));
         }
         return nameMatch || addressMatch || sportTypeMatch;
@@ -124,11 +125,11 @@ class MapViewModel extends ChangeNotifier {
         
         switch (selectedSport) {
           case SportType.badminton:
-            return st.contains('badminton') || st.contains('cầu lông') || nameLower.contains('cầu lông') || nameLower.contains('badminton') || (st.isEmpty && !nameLower.contains('pickle') && !nameLower.contains('bóng đá') && !nameLower.contains('tennis'));
+            return st.contains('badminton') || st.contains('screens.badminton1'.tr()) || nameLower.contains('screens.badminton1'.tr()) || nameLower.contains('badminton') || (st.isEmpty && !nameLower.contains('pickle') && !nameLower.contains('screens.football1'.tr()) && !nameLower.contains('tennis'));
           case SportType.pickleball:
             return st.contains('pickle') || nameLower.contains('pickle');
           case SportType.football:
-            return st.contains('football') || st.contains('bóng đá') || st.contains('soccer') || nameLower.contains('bóng đá') || nameLower.contains('football');
+            return st.contains('football') || st.contains('screens.football1'.tr()) || st.contains('soccer') || nameLower.contains('screens.football1'.tr()) || nameLower.contains('football');
           case SportType.tennis:
             return st.contains('tennis') || nameLower.contains('tennis');
         }

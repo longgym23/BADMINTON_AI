@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
@@ -23,7 +24,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
   final _descriptionCtrl = TextEditingController();
   final _startTimeCtrl = TextEditingController();
   final _endTimeCtrl = TextEditingController();
-  final _sportTypeCtrl = TextEditingController(text: 'Cầu lông');
+  final _sportTypeCtrl = TextEditingController(text: 'screens.badminton'.tr());
   final _levelCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
   final _maxParticipantsCtrl = TextEditingController();
@@ -60,7 +61,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
       if (_selectedCourtId == null) {
         AppToast.show(
           context,
-          'Vui lòng chọn Cơ sở sân!',
+          'screens.pleaseSelectYardFacility'.tr(),
           type: ToastType.error,
         );
         return;
@@ -68,7 +69,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
       if (_selectedCourtNumber == null) {
         AppToast.show(
           context,
-          'Vui lòng chọn sân tổ chức sự kiện!',
+          'screens.pleaseSelectTheEventVenue'.tr(),
           type: ToastType.error,
         );
         return;
@@ -104,7 +105,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
         if (!context.mounted) return;
         AppToast.show(
           context,
-          'Thêm sự kiện thành công!',
+          'screens.moreSuccessfulEvents'.tr(),
           type: ToastType.success,
         );
         Navigator.pop(context);
@@ -180,7 +181,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: CustomGradientAppBar(title: const Text('Thêm sự kiện mới')),
+      appBar: CustomGradientAppBar(title: Text('screens.addNewEvent'.tr())),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -201,15 +202,13 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                     if (snapshot.hasError ||
                         !snapshot.hasData ||
                         snapshot.data!.isEmpty) {
-                      return const Text(
-                        'Không có dữ liệu sân. Vui lòng thêm sân trước.',
-                      );
+                      return Text('screens.noYardDataAvailablePlease'.tr());
                     }
                     final courts = snapshot.data!;
                     return DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(
-                        labelText: 'Chọn cơ sở sân (Venue)',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: 'screens.chooseAYardFacilityVenue'.tr(),
+                        border: const OutlineInputBorder(),
                       ),
                       initialValue: _selectedCourtId,
                       isExpanded: true,
@@ -232,16 +231,17 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                               : null;
                         });
                       },
-                      validator: (v) => v == null ? 'Vui lòng chọn sân' : null,
+                      validator: (v) =>
+                          v == null ? 'screens.pleaseSelectACourse'.tr() : null,
                     );
                   },
                 ),
                 if (_selectedCourt != null) ...[
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
-                    decoration: const InputDecoration(
-                      labelText: 'Chọn sân tổ chức (Sân con)',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: 'screens.selectTheVenueSubCourse'.tr(),
+                      border: const OutlineInputBorder(),
                     ),
                     initialValue: _selectedCourtNumber,
                     isExpanded: true,
@@ -255,30 +255,34 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                     onChanged: (val) =>
                         setState(() => _selectedCourtNumber = val),
                     validator: (v) =>
-                        v == null ? 'Vui lòng chọn sân tổ chức' : null,
+                        v == null ? 'screens.pleaseSelectTheVenue'.tr() : null,
                   ),
                 ],
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _eventCodeCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Mã sự kiện (vd: #1234)',
+                  decoration: InputDecoration(
+                    labelText: 'screens.eventCodeEG1234'.tr(),
                   ),
-                  validator: (v) => v!.isEmpty ? 'Vui lòng nhập' : null,
+                  validator: (v) =>
+                      v!.isEmpty ? 'screens.pleaseEnter'.tr() : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _titleCtrl,
-                  decoration: const InputDecoration(labelText: 'Tên sự kiện'),
-                  validator: (v) => v!.isEmpty ? 'Vui lòng nhập' : null,
+                  decoration: InputDecoration(
+                    labelText: 'screens.eventName'.tr(),
+                  ),
+                  validator: (v) =>
+                      v!.isEmpty ? 'screens.pleaseEnter'.tr() : null,
                 ),
                 const SizedBox(height: 12),
                 InkWell(
                   onTap: _pickEventDate,
                   child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Ngày diễn ra',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: 'screens.eventDate'.tr(),
+                      border: const OutlineInputBorder(),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -299,11 +303,11 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                         controller: _startTimeCtrl,
                         readOnly: true,
                         validator: (v) => v == null || v.trim().isEmpty
-                            ? 'Vui lòng chọn giờ'
+                            ? 'screens.pleaseSelectATime'.tr()
                             : null,
                         onTap: () => _showTimePickerIOS(_startTimeCtrl),
-                        decoration: const InputDecoration(
-                          labelText: 'Giờ bắt đầu (vd: 14:00)',
+                        decoration: InputDecoration(
+                          labelText: 'screens.startTimeEg1400'.tr(),
                         ),
                       ),
                     ),
@@ -313,11 +317,11 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                         controller: _endTimeCtrl,
                         readOnly: true,
                         validator: (v) => v == null || v.trim().isEmpty
-                            ? 'Vui lòng chọn giờ'
+                            ? 'screens.pleaseSelectATime'.tr()
                             : null,
                         onTap: () => _showTimePickerIOS(_endTimeCtrl),
-                        decoration: const InputDecoration(
-                          labelText: 'Giờ k.thúc (vd: 18:00)',
+                        decoration: InputDecoration(
+                          labelText: 'screens.endTimeEg1800'.tr(),
                         ),
                       ),
                     ),
@@ -326,20 +330,26 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _sportTypeCtrl.text.isEmpty
-                      ? 'Cầu lông'
+                      ? 'screens.badminton'.tr()
                       : _sportTypeCtrl.text,
-                  decoration: const InputDecoration(labelText: 'Môn thể thao'),
-                  items: const [
+                  decoration: InputDecoration(labelText: 'screens.sports'.tr()),
+                  items: [
                     DropdownMenuItem(
-                      value: 'Cầu lông',
-                      child: Text('Cầu lông'),
+                      value: 'screens.badminton'.tr(),
+                      child: Text('screens.badminton'.tr()),
                     ),
-                    DropdownMenuItem(
+                    const DropdownMenuItem(
                       value: 'Pickleball',
                       child: Text('Pickleball'),
                     ),
-                    DropdownMenuItem(value: 'Bóng đá', child: Text('Bóng đá')),
-                    DropdownMenuItem(value: 'Tennis', child: Text('Tennis')),
+                    DropdownMenuItem(
+                      value: 'screens.football'.tr(),
+                      child: Text('screens.football'.tr()),
+                    ),
+                    const DropdownMenuItem(
+                      value: 'Tennis',
+                      child: Text('Tennis'),
+                    ),
                   ],
                   onChanged: (val) {
                     if (val != null) setState(() => _sportTypeCtrl.text = val);
@@ -351,8 +361,8 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
-                    labelText: 'Trình độ (vd: 2.0 -> 3.0)',
+                  decoration: InputDecoration(
+                    labelText: 'screens.levelEg2030'.tr(),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -362,8 +372,8 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                       child: TextFormField(
                         controller: _priceCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Giá vé (đ)',
+                        decoration: InputDecoration(
+                          labelText: 'screens.ticketPriceD'.tr(),
                         ),
                       ),
                     ),
@@ -372,8 +382,8 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                       child: TextFormField(
                         controller: _maxParticipantsCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Số chỗ tối đa',
+                        decoration: InputDecoration(
+                          labelText: 'screens.maximumNumberOfSeats'.tr(),
                         ),
                       ),
                     ),
@@ -383,8 +393,8 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                 TextFormField(
                   controller: _descriptionCtrl,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Mô tả thêm / Ghi chú',
+                  decoration: InputDecoration(
+                    labelText: 'screens.additionalDescriptionNotes'.tr(),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -394,8 +404,8 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                   child: ElevatedButton(
                     onPressed: _saveEvent,
                     style: ElevatedButton.styleFrom(),
-                    child: const Text(
-                      'LƯU SỰ KIỆN',
+                    child: Text(
+                      'screens.sAVEEVENT'.tr(),
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),

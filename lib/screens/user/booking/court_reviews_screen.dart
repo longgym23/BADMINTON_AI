@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/review_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
@@ -50,17 +51,17 @@ class _CourtReviewsScreenState extends State<CourtReviewsScreen> {
       appBar: CustomGradientAppBar(
         title: Text(
           'Đánh giá ${widget.court.name}',
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
           overflow: TextOverflow.ellipsis,
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _reviews.isEmpty
               ? _buildEmptyState()
               : _buildReviewsList(),
@@ -73,18 +74,16 @@ class _CourtReviewsScreenState extends State<CourtReviewsScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.rate_review_outlined, size: 80, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          const Text(
-            'Chưa có đánh giá nào',
+          SizedBox(height: 16),
+          Text('screens.thereAreNoReviewsYet'.tr(),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppColors.textBlack,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Hãy là người đầu tiên để lại đánh giá\nsau khi trải nghiệm sân nhé!',
+          SizedBox(height: 8),
+          Text('screens.beTheFirstToLeaveAReview'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textGrey),
           ),
@@ -104,7 +103,7 @@ class _CourtReviewsScreenState extends State<CourtReviewsScreen> {
         // Top summary
         Container(
           color: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          padding: EdgeInsets.symmetric(vertical: 24, horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -112,7 +111,7 @@ class _CourtReviewsScreenState extends State<CourtReviewsScreen> {
                 children: [
                    Text(
                     averageRating.toStringAsFixed(1),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 48,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textBlack,
@@ -128,20 +127,20 @@ class _CourtReviewsScreenState extends State<CourtReviewsScreen> {
                       );
                     }),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     'Dựa trên ${_reviews.length} đánh giá',
-                    style: const TextStyle(color: AppColors.textGrey, fontSize: 13),
+                    style: TextStyle(color: AppColors.textGrey, fontSize: 13),
                   ),
                 ],
               ),
             ],
           ),
         ),
-        const Divider(height: 1, thickness: 1, color: AppColors.borderColor),
+        Divider(height: 1, thickness: 1, color: AppColors.borderColor),
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             itemCount: _reviews.length,
             itemBuilder: (context, index) {
               final review = _reviews[index];
@@ -167,19 +166,19 @@ class _ReviewCard extends StatelessWidget {
         : 'U';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
-        border: Border.all(color: AppColors.borderColor.withOpacity(0.5)),
+        border: Border.all(color: AppColors.borderColor.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,24 +193,24 @@ class _ReviewCard extends StatelessWidget {
                 child: user?.photoUrl == null
                     ? Text(
                         initials,
-                        style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold),
                       )
                     : null,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      user?.displayName ?? 'Người dùng',
-                      style: const TextStyle(
+                      user?.displayName ?? 'screens.user'.tr(),
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: AppColors.textBlack,
                         fontSize: 15,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Row(
                       children: List.generate(5, (index) {
                         return Icon(
@@ -226,15 +225,15 @@ class _ReviewCard extends StatelessWidget {
               ),
               Text(
                 DateFormat('dd/MM/yyyy', 'vi_VN').format(review.createdAt),
-                style: const TextStyle(color: AppColors.textGrey, fontSize: 12),
+                style: TextStyle(color: AppColors.textGrey, fontSize: 12),
               ),
             ],
           ),
           if (review.comment != null && review.comment!.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               review.comment!,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textBlack,
                 height: 1.4,
                 fontSize: 14,
@@ -246,3 +245,4 @@ class _ReviewCard extends StatelessWidget {
     );
   }
 }
+

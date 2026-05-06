@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:badminton_ai/screens/auth/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -131,18 +132,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
                         Text(
-                          'Tiếp tục',
-                          style: TextStyle(
+                          'screens.continue'.tr(),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(width: 8),
-                        Icon(
+                        const SizedBox(width: 8),
+                        const Icon(
                           Icons.arrow_forward_rounded,
                           color: Colors.white,
                           size: 20,
@@ -154,7 +155,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               )
             else
               _buildNextButtonFullWidth(
-                _currentPage == 0 ? 'Tiếp tục' : 'Bắt đầu ngay',
+                _currentPage == 0
+                    ? 'screens.continue'.tr()
+                    : 'screens.getStartedNow'.tr(),
               ),
           ],
         ),
@@ -234,17 +237,17 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 RichText(
-                  text: const TextSpan(
-                    style: TextStyle(
+                  text: TextSpan(
+                    style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF2D2D2D),
                       height: 1.2,
                     ),
                     children: [
-                      TextSpan(text: 'Tìm kiếm sân\n'),
+                      TextSpan(text: 'screens.searchYardN'.tr()),
                       TextSpan(
-                        text: 'quanh bạn',
+                        text: 'screens.aroundYou'.tr(),
                         style: TextStyle(
                           color: Color(0xFFE8722A),
                           decoration: TextDecoration.underline,
@@ -255,8 +258,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Dễ dàng tìm thấy các sân cầu lông đạt chuẩn thi đấu qua bản đồ trực quan hoặc danh sách chọn lọc.',
+                Text(
+                  'screens.easilyFindCompetitionStanda'.tr(),
                   style: TextStyle(
                     fontSize: 15,
                     color: Color(0xFF6B6B6B),
@@ -268,9 +271,15 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   spacing: 12,
                   runSpacing: 12,
                   children: [
-                    _buildFeatureChip(Icons.map_outlined, 'Bản đồ'),
-                    _buildFeatureChip(Icons.list_alt_rounded, 'Danh sách'),
-                    _buildFeatureChip(Icons.near_me_outlined, 'Gần nhất'),
+                    _buildFeatureChip(Icons.map_outlined, 'screens.map'.tr()),
+                    _buildFeatureChip(
+                      Icons.list_alt_rounded,
+                      'screens.list'.tr(),
+                    ),
+                    _buildFeatureChip(
+                      Icons.near_me_outlined,
+                      'screens.nearest'.tr(),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -340,38 +349,35 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               children: [
                 const SizedBox(height: 16),
                 RichText(
-                  text: const TextSpan(
-                    style: TextStyle(
+                  text: TextSpan(
+                    style: const TextStyle(
                       fontSize: 34,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF2D2D2D),
                       height: 1.2,
                     ),
                     children: [
-                      TextSpan(text: 'Đặt sân '),
+                      TextSpan(text: 'screens.setThePitch'.tr()),
                       TextSpan(
-                        text: 'cực\nnhanh',
-                        style: TextStyle(color: Color(0xFFE8722A)),
+                        text: 'screens.extremelyNfast'.tr(),
+                        style: const TextStyle(color: Color(0xFFE8722A)),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
                 RichText(
-                  text: const TextSpan(
-                    style: TextStyle(
+                  text: TextSpan(
+                    style: const TextStyle(
                       fontSize: 15,
                       color: Color(0xFF6B6B6B),
                       height: 1.5,
                     ),
                     children: [
+                      TextSpan(text: 'screens.realTimeMatchScheduleUpdat'.tr()),
                       TextSpan(
-                        text:
-                            'Cập nhật lịch thi đấu theo thời gian thực và thanh toán trực tuyến bảo mật chỉ trong ',
-                      ),
-                      TextSpan(
-                        text: '30 giây.',
-                        style: TextStyle(
+                        text: 'screens.30Seconds'.tr(),
+                        style: const TextStyle(
                           color: Color(0xFFE8722A),
                           fontWeight: FontWeight.bold,
                         ),
@@ -420,7 +426,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     ),
                   ),
                 ),
-                // Badge vàng "CỘNG ĐỒNG MẠNH MẼ" nằm ở đáy, đè lên viền chéo
+                // Badge vàng 'screens.sTRONGCOMMUNITY'.tr() nằm ở đáy, đè lên viền chéo
                 Positioned(
                   bottom: 16,
                   left: 24,
@@ -440,14 +446,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         ),
                       ],
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.people_alt, color: Colors.black87, size: 15),
-                        SizedBox(width: 6),
+                        const Icon(
+                          Icons.people_alt,
+                          color: Colors.black87,
+                          size: 15,
+                        ),
+                        const SizedBox(width: 6),
                         Text(
-                          'CỘNG ĐỒNG MẠNH MẼ',
-                          style: TextStyle(
+                          'screens.sTRONGCOMMUNITY'.tr(),
+                          style: const TextStyle(
                             color: Colors.black87,
                             fontSize: 11,
                             fontWeight: FontWeight.w900,
@@ -469,18 +479,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               children: [
                 const SizedBox(height: 8),
                 RichText(
-                  text: const TextSpan(
-                    style: TextStyle(
+                  text: TextSpan(
+                    style: const TextStyle(
                       fontSize: 34,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFF2D2D2D),
                       height: 1.2,
                     ),
                     children: [
-                      TextSpan(text: 'Giao lưu cùng\n'),
+                      TextSpan(text: 'screens.communicateWithN'.tr()),
                       TextSpan(
-                        text: 'Cộng đồng',
-                        style: TextStyle(color: Color(0xFFE8722A)),
+                        text: 'screens.community'.tr(),
+                        style: const TextStyle(color: Color(0xFFE8722A)),
                       ),
                     ],
                   ),
@@ -488,8 +498,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 const SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.only(right: 20),
-                  child: const Text(
-                    'Kết nối với các người chơi và cộng đồng thể thao mạnh mẽ, lành mạnh. Khám phá nhiều trận đấu đỉnh cao và hàng ngàn cao thủ cùng chung đam mê đầy nhiệt huyết',
+                  child: Text(
+                    'screens.connectWithStrongHealthyP'.tr(),
                     style: TextStyle(
                       fontSize: 15,
                       color: Color(0xFF6B6B6B),
@@ -511,18 +521,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           color: const Color(0xFFFFF2EC),
                           borderRadius: BorderRadius.circular(24),
                         ),
-                        child: const Column(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.emoji_events_outlined,
                               color: Color(0xFFFF5722),
                               size: 30,
                             ),
-                            SizedBox(height: 16),
+                            const SizedBox(height: 16),
                             Text(
-                              'Giải đấu hàng\ntuần',
-                              style: TextStyle(
+                              'screens.weeklyNweeklyTournament'.tr(),
+                              style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xFF2D2D2D),
@@ -544,18 +554,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           color: const Color(0xFFEFE8E3),
                           borderRadius: BorderRadius.circular(24),
                         ),
-                        child: const Column(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.hub_outlined,
                               color: Color(0xFF7A655A),
                               size: 30,
                             ),
-                            SizedBox(height: 16),
+                            const SizedBox(height: 16),
                             Text(
-                              'Câu lạc bộ địa\nphương',
-                              style: TextStyle(
+                              'screens.localNclub'.tr(),
+                              style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xFF2D2D2D),
@@ -580,7 +590,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   // ==========================================
   // SHARED WIDGETS
   // ==========================================
-
 
   Widget _buildFloatingImage(String imagePath, {double size = 56}) {
     return Container(
@@ -621,8 +630,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         onPressed: _goToLogin,
-        child: const Text(
-          'Bỏ qua',
+        child: Text(
+          'screens.skip'.tr(),
           style: TextStyle(
             color: Color.fromARGB(255, 8, 8, 8),
             fontWeight: FontWeight.bold,

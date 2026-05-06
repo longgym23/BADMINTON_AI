@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/models/booking_model.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
@@ -124,13 +125,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final isAdmin = user?.role == 'admin';
 
     String title = isOwner
-    ? 'Quản lý Chủ Sân'
-    : isAdmin
+        ? 'screens.stadiumOwnerManager'.tr()
+        : isAdmin
         ? 'Super Admin'
-        : 'Trang Quản Trị';
+        : 'screens.administrationPage'.tr();
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         elevation: 0,
         actions: [
           IconButton(
@@ -160,8 +167,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   _buildFilterControls(),
                   const SizedBox(height: 16),
 
-                  const Text(
-                    'THỐNG KÊ DOANH THU',
+                  Text(
+                    'screens.rEVENUESTATISTICS'.tr(),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -172,8 +179,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   _buildBarChart(),
                   const SizedBox(height: 24),
 
-                  const Text(
-                    'TỶ LỆ TRẠNG THÁI',
+                  Text(
+                    'screens.sTATUSRATE'.tr(),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -184,8 +191,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   _buildPieChart(),
                   const SizedBox(height: 24),
 
-                  const Text(
-                    'CÔNG CỤ QUẢN LÝ',
+                  Text(
+                    'screens.mANAGEMENTTOOLS'.tr(),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -206,7 +213,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       children: [
         CircleAvatar(
           radius: 28,
-          backgroundImage: isOwner ? AssetImage('assets/images/personnel.gif') : AssetImage('assets/images/admin.gif'),
+          backgroundImage: isOwner
+              ? AssetImage('assets/images/personnel.gif')
+              : AssetImage('assets/images/admin.gif'),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -223,7 +232,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                isOwner ? 'Vai trò: Chủ Sân' : 'Vai trò: Super Admin',
+                isOwner
+                    ? 'screens.roleStadiumOwner'.tr()
+                    : 'screens.roleSuperAdmin'.tr(),
                 style: const TextStyle(fontSize: 14, color: AppColors.textGrey),
               ),
             ],
@@ -258,8 +269,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'TỔNG DOANH THU',
+              Text(
+                'screens.tOTALREVENUE'.tr(),
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 13,
@@ -318,7 +329,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildBarChart() {
     if (_last7DaysBookings.isEmpty)
-      return _emptyCard('Chưa có dữ liệu giao dịch');
+      return _emptyCard('screens.noTransactionDataYet'.tr());
 
     final validStates = ['PAID', 'confirmed', 'completed'];
     Map<int, double> groupedRevenue = {};
@@ -400,7 +411,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         border: Border.all(color: AppColors.borderColor, width: 1.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -484,7 +495,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             drawVerticalLine: false,
             horizontalInterval: 20000000, // Khoảng cách lưới 20tr
             getDrawingHorizontalLine: (val) => FlLine(
-              color: AppColors.textGrey.withOpacity(0.1),
+              color: AppColors.textGrey.withValues(alpha: 0.1),
               strokeWidth: 1,
             ),
           ),
@@ -496,7 +507,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildPieChart() {
-    if (_last7DaysBookings.isEmpty) return _emptyCard('Chưa có dữ liệu');
+    if (_last7DaysBookings.isEmpty) return _emptyCard('screens.noDataYet'.tr());
 
     int paid = 0;
     int pending = 0;
@@ -513,7 +524,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     final total = paid + pending + cancelled;
-    if (total == 0) return _emptyCard('Chưa có booking nào');
+    if (total == 0) return _emptyCard('screens.thereAreNoBookingsYet'.tr());
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -623,7 +634,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       childAspectRatio: 1.1,
       children: [
         _buildGridAction(
-          title: isOwner ? 'Lịch Đặt Của Tôi' : 'Quản Lý Lịch Đặt',
+          title: isOwner
+              ? 'screens.lChTCATI'.tr()
+              : 'screens.manageBookingSchedule'.tr(),
           icon: Icons.calendar_month_rounded,
           color: Colors.blue,
           onTap: () => Navigator.push(
@@ -632,7 +645,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ),
         _buildGridAction(
-          title: isOwner ? 'Sự Kiện Sân' : 'Quản Lý Sự Kiện',
+          title: isOwner
+              ? 'screens.stadiumEvents'.tr()
+              : 'screens.eventManagement'.tr(),
           icon: Icons.event,
           color: Colors.orange,
           onTap: () => Navigator.push(
@@ -641,7 +656,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ),
         _buildGridAction(
-          title: isOwner ? 'Danh Sách Sân' : 'Quản Lý Địa Điểm',
+          title: isOwner
+              ? 'screens.yardList'.tr()
+              : 'screens.locationManagement'.tr(),
           icon: Icons.sports_tennis_rounded,
           color: Colors.green,
           onTap: () => Navigator.push(
@@ -651,7 +668,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         if (isAdmin)
           _buildGridAction(
-            title: 'Người Dùng & Phân Quyền',
+            title: 'screens.usersPermissions'.tr(),
             icon: Icons.people_alt_rounded,
             color: Colors.redAccent,
             onTap: () => Navigator.push(
@@ -742,9 +759,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       child: PopupMenuButton<int>(
         color: AppColors.brandOrange,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         elevation: 4,
         offset: const Offset(0, 45),
         onSelected: (value) {
@@ -760,10 +775,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           }
         },
         itemBuilder: (context) => [
-          _buildMenuItem(0, 'Chọn khoảng ngày'),
-          _buildMenuItem(1, 'Lọc theo tháng'),
-          _buildMenuItem(2, 'Lọc theo năm'),
-          _buildMenuItem(3, '7 ngày gần đây'),
+          _buildMenuItem(0, 'screens.selectDateRange'.tr()),
+          _buildMenuItem(1, 'screens.filterByMonth'.tr()),
+          _buildMenuItem(2, 'screens.filterByYear'.tr()),
+          _buildMenuItem(3, 'screens.last7Days'.tr()),
         ],
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -776,7 +791,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                _filterMode == 3 ? '7 ngày gần đây' : _getFilterLabel(),
+                _filterMode == 3 ? 'screens.last7Days'.tr() : _getFilterLabel(),
                 style: const TextStyle(
                   color: Color.fromARGB(255, 108, 108, 108),
                   fontWeight: FontWeight.w500,
@@ -797,10 +812,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     // Nếu không có danh sách sân => chỉ hiện nút lọc thời gian
     if (_courtsList.isEmpty) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: timeFilterWidget,
-      );
+      return Align(alignment: Alignment.centerLeft, child: timeFilterWidget);
     }
 
     // Có danh sách sân => hiện cả 2 cùng 1 hàng
@@ -820,8 +832,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               child: DropdownButton<String>(
                 isExpanded: true,
                 value: _selectedCourtId,
-                hint: const Text(
-                  'Tất cả các sân',
+                hint: Text(
+                  'screens.allYards'.tr(),
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                 ),
                 icon: const Icon(
@@ -835,10 +847,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   fontWeight: FontWeight.w500,
                 ),
                 items: [
-                  const DropdownMenuItem<String>(
+                  DropdownMenuItem<String>(
                     value: null,
                     child: Text(
-                      'Tất cả các sân',
+                      'screens.allYards'.tr(),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
@@ -879,7 +891,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     } else if (_filterMode == 2 && _selectedYear != null) {
       return 'Năm $_selectedYear';
     }
-    return '7 ngày gần đây';
+    return 'screens.last7Days'.tr();
   }
 
   PopupMenuItem<int> _buildMenuItem(int value, String text) {
@@ -904,8 +916,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final result = await showCustomDateRangePicker(
       context: context,
       initialDateRange: _selectedDateRange,
-      cancelLabel: 'Huỷ',
-      confirmLabel: 'Chọn',
+      cancelLabel: 'screens.cancel'.tr(),
+      confirmLabel: 'screens.select'.tr(),
     );
     if (result != null) {
       setState(() {
@@ -974,7 +986,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 BookingCalendarTheme.cancelButton(
                   onPressed: () => Navigator.pop(ctx),
-                  label: 'Huỷ',
+                  label: 'screens.cancel'.tr(),
                 ),
                 const SizedBox(width: 16),
                 BookingCalendarTheme.confirmButton(
@@ -987,12 +999,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     });
                     _fetchDashboardData();
                   },
-                  label: 'Chọn',
+                  label: 'screens.select'.tr(),
                 ),
               ],
             ),
           ],
-
         ),
       ),
     );
@@ -1057,7 +1068,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 BookingCalendarTheme.cancelButton(
                   onPressed: () => Navigator.pop(ctx),
-                  label: 'Huỷ',
+                  label: 'screens.cancel'.tr(),
                 ),
                 const SizedBox(width: 16),
                 BookingCalendarTheme.confirmButton(
@@ -1069,12 +1080,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     });
                     _fetchDashboardData();
                   },
-                  label: 'Chọn',
+                  label: 'screens.select'.tr(),
                 ),
               ],
             ),
           ],
-
         ),
       ),
     );
