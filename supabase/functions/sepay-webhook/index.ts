@@ -70,41 +70,49 @@ serve(async (req) => {
     // ==========================================
     if (contentUpper.includes('NAPTIEN')) {
       const match = contentUpper.match(/NAPTIEN\s*([A-Z0-9-]+)/)
-      const userIdShort = match ? match[1].trim() : null
+      if (match && match[1]) {
+        // userIdShort lúc này là chuỗi 8 ký tự
+        const userIdShort = match[1].replace(/-/g, '').toLowerCase()
 
-      console.log('Extracted userIdShort:', userIdShort)
+        console.log('Extracted userIdShort:', userIdShort)
 
-      if (userIdShort) {
-        // Tìm user ID thực tế từ Supabase (bằng cách match 8 ký tự đầu)
-        const { data: users, error: userError } = await supabase
-          .from('profiles')
-          .select('id')
-          .ilike('id', `${userIdShort}%`)
-          .limit(1)
+        if (userIdShort.length >= 8) {
+          // Tìm user ID thực tế từ Supabase bằng cách ép kiểu id sang text (id::text)
+          const { data: users, error: userError } = await supabase
+            .from('profiles')
+            .select('id')
+            .filter('id::text', 'ilike', `${userIdShort}%`)
+            .limit(1)
 
-        if (userError) throw userError
+          if (userError) throw userError
 
-        if (users && users.length > 0) {
-          const fullUserId = users[0].id
+          if (users && users.length > 0) {
+            const fullUserId = users[0].id
+            
+            // Ghi nhận trực tiếp thành công!
+            const { error: insertError } = await supabase
+              .from('wallet_transactions')
+              .insert({
+                user_id: fullUserId,
+                amount: amount,
+                type: 'TOPUP',
+                status: 'SUCCESS',
+                reference_id: payload.referenceCode || payload.id?.toString(),
+                description: 'Nạp tiền tự động qua VietQR'
+              })
 
-          // Ghi nhận trực tiếp thành công! Không cần tìm PENDING
-          const { error: insertError } = await supabase
-            .from('wallet_transactions')
-            .insert({
-              user_id: fullUserId,
-              amount: amount,
-              type: 'TOPUP',
-              status: 'SUCCESS',
-              reference_id: payload.referenceCode || payload.id?.toString(),
-              description: 'Nạp tiền tự động qua VietQR'
-            })
+            if (insertError) throw insertError
 
-          if (insertError) throw insertError
-
-          return new Response(JSON.stringify({ success: true, message: `Nạp tiền thành công cho user ${userIdShort}` }), { status: 200 })
+            return new Response(JSON.stringify({ success: true, message: `Nạp tiền thành công cho user ${userIdShort}` }), { status: 200 })
+          } else {
+            return new Response(
+              JSON.stringify({ error: `Không tìm thấy user với mã UUID ngắn: ${userIdShort}` }),
+              { status: 200 }
+            )
+          }
         } else {
           return new Response(
-            JSON.stringify({ error: `Không tìm thấy user với mã: ${userIdShort}` }),
+            JSON.stringify({ error: `Chuỗi NAPTIEN quá ngắn: ${userIdShort}` }),
             { status: 200 }
           )
         }

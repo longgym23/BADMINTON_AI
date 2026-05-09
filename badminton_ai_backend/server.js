@@ -803,62 +803,54 @@ app.post('/api/sepay-webhook', express.json(), async (req, res) => {
     const contentUpper = content.toUpperCase();
 
     // 2. Xử lý thanh toán ĐẶT SÂN
-    // Nội dung ví dụ: DATSAN 83fd2a
     if (contentUpper.includes('DATSAN')) {
       const match = contentUpper.match(/DATSAN\s*([A-Z0-9-]+)/);
       if (match && match[1]) {
-        const bookingId = match[1];
+        let bookingRef = match[1].replace(/-/g, ''); // Xóa gạch ngang nếu có
+        
+        // Thử format có dấu gạch dưới (do hệ thống cũ có thể lưu kiểu này)
+        const refWithUnderscore = bookingRef.length > 5
+          ? `${bookingRef.substring(0, 5)}_${bookingRef.substring(5)}`
+          : bookingRef;
         
         // Cập nhật trạng thái booking thành PAID
         const { data, error } = await supabaseAdmin
           .from('bookings')
           .update({ status: 'PAID', transaction_id: referenceCode })
-          // Dùng ilike để hỗ trợ match mã booking bị cắt ngắn (8 ký tự)
-          .ilike('id', `${bookingId}%`)
+          .or(`transaction_id.eq.${bookingRef},transaction_id.eq.${refWithUnderscore}`)
           .select();
         
         if (error) throw error;
-        console.log(`[Webhook] Đã xác nhận ĐẶT SÂN: ${bookingId}`);
-        return res.status(200).json({ success: true, message: 'Xác nhận đặt sân thành công' });
+        
+        if (data && data.length > 0) {
+          console.log(`[Webhook] Đã xác nhận ĐẶT SÂN: ${bookingRef}`);
+          return res.status(200).json({ success: true, message: 'Xác nhận đặt sân thành công' });
+        } else {
+          return res.status(200).json({ success: false, message: 'Không tìm thấy Booking ID' });
+        }
       }
     }
 
     // 3. Xử lý NẠP TIỀN VÀO VÍ
-    // Nội dung ví dụ: NAPTIEN a1b2c3d4
     if (contentUpper.includes('NAPTIEN')) {
       const match = contentUpper.match(/NAPTIEN\s*([A-Z0-9-]+)/);
       if (match && match[1]) {
-        const userIdShort = match[1];
+        // userIdShort lúc này là chuỗi 32 ký tự (đã bị bỏ dấu gạch ngang ở app)
+        const str = match[1].replace(/-/g, '').toLowerCase();
         
-        // Tìm User ID thực tế từ Supabase
-        const { data: users, error: userError } = await supabaseAdmin
-          .from('profiles')
-          .select('id')
-          .ilike('id', `${userIdShort}%`);
+        if (str.length >= 32) {
+          // Khôi phục lại định dạng UUID chuẩn (có dấu gạch ngang)
+          const fullUserId = `${str.slice(0,8)}-${str.slice(8,12)}-${str.slice(12,16)}-${str.slice(16,20)}-${str.slice(20,32)}`;
           
-        if (users && users.length > 0) {
-          const fullUserId = users[0].id;
-          
-          // Kiểm tra xem user có request Nạp tiền PENDING nào khớp số tiền không
-          const { data: pendingTx } = await supabaseAdmin
-            .from('wallet_transactions')
-            .select('*')
-            .eq('user_id', fullUserId)
-            .eq('type', 'TOPUP')
-            .eq('status', 'PENDING')
-            .eq('amount', transferAmount)
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-          if (pendingTx && pendingTx.length > 0) {
-            // Cập nhật thành SUCCESS
-            await supabaseAdmin
-              .from('wallet_transactions')
-              .update({ status: 'SUCCESS', reference_id: referenceCode })
-              .eq('id', pendingTx[0].id);
-          } else {
-            // Nếu không có request PENDING thì tự tạo luôn 1 request SUCCESS
-            await supabaseAdmin
+          // Kiểm tra xem user có tồn tại không
+          const { data: users, error: userError } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('id', fullUserId);
+            
+          if (users && users.length > 0) {
+            // Không cần tìm PENDING nữa, ghi thẳng SUCCESS
+            const { error: insertError } = await supabaseAdmin
               .from('wallet_transactions')
               .insert({
                 user_id: fullUserId,
@@ -868,11 +860,17 @@ app.post('/api/sepay-webhook', express.json(), async (req, res) => {
                 reference_id: referenceCode,
                 description: 'Nạp tiền tự động qua VietQR'
               });
+              
+            if (insertError) throw insertError;
+            console.log(`[Webhook] Đã nạp tiền cho user ${fullUserId}: ${transferAmount}đ`);
+            return res.status(200).json({ success: true, message: 'Nạp tiền thành công' });
+          } else {
+            console.error(`[Webhook] Không tìm thấy user với mã UUID: ${fullUserId}`);
+            return res.status(200).json({ success: false, message: 'Không tìm thấy user' });
           }
-          console.log(`[Webhook] Đã nạp tiền cho user ${userIdShort}: ${transferAmount}đ`);
-          return res.status(200).json({ success: true, message: 'Nạp tiền thành công' });
         } else {
-          console.error(`[Webhook] Không tìm thấy user với mã: ${userIdShort}`);
+           console.error(`[Webhook] Chuỗi NAPTIEN không đủ 32 ký tự: ${str}`);
+           return res.status(200).json({ success: false, message: 'Sai định dạng User ID' });
         }
       }
     }
