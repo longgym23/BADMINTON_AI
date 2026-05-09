@@ -9,7 +9,6 @@ import 'package:badminton_ai/screens/user/booking/checkout_screen.dart';
 import 'package:badminton_ai/screens/user/booking/event_detail_screen.dart';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:table_calendar/table_calendar.dart';

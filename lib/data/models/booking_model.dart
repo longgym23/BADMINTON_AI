@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 
 class BookingModel {
   final String? id; // id có thể null khi tạo, Firestore sẽ gán

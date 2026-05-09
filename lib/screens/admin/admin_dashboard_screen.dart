@@ -7,7 +7,6 @@ import 'package:badminton_ai/screens/admin/manage_courts_screen.dart';
 import 'package:badminton_ai/screens/admin/manage_users_screen.dart';
 import 'package:badminton_ai/screens/admin/events/admin_event_list_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:fl_chart/fl_chart.dart';

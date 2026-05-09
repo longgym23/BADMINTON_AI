@@ -1,0 +1,61 @@
+import 'package:flutter/material.dart';
+import 'package:badminton_ai/data/models/wallet_transaction_model.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
+import 'package:badminton_ai/utils/app_logger.dart';
+
+class WalletViewModel extends ChangeNotifier {
+  final SupabaseRepository _repository = SupabaseRepository();
+  final String userId;
+
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
+
+  WalletViewModel({required this.userId});
+
+  // Gửi yêu cầu rút tiền
+  Future<bool> requestWithdrawal(int amount, String bankInfo) async {
+    _setLoading(true);
+    _errorMessage = null;
+    try {
+      await _repository.requestWithdrawal(
+        userId: userId,
+        amount: amount,
+        bankInfo: bankInfo,
+      );
+      _setLoading(false);
+      return true;
+    } catch (e, st) {
+      AppLogger.e('WalletVM', 'Error requesting withdrawal', e, st);
+      _errorMessage = 'Lỗi yêu cầu rút tiền: $e';
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  // Gửi yêu cầu nạp tiền (trả về giao dịch PENDING để lấy ID làm mã nạp)
+  Future<WalletTransactionModel?> requestTopUp(int amount) async {
+    _setLoading(true);
+    _errorMessage = null;
+    try {
+      final transaction = await _repository.createPendingTopUp(
+        userId: userId,
+        amount: amount,
+      );
+      _setLoading(false);
+      return transaction;
+    } catch (e, st) {
+      AppLogger.e('WalletVM', 'Error requesting top-up', e, st);
+      _errorMessage = 'Lỗi tạo yêu cầu nạp tiền: $e';
+      _setLoading(false);
+      return null;
+    }
+  }
+
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+}

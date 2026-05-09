@@ -5,7 +5,6 @@ import 'package:badminton_ai/viewmodels/admin_events_viewmodel.dart';
 import 'package:badminton_ai/widgets/time_filter_widget.dart';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';

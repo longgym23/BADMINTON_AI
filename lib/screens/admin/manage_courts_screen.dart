@@ -11,7 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/utils/dialog_utils.dart';
-import 'package:intl/intl.dart';
 
 class ManageCourtsScreen extends StatefulWidget {
   const ManageCourtsScreen({super.key});

@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,6 +7,7 @@ import 'package:badminton_ai/data/models/notification_model.dart';
 import 'package:badminton_ai/data/models/user_model.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/data/models/review_model.dart';
+import 'package:badminton_ai/data/models/wallet_transaction_model.dart';
 import 'package:badminton_ai/utils/app_logger.dart';
 
 class SupabaseRepository {
@@ -845,4 +845,73 @@ class SupabaseRepository {
         .from('reviews')
         .upsert(review.toSupabase(), onConflict: 'court_id,user_id');
   }
+
+  // ===========================================================================
+  // --- Wallet & Transactions Functions ---
+  // ===========================================================================
+
+  /// Lấy stream lịch sử giao dịch ví của User (hoặc Chủ sân)
+  Stream<List<WalletTransactionModel>> getWalletTransactionsStream(String userId) {
+    return _client
+        .from('wallet_transactions')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
+        .order('created_at', ascending: false)
+        .map((data) => data.map((e) => WalletTransactionModel.fromSupabase(e)).toList());
+  }
+
+  /// User tạo yêu cầu Rút Tiền (WITHDRAW)
+  Future<void> requestWithdrawal({
+    required String userId,
+    required int amount,
+    required String bankInfo,
+  }) async {
+    // Database trigger đã cấu hình trừ tiền ngay lập tức khi trạng thái là PENDING
+    await _client.from('wallet_transactions').insert({
+      'user_id': userId,
+      'amount': amount,
+      'type': 'WITHDRAW',
+      'status': 'PENDING',
+      'bank_info': bankInfo,
+      'description': 'Yêu cầu rút tiền',
+    });
+  }
+
+  /// User yêu cầu Nạp Tiền (TOPUP) -> Đang đợi duyệt qua SePay webhook
+  Future<WalletTransactionModel> createPendingTopUp({
+    required String userId,
+    required int amount,
+  }) async {
+    final response = await _client.from('wallet_transactions').insert({
+      'user_id': userId,
+      'amount': amount,
+      'type': 'TOPUP',
+      'status': 'PENDING',
+      'description': 'Nạp tiền vào ví',
+    }).select().single();
+    
+    return WalletTransactionModel.fromSupabase(response);
+  }
+
+  /// (Admin) Lấy stream tất cả các yêu cầu rút tiền đang chờ xử lý
+  Stream<List<Map<String, dynamic>>> getPendingWithdrawalsStream() {
+    return _client
+        .from('wallet_transactions')
+        .stream(primaryKey: ['id'])
+        .eq('type', 'WITHDRAW')
+        .map((data) {
+          final sortedData = data.where((e) => e['status'] == 'PENDING').toList();
+          sortedData.sort((a, b) => (a['created_at'] as String).compareTo(b['created_at'] as String));
+          return List<Map<String, dynamic>>.from(sortedData);
+        });
+  }
+
+  /// (Admin) Cập nhật trạng thái giao dịch (SUCCESS hoặc REJECTED)
+  Future<void> updateWalletTransactionStatus(String transactionId, String status) async {
+    await _client
+        .from('wallet_transactions')
+        .update({'status': status})
+        .eq('id', transactionId);
+  }
+
 }

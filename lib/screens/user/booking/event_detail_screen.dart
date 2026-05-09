@@ -5,7 +5,6 @@ import 'package:badminton_ai/screens/user/booking/event_checkout_screen.dart';
 import 'package:badminton_ai/utils/notification_utils.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 

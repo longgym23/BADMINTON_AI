@@ -8,6 +8,7 @@ import 'package:badminton_ai/screens/user/profile/edit_profile_screen.dart';
 import 'package:badminton_ai/screens/user/profile/favorites_screen.dart';
 import 'package:badminton_ai/screens/user/profile/settings_screen.dart';
 import 'package:badminton_ai/screens/user/profile/statistics_screen.dart';
+import 'package:badminton_ai/screens/user/wallet/wallet_screen.dart';
 import 'package:badminton_ai/screens/course/course_main_screen.dart';
 import 'package:badminton_ai/screens/course/watched_courses_screen.dart';
 import 'package:badminton_ai/screens/admin/events/admin_event_list_screen.dart';
@@ -388,7 +389,7 @@ class ProfileTab extends StatelessWidget {
                           ),
                           OutlinedButton(
                             onPressed: () {
-                              NotificationUtils.showComingSoon(context);
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
                             },
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: Colors.white),

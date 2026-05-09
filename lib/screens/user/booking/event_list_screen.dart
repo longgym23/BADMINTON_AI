@@ -5,7 +5,6 @@ import 'package:badminton_ai/data/models/court_location_model.dart';
 import 'package:badminton_ai/data/models/event_model.dart';
 import 'package:badminton_ai/screens/user/booking/event_detail_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/widgets/custom_date_range_picker_dialog.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';

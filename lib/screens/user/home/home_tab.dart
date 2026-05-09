@@ -293,7 +293,7 @@ class _HomeTabState extends State<HomeTab> {
                     Text(
                       DateFormat(
                         'EEEE, dd/MM/yyyy',
-                        'vi_VN',
+                        context.locale.toString(),
                       ).format(DateTime.now()),
                       style: TextStyle(
                         color: Colors.white70,

@@ -20,15 +20,15 @@
  */
 
 require('dotenv').config();
-const express  = require('express');
-const cors     = require('cors');
-const multer   = require('multer');
-const fs       = require('fs-extra');
-const path     = require('path');
-const crypto   = require('crypto');
-const { GoogleGenerativeAI }                      = require('@google/generative-ai');
+const express = require('express');
+const cors = require('cors');
+const multer = require('multer');
+const fs = require('fs-extra');
+const path = require('path');
+const crypto = require('crypto');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { MailerSend, EmailParams, Sender, Recipient } = require('mailersend');
-const { createClient }                            = require('@supabase/supabase-js');
+const { createClient } = require('@supabase/supabase-js');
 const admin = require('firebase-admin');
 
 // ─── Firebase Admin Setup ─────────────────────────────────────────────────────
@@ -67,11 +67,11 @@ if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_API_KEY_PLACEHOLDER') {
 
 let genAI, model, visionModel, embedModel;
 try {
-  genAI        = new GoogleGenerativeAI(GEMINI_API_KEY);
-  model        = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  visionModel  = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
   const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2-preview';
-  embedModel   = genAI.getGenerativeModel({ model: embeddingModelName });
+  embedModel = genAI.getGenerativeModel({ model: embeddingModelName });
   console.log(`[INFO] Gemini models loaded. Embedding: ${embeddingModelName}`);
 } catch (err) {
   console.error('[ERROR] Khởi tạo Gemini thất bại:', err.message);
@@ -79,7 +79,7 @@ try {
 
 // ─── System Prompt ────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT =
-`Bạn là trợ lý AI thông minh của Hệ thống quản lý đặt sân thể thao 'KLOO'.
+  `Bạn là trợ lý AI thông minh của Hệ thống quản lý đặt sân thể thao 'KLOO'.
 Nhiệm vụ của bạn là giải đáp thắc mắc về hệ thống đặt sân, nội quy, chính sách, giá cả sân bãi và kiến thức thể thao.
 ĐẶC BIỆT LƯU Ý:
 1. CHÍNH SÁCH HỦY SÂN MỚI (ƯU TIÊN TUYỆT ĐỐI GHI ĐÈ KẾT QUẢ TỪ NGUỒN):
@@ -102,13 +102,13 @@ Nhiệm vụ của bạn là giải đáp thắc mắc về hệ thống đặt 
 // PHASE 1 — EMBEDDING CACHE (TTL 5 phút, max 300 entries)
 // ═══════════════════════════════════════════════════════════════════════════════
 const _embCache = new Map();
-const EMBED_CACHE_TTL  = 5 * 60 * 1000;
-const EMBED_CACHE_MAX  = 300;
+const EMBED_CACHE_TTL = 5 * 60 * 1000;
+const EMBED_CACHE_MAX = 300;
 
 async function embedText(text) {
   if (!embedModel) throw new Error('Embedding model chưa sẵn sàng.');
   const cacheKey = text.slice(0, 250);
-  const cached   = _embCache.get(cacheKey);
+  const cached = _embCache.get(cacheKey);
   if (cached && Date.now() < cached.expireAt) return cached.vec;
 
   const res = await embedModel.embedContent({ content: { parts: [{ text }], role: 'user' }, outputDimensionality: 1536 });
@@ -127,15 +127,15 @@ function quickIntent(prompt) {
   if (!prompt || typeof prompt !== 'string') return 'general';
   const p = prompt.toLowerCase().trim();
   if (/^(xin chào|chào|hi\b|hello|hey|alo|cảm ơn|thanks|thank you)/.test(p)) return 'greeting';
-  if (/^(ok|oke|okay|được|rồi|vâng|dạ|ừ|uhm)$/.test(p))                      return 'greeting';
+  if (/^(ok|oke|okay|được|rồi|vâng|dạ|ừ|uhm)$/.test(p)) return 'greeting';
   // Ưu tiên kiểm tra: hỏi về CHÍNH SÁCH/QUY ĐỊNH hủy trước → general (để AI giải thích chính sách)
   if (/(chính sách|quy định|quy trình|điều kiện|điều khoản|như thế nào|ra sao|thế nào|hoàn tiền|phí|mấy|bao lâu).*(hủy|cancel)/i.test(p)) return 'general';
   if (/(hủy|cancel).*(chính sách|quy định|quy trình|điều kiện|điều khoản|như thế nào|ra sao|thế nào|hoàn tiền)/i.test(p)) return 'general';
   // Chỉ gán cancel_booking khi user MUỐN THỰC SỰ HỦY (có ngôi thứ nhất / hành động cụ thể)
   if (/(tôi muốn hủy|cho tôi hủy|giúp tôi hủy|hủy giúp|hủy lịch của tôi|hủy đặt sân|hủy booking|cancel booking|cancel lịch)/i.test(p)) return 'cancel_booking';
   if (/(giá|bao nhiêu|tiền|phí|cost|giờ|price)/.test(p)) return 'pricing';
-  if (/(tìm|đặt|sân nào|có sân|book|search)/.test(p))    return 'search';
-  if (/(lịch|schedule|booking|đã đặt|sắp tới)/.test(p))  return 'schedule';
+  if (/(tìm|đặt|sân nào|có sân|book|search)/.test(p)) return 'search';
+  if (/(lịch|schedule|booking|đã đặt|sắp tới)/.test(p)) return 'schedule';
   return 'general';
 }
 
@@ -144,8 +144,8 @@ function quickIntent(prompt) {
 // ═══════════════════════════════════════════════════════════════════════════════
 const sessionStore = new Map();
 const SESSION_MAX_TURNS = 6;
-const SESSION_TTL       = 30 * 60 * 1000;
-const _sessionTTLMap    = new Map();
+const SESSION_TTL = 30 * 60 * 1000;
+const _sessionTTLMap = new Map();
 
 function getSession(sessionId) {
   if (!sessionId) return [];
@@ -173,18 +173,18 @@ async function retrieveKnowledge(userPrompt, intentHint = 'general') {
   try {
     const queryEmbedding = await embedText(userPrompt);
     let vectorWeight = 0.6;
-    let bm25Weight   = 0.4;
+    let bm25Weight = 0.4;
     // Tăng trọng số bám keyword nếu người dùng hỏi về thanh toán hóa đơn / mã lịch cụ thể (Từ Two-Pass image keywords)
     if (intentHint === 'cancel_booking' || intentHint === 'schedule') {
       vectorWeight = 0.5; bm25Weight = 0.5;
     }
 
     const { data, error } = await supabaseAdmin.rpc('match_kb_hybrid', {
-      query_text:           userPrompt,
-      query_embedding:      queryEmbedding,
-      match_count:          6,
-      vector_weight:        vectorWeight,
-      bm25_weight:          bm25Weight,
+      query_text: userPrompt,
+      query_embedding: queryEmbedding,
+      match_count: 6,
+      vector_weight: vectorWeight,
+      bm25_weight: bm25Weight,
       similarity_threshold: 0.45,
     });
     if (error) { console.error('[RAG] Hybrid retrieve error:', error.message); return []; }
@@ -238,13 +238,13 @@ function safeJsonParse(text) {
   const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   let cleanText = match ? match[1] : text;
   const start = cleanText.indexOf('{');
-  const end   = cleanText.lastIndexOf('}');
+  const end = cleanText.lastIndexOf('}');
   if (start >= 0 && end > start) cleanText = cleanText.slice(start, end + 1);
   try { return JSON.parse(cleanText); } catch (_) { return null; }
 }
 
 function normalizeAction(action) {
-  const a    = action && typeof action === 'object' ? action : {};
+  const a = action && typeof action === 'object' ? action : {};
   const type = typeof a.type === 'string' ? a.type : 'none';
   const allowed = new Set(['search_courts', 'view_schedule', 'view_expense', 'cancel_booking', 'none']);
   if (!allowed.has(type)) return { type: 'none' };
@@ -308,7 +308,7 @@ function extractRadiusKm(prompt) {
 
 
 // ─── Express App ──────────────────────────────────────────────────────────────
-const app  = express();
+const app = express();
 const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
@@ -317,16 +317,16 @@ app.use(express.json());
 // POST /ask — Chatbot Endpoint (KLOO AI)
 // ═══════════════════════════════════════════════════════════════════════════════
 app.post('/ask', upload.single('image'), async (req, res) => {
-  const imageFile  = req.file;
-  const userId     = req.body.user_id    || '';
-  const sessionId  = req.body.session_id || userId || null;
-  const userPrompt = req.body.prompt     || (imageFile ? 'Trợ giúp tôi với bức ảnh này.' : '');
+  const imageFile = req.file;
+  const userId = req.body.user_id || '';
+  const sessionId = req.body.session_id || userId || null;
+  const userPrompt = req.body.prompt || (imageFile ? 'Trợ giúp tôi với bức ảnh này.' : '');
   // ─── Vị trí GPS của user (tùy chọn) ───
-  const userLat    = req.body.user_lat != null ? parseFloat(req.body.user_lat) : null;
-  const userLng    = req.body.user_lng != null ? parseFloat(req.body.user_lng) : null;
+  const userLat = req.body.user_lat != null ? parseFloat(req.body.user_lat) : null;
+  const userLng = req.body.user_lng != null ? parseFloat(req.body.user_lng) : null;
 
-  const intent     = quickIntent(userPrompt);
-  const needsRAG   = !['greeting'].includes(intent);
+  const intent = quickIntent(userPrompt);
+  const needsRAG = !['greeting'].includes(intent);
 
   // ────────────────────────────────────────────────────────────────────────────
   // NHỊP 1: Tách từ khóa bằng Vision (Two-pass RAG) nếu có ảnh
@@ -351,7 +351,7 @@ app.post('/ask', upload.single('image'), async (req, res) => {
           contents: [{
             role: 'user',
             parts: [
-              { text: "Nhiệm vụ: Tìm danh từ riêng, thương hiệu, mã ID, loại sân (Bóng đá, Cầu lông, Pickleball, Tennis), hoặc số tiền có trong ảnh. Trả lời đúng từ khóa, không giải thích dài dòng." }, 
+              { text: "Nhiệm vụ: Tìm danh từ riêng, thương hiệu, mã ID, loại sân (Bóng đá, Cầu lông, Pickleball, Tennis), hoặc số tiền có trong ảnh. Trả lời đúng từ khóa, không giải thích dài dòng." },
               { inlineData: { data: base64Image, mimeType: safeMime } }
             ]
           }]
@@ -425,7 +425,7 @@ app.post('/ask', upload.single('image'), async (req, res) => {
         contents: [{
           role: 'user',
           parts: [
-            { text: fullPrompt }, 
+            { text: fullPrompt },
             { inlineData: { data: base64Image, mimeType: safeMime } }
           ]
         }],
@@ -441,9 +441,9 @@ app.post('/ask', upload.single('image'), async (req, res) => {
           saveSession(sessionId, [...sessionHistory, { role: 'user', parts: [{ text: userPrompt }] }, { role: 'model', parts: [{ text: JSON.stringify(parsed) }] }]);
         }
         return res.json({
-          answer:      removeMarkdown(parsed.answer),
-          action:      normalizeAction(parsed.action),
-          citations:   buildCitations(kbRows),
+          answer: removeMarkdown(parsed.answer),
+          action: normalizeAction(parsed.action),
+          citations: buildCitations(kbRows),
           nearby_courts: nearbyCourts,
           _debug: { two_pass_keywords: queryText.replace(userPrompt, '').trim() }
         });
@@ -470,7 +470,7 @@ app.post('/ask', upload.single('image'), async (req, res) => {
   try {
     const chat = model.startChat({
       history: sessionHistory,
-      generationConfig: { 
+      generationConfig: {
         maxOutputTokens: 600,
         responseMimeType: "application/json"
       },
@@ -489,10 +489,10 @@ app.post('/ask', upload.single('image'), async (req, res) => {
     if (parsed && typeof parsed.answer === 'string') {
       const used = Array.isArray(parsed.used_sources) ? parsed.used_sources : [];
       return res.json({
-        answer:       removeMarkdown(parsed.answer),
-        action:       normalizeAction(parsed.action),
+        answer: removeMarkdown(parsed.answer),
+        action: normalizeAction(parsed.action),
         used_sources: used,
-        citations:    buildCitations(kbRows),
+        citations: buildCitations(kbRows),
         nearby_courts: nearbyCourts,
       });
     }
@@ -507,15 +507,15 @@ app.post('/ask', upload.single('image'), async (req, res) => {
 // Helper tạo citations array
 function buildCitations(kbRows) {
   return (kbRows || []).map((r, idx) => ({
-    id:          `S${idx + 1}`,
+    id: `S${idx + 1}`,
     document_id: r.document_id,
-    chunk_id:    r.chunk_id,
-    title:       r.title,
-    source:      r.source,
-    url:         r.url,
-    excerpt:     r.content?.slice(0, 240) || '',
-    similarity:  r.similarity,
-    bm25_score:  r.bm25_score,
+    chunk_id: r.chunk_id,
+    title: r.title,
+    source: r.source,
+    url: r.url,
+    excerpt: r.content?.slice(0, 240) || '',
+    similarity: r.similarity,
+    bm25_score: r.bm25_score,
     hybrid_score: r.hybrid_score,
   }));
 }
@@ -540,18 +540,18 @@ app.post('/forgot-password', async (req, res) => {
     return res.json({ message: 'Nếu email tồn tại, bạn sẽ nhận được mã OTP.' });
   }
 
-  const otp       = crypto.randomInt(100000, 999999).toString();
+  const otp = crypto.randomInt(100000, 999999).toString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 phút
 
   // Upsert OTP vào Supabase (ghi đè nếu email đã có OTP cũ)
   const { error: upsertError } = await supabaseAdmin
     .from('otp_verifications')
     .upsert({
-      email:                  normalizedEmail,
+      email: normalizedEmail,
       otp,
-      expires_at:             expiresAt,
-      verified:               false,
-      reset_token:            null,
+      expires_at: expiresAt,
+      verified: false,
+      reset_token: null,
       reset_token_expires_at: null,
     }, { onConflict: 'email' });
 
@@ -603,8 +603,8 @@ app.post('/forgot-password', async (req, res) => {
 </html>`;
 
   try {
-    const sentFrom    = new Sender(process.env.MAILERSEND_FROM_EMAIL, 'KLOO App');
-    const recipients  = [new Recipient(normalizedEmail)];
+    const sentFrom = new Sender(process.env.MAILERSEND_FROM_EMAIL, 'KLOO App');
+    const recipients = [new Recipient(normalizedEmail)];
     const emailParams = new EmailParams()
       .setFrom(sentFrom).setTo(recipients)
       .setSubject(`[KLOO] Mã OTP đặt lại mật khẩu: ${otp}`)
@@ -630,23 +630,23 @@ app.post('/verify-otp', async (req, res) => {
     .eq('email', normalizedEmail)
     .single();
 
-  if (error || !record)            return res.status(400).json({ error: 'Không tìm thấy yêu cầu OTP.' });
+  if (error || !record) return res.status(400).json({ error: 'Không tìm thấy yêu cầu OTP.' });
   if (new Date(record.expires_at) < new Date()) {
     // Xóa record hết hạn
     await supabaseAdmin.from('otp_verifications').delete().eq('email', normalizedEmail);
     return res.status(400).json({ error: 'Mã OTP đã hết hạn.' });
   }
-  if (record.otp !== otp.trim())   return res.status(400).json({ error: 'Mã OTP không đúng.' });
+  if (record.otp !== otp.trim()) return res.status(400).json({ error: 'Mã OTP không đúng.' });
 
-  const resetToken           = crypto.randomBytes(32).toString('hex');
-  const resetTokenExpiresAt  = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 phút
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  const resetTokenExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 phút
 
   // Cập nhật trạng thái verified + reset token
   const { error: updateError } = await supabaseAdmin
     .from('otp_verifications')
     .update({
-      verified:               true,
-      reset_token:            resetToken,
+      verified: true,
+      reset_token: resetToken,
       reset_token_expires_at: resetTokenExpiresAt,
     })
     .eq('email', normalizedEmail);
@@ -715,13 +715,13 @@ app.post('/ask/audio', upload.single('audio'), (req, res) => {
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
-  const cacheSize   = _embCache.size;
+  const cacheSize = _embCache.size;
   const sessionSize = sessionStore.size;
   res.json({
-    status:  'running',
+    status: 'running',
     version: '2.0.0 (Phase 1+2+3)',
-    rag:     'Hybrid BM25 + Vector (pgvector)',
-    stats:   { embed_cache_entries: cacheSize, active_sessions: sessionSize },
+    rag: 'Hybrid BM25 + Vector (pgvector)',
+    stats: { embed_cache_entries: cacheSize, active_sessions: sessionSize },
   });
 });
 
@@ -747,7 +747,7 @@ app.post('/api/send-notification', express.json(), async (req, res) => {
         .select('fcm_token')
         .eq('id', receiver_id)
         .single();
-      
+
       if (!userData2 || !userData2.fcm_token) {
         return res.status(404).json({ error: 'User FCM token not found' });
       }
@@ -786,13 +786,113 @@ app.post('/api/send-notification', express.json(), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// ─── SePay Webhook Endpoint ─────────────────────────────────────────────────────────────
+app.post('/api/sepay-webhook', express.json(), async (req, res) => {
+  try {
+    const { transferAmount, transferType, content, referenceCode } = req.body;
+    
+    // 1. Kiểm tra phải là tiền vào (in) không
+    if (transferType !== 'in') {
+      return res.status(200).json({ success: true, message: 'Bỏ qua giao dịch tiền ra' });
+    }
+
+    if (!content) {
+      return res.status(200).json({ success: true, message: 'Không có nội dung chuyển khoản' });
+    }
+
+    const contentUpper = content.toUpperCase();
+
+    // 2. Xử lý thanh toán ĐẶT SÂN
+    // Nội dung ví dụ: DATSAN 83fd2a
+    if (contentUpper.includes('DATSAN')) {
+      const match = contentUpper.match(/DATSAN\s*([A-Z0-9-]+)/);
+      if (match && match[1]) {
+        const bookingId = match[1];
+        
+        // Cập nhật trạng thái booking thành PAID
+        const { data, error } = await supabaseAdmin
+          .from('bookings')
+          .update({ status: 'PAID', transaction_id: referenceCode })
+          // Dùng ilike để hỗ trợ match mã booking bị cắt ngắn (8 ký tự)
+          .ilike('id', `${bookingId}%`)
+          .select();
+        
+        if (error) throw error;
+        console.log(`[Webhook] Đã xác nhận ĐẶT SÂN: ${bookingId}`);
+        return res.status(200).json({ success: true, message: 'Xác nhận đặt sân thành công' });
+      }
+    }
+
+    // 3. Xử lý NẠP TIỀN VÀO VÍ
+    // Nội dung ví dụ: NAPTIEN a1b2c3d4
+    if (contentUpper.includes('NAPTIEN')) {
+      const match = contentUpper.match(/NAPTIEN\s*([A-Z0-9-]+)/);
+      if (match && match[1]) {
+        const userIdShort = match[1];
+        
+        // Tìm User ID thực tế từ Supabase
+        const { data: users, error: userError } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .ilike('id', `${userIdShort}%`);
+          
+        if (users && users.length > 0) {
+          const fullUserId = users[0].id;
+          
+          // Kiểm tra xem user có request Nạp tiền PENDING nào khớp số tiền không
+          const { data: pendingTx } = await supabaseAdmin
+            .from('wallet_transactions')
+            .select('*')
+            .eq('user_id', fullUserId)
+            .eq('type', 'TOPUP')
+            .eq('status', 'PENDING')
+            .eq('amount', transferAmount)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (pendingTx && pendingTx.length > 0) {
+            // Cập nhật thành SUCCESS
+            await supabaseAdmin
+              .from('wallet_transactions')
+              .update({ status: 'SUCCESS', reference_id: referenceCode })
+              .eq('id', pendingTx[0].id);
+          } else {
+            // Nếu không có request PENDING thì tự tạo luôn 1 request SUCCESS
+            await supabaseAdmin
+              .from('wallet_transactions')
+              .insert({
+                user_id: fullUserId,
+                amount: transferAmount,
+                type: 'TOPUP',
+                status: 'SUCCESS',
+                reference_id: referenceCode,
+                description: 'Nạp tiền tự động qua VietQR'
+              });
+          }
+          console.log(`[Webhook] Đã nạp tiền cho user ${userIdShort}: ${transferAmount}đ`);
+          return res.status(200).json({ success: true, message: 'Nạp tiền thành công' });
+        } else {
+          console.error(`[Webhook] Không tìm thấy user với mã: ${userIdShort}`);
+        }
+      }
+    }
+
+    // Giao dịch không nằm trong kịch bản của app
+    return res.status(200).json({ success: true, message: 'Giao dịch không khớp cú pháp hệ thống' });
+
+  } catch (error) {
+    console.error('[Webhook] Lỗi xử lý SePay Webhook:', error);
+    // Vẫn trả về 200 để SePay không gửi lại nhiều lần nếu lỗi do data
+    return res.status(200).json({ success: false, error: 'Internal Server Error' });
+  }
+});
 
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 app.listen(port, '0.0.0.0', () => {
-  console.log(`\n🏸 KLOO Chatbot Backend v2.0 (Phase 1+2+3)`);
-  console.log(`   ✅ Running at http://0.0.0.0:${port}`);
-  console.log(`   ✅ RAG: Hybrid BM25 + Vector (pgvector)`);
-  console.log(`   ✅ Embedding cache: TTL ${EMBED_CACHE_TTL / 60000} min, max ${EMBED_CACHE_MAX}`);
-  console.log(`   ✅ Session history: max ${SESSION_MAX_TURNS} turns, TTL ${SESSION_TTL / 60000} min\n`);
+  console.log(`\n KLOO Chatbot Backend v2.0 (Phase 1+2+3)`);
+  console.log(`  Running at http://0.0.0.0:${port}`);
+  console.log(`  RAG: Hybrid BM25 + Vector (pgvector)`);
+  console.log(`  Embedding cache: TTL ${EMBED_CACHE_TTL / 60000} min, max ${EMBED_CACHE_MAX}`);
+  console.log(`  Session history: max ${SESSION_MAX_TURNS} turns, TTL ${SESSION_TTL / 60000} min\n`);
 });

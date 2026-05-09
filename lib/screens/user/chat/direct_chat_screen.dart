@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:intl/intl.dart';
 import 'package:badminton_ai/providers/unread_count_provider.dart';
 import 'package:badminton_ai/utils/snackbar_utils.dart';
 import 'package:badminton_ai/utils/dialog_utils.dart';

@@ -6,7 +6,6 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 
 class CourtReviewsScreen extends StatefulWidget {
   final CourtLocationModel court;

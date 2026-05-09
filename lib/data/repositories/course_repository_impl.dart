@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:badminton_ai/data/models/course_model.dart';
 import 'package:badminton_ai/domain/entities/course.dart';

@@ -8,7 +8,6 @@ import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:intl/intl.dart';
 
 class AdminCreateEventScreen extends StatefulWidget {
   const AdminCreateEventScreen({super.key});

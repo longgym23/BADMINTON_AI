@@ -5,7 +5,6 @@ import 'package:badminton_ai/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/providers/booking_provider.dart';
 import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart'; // Đảm bảo đã import
 
@@ -443,8 +442,6 @@ class _BookingTimeline extends StatelessWidget {
     required this.availableCourts,
     required this.timeSlots,
     required this.bookings,
-    this.selectedCourtNumber,
-    this.selectedTimeSlot,
     required this.onSlotSelected,
   });
 

@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -32,7 +31,7 @@ class NotificationUtils {
 class _ComingSoonToast extends StatefulWidget {
   final VoidCallback onDismissed;
 
-  const _ComingSoonToast({super.key, required this.onDismissed});
+  const _ComingSoonToast({required this.onDismissed});
 
   @override
   State<_ComingSoonToast> createState() => _ComingSoonToastState();

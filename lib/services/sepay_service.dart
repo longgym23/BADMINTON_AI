@@ -11,8 +11,9 @@ class SePayService {
   String generateVietQRUrl({
     required int amount,
     required String bookingReference,
+    String prefix = 'DATSAN',
   }) {
-    final addInfo = 'DATSAN $bookingReference';
+    final addInfo = '$prefix $bookingReference';
     return 'https://img.vietqr.io/image/$bankBin-$accountNo-compact2.png'
         '?amount=$amount'
         '&addInfo=${Uri.encodeComponent(addInfo)}'
@@ -37,7 +38,7 @@ class SePayService {
             .select('status')
             .eq('transaction_id', transactionId);
 
-        if (rows is List && rows.isNotEmpty) {
+        if (rows.isNotEmpty) {
           final isPaid = rows.any((b) => b['status'] == 'PAID');
           if (isPaid) return true;
         }

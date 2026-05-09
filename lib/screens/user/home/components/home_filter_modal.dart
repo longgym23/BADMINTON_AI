@@ -390,7 +390,7 @@ class _HomeFilterModalState extends State<HomeFilterModal> {
         const Text('Chọn ngày', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: _eventTimeFilter ?? '3days',
+          initialValue: _eventTimeFilter ?? '3days',
           icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.primary),
           decoration: InputDecoration(
             contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),

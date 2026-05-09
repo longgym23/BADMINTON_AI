@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 class UserModel {
   final String id;
   final String? email;
