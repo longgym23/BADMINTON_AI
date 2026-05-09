@@ -48,7 +48,6 @@ class _BookingTabState extends State<BookingTab> {
   Widget build(BuildContext context) {
     final firestoreRepo = context.read<SupabaseRepository>();
     final colors = Theme.of(context).colorScheme;
-    
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -62,7 +61,10 @@ class _BookingTabState extends State<BookingTab> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [colors.primary, colors.primary.withValues(alpha: 0.8)],
+                  colors: [
+                    colors.primary,
+                    colors.primary.withValues(alpha: 0.8),
+                  ],
                 ),
               ),
               padding: EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -247,7 +249,8 @@ class _BookingTabState extends State<BookingTab> {
                     )
                   : ElevatedButton.icon(
                       icon: Icon(Icons.calendar_view_week_rounded),
-                      label: Text('screens.chooseATimeFrame'.tr(),
+                      label: Text(
+                        'screens.chooseATimeFrame'.tr(),
                         style: TextStyle(fontSize: 18),
                       ),
                       onPressed: () {
@@ -360,8 +363,16 @@ class _BookingTabState extends State<BookingTab> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildLegendItem(colors.secondary, 'screens.selecting'.tr(), colors.primary),
-            _buildLegendItem(Colors.redAccent[100]!, 'screens.booked'.tr(), Colors.black54),
+            _buildLegendItem(
+              colors.secondary,
+              'screens.selecting'.tr(),
+              colors.primary,
+            ),
+            _buildLegendItem(
+              Colors.redAccent[100]!,
+              'screens.booked'.tr(),
+              Colors.black54,
+            ),
             _buildLegendItem(
               Colors.grey.shade200,
               'screens.stillEmpty'.tr(),
@@ -443,6 +454,8 @@ class _BookingTimeline extends StatelessWidget {
     required this.timeSlots,
     required this.bookings,
     required this.onSlotSelected,
+    this.selectedCourtNumber,
+    this.selectedTimeSlot,
   });
 
   bool _isSlotBooked(int courtNum, int timeSlot) {
@@ -542,8 +555,8 @@ class _BookingTimeline extends StatelessWidget {
           height: 60,
           padding: EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
-            color: colors.primary.withValues(alpha: 
-              0.9,
+            color: colors.primary.withValues(
+              alpha: 0.9,
             ), // Màu xanh đậm (nhạt hơn header)
             border: Border(
               bottom: BorderSide(color: Colors.white24, width: 1),
@@ -616,4 +629,3 @@ class _BookingTimeline extends StatelessWidget {
     );
   }
 }
-
