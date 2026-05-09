@@ -27,48 +27,94 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // 4. Log nội dung nhận được để debug
-    console.log('transferContent received:', transferContent)
+    const contentUpper = transferContent ? transferContent.toUpperCase() : ''
+    console.log('transferContent received:', contentUpper)
+    console.log('amount received:', amount)
 
-    // Regex đơn giản: Lấy từ đầu tiên (chỉ chữ và số) ngay sau "DATSAN "
-    // Ngân hàng hay xóa ký tự đặc biệt (_), nên transactionId phải là alphanumeric thuần túy
-    // VD: "DATSAN 1b8ed55807 FT260873..." → lấy "1b8ed55807"
-    const match = transferContent?.match(/DATSAN\s+([A-Za-z0-9]+)/i)
-    const bookingRef = match ? match[1].trim() : null
+    // ==========================================
+    // KỊCH BẢN 1: ĐẶT SÂN (DATSAN)
+    // ==========================================
+    if (contentUpper.includes('DATSAN')) {
+      const match = contentUpper.match(/DATSAN\s+([A-Z0-9]+)/)
+      const bookingRef = match ? match[1].trim() : null
 
-    console.log('Extracted bookingRef:', bookingRef)
-    
-    if (bookingRef) {
-      // Thử 2 format: format mới (không có _) và format cũ (có _ sau 5 ký tự đầu)
-      const refWithUnderscore = bookingRef.length > 5
-        ? `${bookingRef.substring(0, 5)}_${bookingRef.substring(5)}`
-        : bookingRef
+      console.log('Extracted bookingRef:', bookingRef)
+      
+      if (bookingRef) {
+        const refWithUnderscore = bookingRef.length > 5
+          ? `${bookingRef.substring(0, 5)}_${bookingRef.substring(5)}`
+          : bookingRef
 
-      console.log('Trying bookingRef (no underscore):', bookingRef)
-      console.log('Trying bookingRef (with underscore):', refWithUnderscore)
+        const { data, error } = await supabase
+          .from('bookings')
+          .update({ status: 'PAID' })
+          .or(`transaction_id.eq.${bookingRef},transaction_id.eq.${refWithUnderscore}`)
+          .select()
 
-      // Cập nhật với filter OR giữa 2 format
-      const { data, error } = await supabase
-        .from('bookings')
-        .update({ status: 'PAID' })
-        .or(`transaction_id.eq.${bookingRef},transaction_id.eq.${refWithUnderscore}`)
-        .select()
+        if (error) throw error
 
-      if (error) throw error
+        if (!data || data.length === 0) {
+          // Trả về 200 kèm error message để SePay không gửi lại payload này mãi mãi
+          return new Response(
+            JSON.stringify({ error: `Không tìm thấy booking với ref: ${bookingRef}` }),
+            { status: 200 }
+          )
+        }
 
-      console.log('Rows updated:', data?.length ?? 0)
-
-      if (!data || data.length === 0) {
-        return new Response(
-          JSON.stringify({ error: `Không tìm thấy booking với ref: ${bookingRef} hoặc ${refWithUnderscore}` }),
-          { status: 404 }
-        )
+        return new Response(JSON.stringify({ success: true, message: `Cập nhật ${data.length} booking thành PAID` }), { status: 200 })
       }
-
-      return new Response(JSON.stringify({ success: true, message: `Cập nhật ${data.length} booking thành PAID` }), { status: 200 })
     }
 
-    return new Response(JSON.stringify({ error: 'Không tìm thấy Booking ID' }), { status: 400 })
+    // ==========================================
+    // KỊCH BẢN 2: NẠP TIỀN (NAPTIEN)
+    // ==========================================
+    if (contentUpper.includes('NAPTIEN')) {
+      const match = contentUpper.match(/NAPTIEN\s*([A-Z0-9-]+)/)
+      const userIdShort = match ? match[1].trim() : null
+
+      console.log('Extracted userIdShort:', userIdShort)
+
+      if (userIdShort) {
+        // Tìm user ID thực tế từ Supabase (bằng cách match 8 ký tự đầu)
+        const { data: users, error: userError } = await supabase
+          .from('profiles')
+          .select('id')
+          .ilike('id', `${userIdShort}%`)
+          .limit(1)
+
+        if (userError) throw userError
+
+        if (users && users.length > 0) {
+          const fullUserId = users[0].id
+
+          // Ghi nhận trực tiếp thành công! Không cần tìm PENDING
+          const { error: insertError } = await supabase
+            .from('wallet_transactions')
+            .insert({
+              user_id: fullUserId,
+              amount: amount,
+              type: 'TOPUP',
+              status: 'SUCCESS',
+              reference_id: payload.referenceCode || payload.id?.toString(),
+              description: 'Nạp tiền tự động qua VietQR'
+            })
+
+          if (insertError) throw insertError
+
+          return new Response(JSON.stringify({ success: true, message: `Nạp tiền thành công cho user ${userIdShort}` }), { status: 200 })
+        } else {
+          return new Response(
+            JSON.stringify({ error: `Không tìm thấy user với mã: ${userIdShort}` }),
+            { status: 200 }
+          )
+        }
+      }
+    }
+
+    // Không khớp bất kỳ kịch bản nào (Có thể là tiền chuyển nhầm, không phải của app)
+    return new Response(JSON.stringify({ success: true, message: 'Giao dịch không khớp cú pháp hệ thống, bỏ qua.' }), { status: 200 })
   } catch (error) {
-    return new Response(JSON.stringify({ error: (error as Error).message }), { status: 500 })
+    // Trả về 200 kèm theo error để SePay không retry các lỗi logic
+    return new Response(JSON.stringify({ error: (error as Error).message }), { status: 200 })
   }
 })

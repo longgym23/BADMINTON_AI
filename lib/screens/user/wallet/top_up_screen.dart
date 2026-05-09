@@ -28,28 +28,22 @@ class _TopUpScreenState extends State<TopUpScreen> {
     final amountStr = _amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
     final amount = int.tryParse(amountStr) ?? 0;
 
-    // Tạo giao dịch PENDING trên DB
-    final transaction = await viewModel.requestTopUp(amount);
-    if (transaction != null) {
-      // Dùng ID của transaction làm mã tham chiếu để webhook biết cộng tiền cho ai
-      // Nhưng theo format trước đó, ta có thể dùng luôn USER_ID cho đơn giản nếu ko cần strict tracing
-      // Ở đây ta dùng format "NAPTIEN [USER_ID]" để webhook dễ parse
-      final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
-      final userId = authProvider.userModel?.id ?? '';
-      
-      // Lấy 8 ký tự đầu của User ID cho mã ngắn gọn
-      final shortUserId = userId.length > 8 ? userId.substring(0, 8).toUpperCase() : userId.toUpperCase();
-      
-      final qrUrl = SePayService().generateVietQRUrl(
-        amount: amount,
-        bookingReference: shortUserId,
-        prefix: 'NAPTIEN',
-      );
+    // Lấy ID user hiện tại để gắn vào nội dung chuyển khoản
+    final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
+    final userId = authProvider.userModel?.id ?? '';
+    
+    // Lấy 8 ký tự đầu của User ID cho mã ngắn gọn
+    final shortUserId = userId.length > 8 ? userId.substring(0, 8).toUpperCase() : userId.toUpperCase();
+    
+    final qrUrl = SePayService().generateVietQRUrl(
+      amount: amount,
+      bookingReference: shortUserId,
+      prefix: 'NAPTIEN',
+    );
 
-      setState(() {
-        _qrUrl = qrUrl;
-      });
-    }
+    setState(() {
+      _qrUrl = qrUrl;
+    });
   }
 
   @override
