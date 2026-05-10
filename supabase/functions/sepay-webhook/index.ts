@@ -77,18 +77,37 @@ serve(async (req) => {
         console.log('Extracted userIdShort:', userIdShort)
 
         if (userIdShort.length >= 8) {
-          // Tìm user ID thực tế từ Supabase bằng cách ép kiểu id sang text (id::text)
+          // Lấy 8 ký tự đầu để tạo khoảng tìm kiếm UUID hợp lệ
+          const prefix = userIdShort.substring(0, 8)
+          const startUuid = `${prefix}-0000-0000-0000-000000000000`
+          const endUuid = `${prefix}-ffff-ffff-ffff-ffffffffffff`
+
+          // Tìm user ID thực tế từ Supabase bằng cách so sánh chuỗi UUID
           const { data: users, error: userError } = await supabase
             .from('profiles')
             .select('id')
-            .filter('id::text', 'ilike', `${userIdShort}%`)
+            .gte('id', startUuid)
+            .lte('id', endUuid)
             .limit(1)
 
           if (userError) throw userError
 
           if (users && users.length > 0) {
             const fullUserId = users[0].id
-            
+            const refId = payload.referenceCode || payload.id?.toString()
+
+            // Kiểm tra xem mã giao dịch này đã được xử lý chưa (Idempotency)
+            const { data: existingTx } = await supabase
+              .from('wallet_transactions')
+              .select('id')
+              .eq('reference_id', refId)
+              .limit(1)
+
+            if (existingTx && existingTx.length > 0) {
+               console.log(`Giao dịch ${refId} đã tồn tại. Bỏ qua.`)
+               return new Response(JSON.stringify({ success: true, message: 'Giao dịch đã tồn tại' }), { status: 200 })
+            }
+
             // Ghi nhận trực tiếp thành công!
             const { error: insertError } = await supabase
               .from('wallet_transactions')
@@ -97,7 +116,7 @@ serve(async (req) => {
                 amount: amount,
                 type: 'TOPUP',
                 status: 'SUCCESS',
-                reference_id: payload.referenceCode || payload.id?.toString(),
+                reference_id: refId,
                 description: 'Nạp tiền tự động qua VietQR'
               })
 

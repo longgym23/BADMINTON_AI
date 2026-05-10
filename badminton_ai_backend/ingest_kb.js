@@ -1,23 +1,3 @@
-/**
- * KB Ingestion Script — KLOO Chatbot (Phase 1 Enhanced)
- * ═══════════════════════════════════════════════════════
- * Cải tiến so với phiên bản cũ:
- *   - Markdown-aware chunking: ưu tiên cắt theo heading/đoạn văn
- *   - Overlap thông minh: giữ 30 từ cuối thay vì cắt cứng theo ký tự
- *   - Dry-run mode: --dry-run để preview chunks trước khi ingest
- *   - Upsert mode: --upsert tự động xóa document cũ cùng title trước khi thêm
- *
- * Usage:
- *   node ingest_kb.js --file ./kb/policies.md --title "Chính sách" --tags policies,refund
- *   node ingest_kb.js --courts --tags courts
- *   node ingest_kb.js --file ./kb/faq.md --dry-run       (preview chunks, không insert)
- *   node ingest_kb.js --file ./kb/policies.md --upsert   (xóa cũ rồi thêm mới)
- *
- * Env required:
- *   SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY
- *   GEMINI_API_KEY
- */
 
 require('dotenv').config();
 const fs = require('fs-extra');
@@ -45,7 +25,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2-preview';
+const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001';
 const embedModel = genAI.getGenerativeModel({ model: embeddingModelName });
 
 // ─── Argument Parser ─────────────────────────────────────────────────────────
@@ -227,10 +207,10 @@ async function ingestCourts({ tags, dryRun, upsert }) {
   if (error) throw error;
 
   const lines = (courts || []).map((c) => {
-    const sport   = c.sport_type         || '';
-    const price   = c.price_per_hour != null ? `${c.price_per_hour}đ/giờ` : '';
-    const total   = c.total_courts   != null ? `${c.total_courts} sân con`  : '';
-    const rating  = c.rating         != null ? `rating ${c.rating} (${c.total_reviews || 0} reviews)` : '';
+    const sport = c.sport_type || '';
+    const price = c.price_per_hour != null ? `${c.price_per_hour}đ/giờ` : '';
+    const total = c.total_courts != null ? `${c.total_courts} sân con` : '';
+    const rating = c.rating != null ? `rating ${c.rating} (${c.total_reviews || 0} reviews)` : '';
     return `COURT_FACT: id=${c.id}; name=${c.name}; address=${c.address}; sport=${sport}; price=${price}; capacity=${total}; ${rating}`.trim();
   });
 

@@ -24,8 +24,7 @@ class MapViewModel extends ChangeNotifier {
   // UI State - specific to animations
   CourtLocationModel? selectedCourt;
   bool showNearbyList = false;
-  bool hideFabs = false;
-  double sheetExtent = 0.55;
+  final ValueNotifier<double> sheetExtentNotifier = ValueNotifier<double>(0.55);
 
   MapViewModel(this._repository) {
     _getCurrentLocation();
@@ -176,8 +175,7 @@ class MapViewModel extends ChangeNotifier {
 
     showNearbyList = false;
     selectedCourt = court;
-    hideFabs = false;
-    sheetExtent = 0.55;
+    sheetExtentNotifier.value = 0.55;
     notifyListeners();
   }
 
@@ -190,22 +188,9 @@ class MapViewModel extends ChangeNotifier {
   void closeBottomCard() {
     selectedCourt = null;
     showNearbyList = false;
-    hideFabs = false;
-    sheetExtent = 0.55;
+    sheetExtentNotifier.value = 0.55;
     notifyListeners();
   }
 
-  void setHideFabs(bool val) {
-    if (hideFabs != val) {
-      hideFabs = val;
-      notifyListeners();
-    }
-  }
-
-  void setSheetExtent(double extent) {
-    if ((sheetExtent - extent).abs() > 0.005) {
-      sheetExtent = extent;
-      notifyListeners();
-    }
-  }
+  // Removed setHideFabs and setSheetExtentSilent as they are handled by ValueNotifier and UI now
 }

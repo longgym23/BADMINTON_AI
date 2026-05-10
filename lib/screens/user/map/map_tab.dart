@@ -273,23 +273,6 @@ class _MapTabContentState extends State<_MapTabContent> {
         // Khai báo chiều cao xấp xỉ của thanh Navigation Bar phía dưới để tránh bị đè UI
         const double navBarOffset = 100.0;
 
-        int durationMs = 300;
-        double bottomOffset =
-            navBarOffset + 16.0; // Vị trí cơ bản sát trên Navigation Bar
-        if (hasListCard) {
-          bottomOffset =
-              navBarOffset +
-              MediaQuery.of(context).size.height * 0.4 +
-              20; // Float trên danh sách
-        } else if (hasSmallCard) {
-          bottomOffset =
-              MediaQuery.of(context).size.height * vm.sheetExtent +
-              16.0; // Đi theo khung
-          if ((vm.sheetExtent - 0.55).abs() > 0.01) {
-            durationMs = 0; // Trượt trực tiếp theo vị trí ngón tay
-          }
-        }
-
         return Scaffold(
           resizeToAvoidBottomInset:
               false, // Bàn phím sẽ trượt đè lên thay vì đẩy các thành phần bottom (BottomSheet, Fab, Map) lên giữa màn hình
@@ -635,17 +618,11 @@ class _MapTabContentState extends State<_MapTabContent> {
                 child: vm.selectedCourt != null
                     ? NotificationListener<DraggableScrollableNotification>(
                         onNotification: (notification) {
-                          vm.setSheetExtent(notification.extent);
+                          vm.sheetExtentNotifier.value = notification.extent;
 
                           if (notification.extent <= 0.02) {
                             // Người dùng kéo xuống thấp nhất (đóng)
                             Future.microtask(() => vm.closeBottomCard());
-                          }
-
-                          if (notification.extent > 0.6) {
-                            vm.setHideFabs(true);
-                          } else {
-                            vm.setHideFabs(false);
                           }
                           return false; // let the notification bubble up
                         },
@@ -659,53 +636,76 @@ class _MapTabContentState extends State<_MapTabContent> {
               ),
 
               // Animated Floating Buttons
-              AnimatedPositioned(
-                duration: Duration(milliseconds: durationMs),
-                curve: Curves.easeOutQuart,
-                right: 16,
-                bottom: bottomOffset,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 200),
-                  opacity: vm.hideFabs ? 0.0 : 1.0,
-                  child: IgnorePointer(
-                    ignoring: vm.hideFabs,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FloatingActionButton(
-                          mini: false,
-                          heroTag: 'nearby',
-                          backgroundColor: AppColors.primary,
-                          onPressed: vm.toggleNearbyList,
-                          shape: const CircleBorder(),
-                          child: Icon(
-                            Icons.arrow_downward,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        FloatingActionButton(
-                          mini: false,
-                          heroTag: 'loc',
-                          backgroundColor: AppColors.primary,
-                          onPressed: () async {
-                            await vm.requestLocationUpdate();
-                            _mapController?.animateCamera(
-                              CameraUpdate.newLatLngZoom(
-                                vm.currentPosition,
-                                14.0,
-                              ),
-                            );
-                          },
-                          shape: const CircleBorder(),
-                          child: Icon(
-                            Icons.my_location,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
+              ValueListenableBuilder<double>(
+                valueListenable: vm.sheetExtentNotifier,
+                builder: (context, extent, child) {
+                  int durationMs = 300;
+                  double bottomOffset = navBarOffset + 16.0;
+
+                  if (hasListCard) {
+                    bottomOffset = navBarOffset +
+                        MediaQuery.of(context).size.height * 0.4 +
+                        20;
+                  } else if (hasSmallCard) {
+                    bottomOffset =
+                        MediaQuery.of(context).size.height * extent + 16.0;
+                    if ((extent - 0.55).abs() > 0.01) {
+                      durationMs = 0;
+                    }
+                  }
+
+                  bool hideFabs = extent > 0.6;
+
+                  return AnimatedPositioned(
+                    duration: Duration(milliseconds: durationMs),
+                    curve: Curves.easeOutQuart,
+                    right: 16,
+                    bottom: bottomOffset,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 200),
+                      opacity: hideFabs ? 0.0 : 1.0,
+                      child: IgnorePointer(
+                        ignoring: hideFabs,
+                        child: child,
+                      ),
                     ),
-                  ),
+                  );
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FloatingActionButton(
+                      mini: false,
+                      heroTag: 'nearby',
+                      backgroundColor: AppColors.primary,
+                      onPressed: vm.toggleNearbyList,
+                      shape: const CircleBorder(),
+                      child: Icon(
+                        Icons.arrow_downward,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    FloatingActionButton(
+                      mini: false,
+                      heroTag: 'loc',
+                      backgroundColor: AppColors.primary,
+                      onPressed: () async {
+                        await vm.requestLocationUpdate();
+                        _mapController?.animateCamera(
+                          CameraUpdate.newLatLngZoom(
+                            vm.currentPosition,
+                            14.0,
+                          ),
+                        );
+                      },
+                      shape: const CircleBorder(),
+                      child: Icon(
+                        Icons.my_location,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

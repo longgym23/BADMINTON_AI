@@ -70,7 +70,7 @@ try {
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
   visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2-preview';
+  const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001';
   embedModel = genAI.getGenerativeModel({ model: embeddingModelName });
   console.log(`[INFO] Gemini models loaded. Embedding: ${embeddingModelName}`);
 } catch (err) {
@@ -790,7 +790,7 @@ app.post('/api/send-notification', express.json(), async (req, res) => {
 app.post('/api/sepay-webhook', express.json(), async (req, res) => {
   try {
     const { transferAmount, transferType, content, referenceCode } = req.body;
-    
+
     // 1. Kiểm tra phải là tiền vào (in) không
     if (transferType !== 'in') {
       return res.status(200).json({ success: true, message: 'Bỏ qua giao dịch tiền ra' });
@@ -807,21 +807,21 @@ app.post('/api/sepay-webhook', express.json(), async (req, res) => {
       const match = contentUpper.match(/DATSAN\s*([A-Z0-9-]+)/);
       if (match && match[1]) {
         let bookingRef = match[1].replace(/-/g, ''); // Xóa gạch ngang nếu có
-        
+
         // Thử format có dấu gạch dưới (do hệ thống cũ có thể lưu kiểu này)
         const refWithUnderscore = bookingRef.length > 5
           ? `${bookingRef.substring(0, 5)}_${bookingRef.substring(5)}`
           : bookingRef;
-        
+
         // Cập nhật trạng thái booking thành PAID
         const { data, error } = await supabaseAdmin
           .from('bookings')
           .update({ status: 'PAID', transaction_id: referenceCode })
           .or(`transaction_id.eq.${bookingRef},transaction_id.eq.${refWithUnderscore}`)
           .select();
-        
+
         if (error) throw error;
-        
+
         if (data && data.length > 0) {
           console.log(`[Webhook] Đã xác nhận ĐẶT SÂN: ${bookingRef}`);
           return res.status(200).json({ success: true, message: 'Xác nhận đặt sân thành công' });
@@ -837,17 +837,17 @@ app.post('/api/sepay-webhook', express.json(), async (req, res) => {
       if (match && match[1]) {
         // userIdShort lúc này là chuỗi 32 ký tự (đã bị bỏ dấu gạch ngang ở app)
         const str = match[1].replace(/-/g, '').toLowerCase();
-        
+
         if (str.length >= 32) {
           // Khôi phục lại định dạng UUID chuẩn (có dấu gạch ngang)
-          const fullUserId = `${str.slice(0,8)}-${str.slice(8,12)}-${str.slice(12,16)}-${str.slice(16,20)}-${str.slice(20,32)}`;
-          
+          const fullUserId = `${str.slice(0, 8)}-${str.slice(8, 12)}-${str.slice(12, 16)}-${str.slice(16, 20)}-${str.slice(20, 32)}`;
+
           // Kiểm tra xem user có tồn tại không
           const { data: users, error: userError } = await supabaseAdmin
             .from('profiles')
             .select('id')
             .eq('id', fullUserId);
-            
+
           if (users && users.length > 0) {
             // Không cần tìm PENDING nữa, ghi thẳng SUCCESS
             const { error: insertError } = await supabaseAdmin
@@ -860,7 +860,7 @@ app.post('/api/sepay-webhook', express.json(), async (req, res) => {
                 reference_id: referenceCode,
                 description: 'Nạp tiền tự động qua VietQR'
               });
-              
+
             if (insertError) throw insertError;
             console.log(`[Webhook] Đã nạp tiền cho user ${fullUserId}: ${transferAmount}đ`);
             return res.status(200).json({ success: true, message: 'Nạp tiền thành công' });
@@ -869,8 +869,8 @@ app.post('/api/sepay-webhook', express.json(), async (req, res) => {
             return res.status(200).json({ success: false, message: 'Không tìm thấy user' });
           }
         } else {
-           console.error(`[Webhook] Chuỗi NAPTIEN không đủ 32 ký tự: ${str}`);
-           return res.status(200).json({ success: false, message: 'Sai định dạng User ID' });
+          console.error(`[Webhook] Chuỗi NAPTIEN không đủ 32 ký tự: ${str}`);
+          return res.status(200).json({ success: false, message: 'Sai định dạng User ID' });
         }
       }
     }

@@ -6,6 +6,8 @@ import 'package:badminton_ai/screens/admin/manage_bookings_screen.dart';
 import 'package:badminton_ai/screens/admin/manage_courts_screen.dart';
 import 'package:badminton_ai/screens/admin/manage_users_screen.dart';
 import 'package:badminton_ai/screens/admin/events/admin_event_list_screen.dart';
+import 'package:badminton_ai/screens/admin/manage_withdrawals_screen.dart';
+import 'package:badminton_ai/screens/user/wallet/wallet_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
@@ -665,7 +667,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             MaterialPageRoute(builder: (_) => ManageCourtsScreen()),
           ),
         ),
-        if (isAdmin)
+        if (isOwner)
+          _buildGridAction(
+            title: 'Ví doanh thu',
+            icon: Icons.account_balance_wallet,
+            color: Colors.purple,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const WalletScreen()),
+            ),
+          ),
+        if (isAdmin) ...[
           _buildGridAction(
             title: 'screens.usersPermissions'.tr(),
             icon: Icons.people_alt_rounded,
@@ -675,6 +687,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               MaterialPageRoute(builder: (_) => const ManageUsersScreen()),
             ),
           ),
+          _buildGridAction(
+            title: 'Yêu cầu rút tiền',
+            icon: Icons.account_balance_wallet_rounded,
+            color: Colors.purple,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ManageWithdrawalsScreen()),
+            ),
+          ),
+        ],
       ],
     );
   }

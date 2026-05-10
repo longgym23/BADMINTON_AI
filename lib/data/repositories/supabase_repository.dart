@@ -643,7 +643,19 @@ class SupabaseRepository {
     }
   }
 
-  // --- User Management Functions (Admin) ---
+  // --- User Management Functions (Admin / Realtime Profile) ---
+  
+  /// Stream số dư của user realtime
+  Stream<int> getUserBalanceStream(String userId) {
+    return _client
+        .from('profiles')
+        .stream(primaryKey: ['id'])
+        .eq('id', userId)
+        .map((data) {
+          if (data.isEmpty) return 0;
+          return (data.first['balance'] as num?)?.toInt() ?? 0;
+        });
+  }
 
   // Lấy stream tất cả users (profiles)
   Stream<List<UserModel>> getAllUsersStream() {
