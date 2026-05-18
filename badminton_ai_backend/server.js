@@ -70,7 +70,7 @@ try {
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
   visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-  const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001';
+  const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2-preview';
   embedModel = genAI.getGenerativeModel({ model: embeddingModelName });
   console.log(`[INFO] Gemini models loaded. Embedding: ${embeddingModelName}`);
 } catch (err) {

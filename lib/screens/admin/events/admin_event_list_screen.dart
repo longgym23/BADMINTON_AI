@@ -336,7 +336,7 @@ class _EventCard extends StatelessWidget {
               // Delete Button
               IconButton(
                 icon: const Icon(
-                  Icons.delete_outline,
+                  Icons.delete_forever,
                   color: Colors.grey,
                   size: 20,
                 ),

@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/utils/dialog_utils.dart';
+import 'package:flutter/cupertino.dart';
 
 /// Card hiển thị thông tin 1 booking (nhóm slot liên tiếp).
 class BookingCard extends StatelessWidget {
@@ -89,10 +90,10 @@ const BookingCard({super.key, required this.group, required this.repo});
       isDestructive: true,
       onConfirm: () async {
         // Hiển thị dialog đang tải
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => Center(child: CircularProgressIndicator()),
+        DialogUtils.showCustomDialog(
+          context,
+          title: '',
+          content: const Center(child: CupertinoActivityIndicator()),
         );
 
         try {

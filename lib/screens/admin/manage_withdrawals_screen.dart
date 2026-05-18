@@ -1,8 +1,10 @@
+import 'package:badminton_ai/utils/snackbar_utils.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:badminton_ai/data/repositories/supabase_repository.dart';
+import 'package:badminton_ai/utils/dialog_utils.dart';
 
 class ManageWithdrawalsScreen extends StatefulWidget {
   const ManageWithdrawalsScreen({Key? key}) : super(key: key);
@@ -23,16 +25,7 @@ class _ManageWithdrawalsScreenState extends State<ManageWithdrawalsScreen> {
           .eq('id', txId);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              newStatus == 'SUCCESS'
-                  ? 'Đã duyệt yêu cầu rút tiền'
-                  : 'Đã từ chối yêu cầu rút tiền',
-            ),
-            backgroundColor: newStatus == 'SUCCESS' ? Colors.green : Colors.red,
-          ),
-        );
+        SnackbarUtils.showSuccess(context, 'Đã duyệt yêu cầu rút tiền');
       }
     } catch (e) {
       if (mounted) {
@@ -44,41 +37,16 @@ class _ManageWithdrawalsScreenState extends State<ManageWithdrawalsScreen> {
   }
 
   void _showConfirmDialog(Map<String, dynamic> tx, String status) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(
-            status == 'SUCCESS' ? 'Xác nhận duyệt?' : 'Từ chối yêu cầu?',
-          ),
-          content: Text(
-            status == 'SUCCESS'
-                ? 'Bạn đã chuyển khoản thành công cho user này?\nSố tiền: ${formatCurrency.format(tx['amount'])}'
-                : 'Bạn muốn từ chối yêu cầu này? Số tiền sẽ được hoàn lại vào ví của user.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: status == 'SUCCESS'
-                    ? Colors.green
-                    : Colors.red,
-              ),
-              onPressed: () {
-                Navigator.pop(context);
-                _updateStatus(tx['id'], status);
-              },
-              child: const Text(
-                'Đồng ý',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        );
-      },
+    DialogUtils.showConfirmDialog(
+      context,
+      title: status == 'SUCCESS' ? 'Xác nhận duyệt?' : 'Từ chối yêu cầu?',
+      content: status == 'SUCCESS'
+          ? 'Bạn đã chuyển khoản thành công cho user này?\nSố tiền: ${formatCurrency.format(tx['amount'])}'
+          : 'Bạn muốn từ chối yêu cầu này? Số tiền sẽ được hoàn lại vào ví của user.',
+      confirmText: 'Đồng ý',
+      cancelText: 'Hủy',
+      isDestructive: status != 'SUCCESS',
+      onConfirm: () => _updateStatus(tx['id'], status),
     );
   }
 
@@ -99,10 +67,17 @@ class _ManageWithdrawalsScreenState extends State<ManageWithdrawalsScreen> {
           final list = snapshot.data ?? [];
 
           if (list.isEmpty) {
-            return const Center(
-              child: Text(
-                'Không có yêu cầu rút tiền nào cần xử lý',
-                style: TextStyle(color: Colors.grey),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.wallet, size: 50, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'Không có yêu cầu rút tiền nào cần xử lý',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
               ),
             );
           }
@@ -223,13 +198,9 @@ class _ManageWithdrawalsScreenState extends State<ManageWithdrawalsScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.red,
-                                side: const BorderSide(
-                                  color: Colors.red,
-                                  width: 1.5,
-                                ),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 14,
                                 ),

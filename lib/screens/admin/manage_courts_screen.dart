@@ -992,7 +992,7 @@ class _ManageCourtsScreenState extends State<ManageCourtsScreen> {
                                   foregroundColor: Colors.red,
                                 ),
                                 icon: const Icon(
-                                  Icons.delete_outline,
+                                  Icons.delete_forever,
                                   size: 18,
                                 ),
                                 label: Text('screens.erase'.tr()),

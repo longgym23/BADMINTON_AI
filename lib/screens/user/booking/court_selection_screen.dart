@@ -14,6 +14,8 @@ import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:badminton_ai/utils/dialog_utils.dart';
 
 class CourtSelectionScreen extends StatefulWidget {
   final CourtLocationModel selectedCourt;
@@ -166,17 +168,15 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
         )
         .toList();
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(color: AppColors.primary),
-            SizedBox(width: 20),
-            Expanded(child: Text('screens.holdingASeat'.tr())),
-          ],
-        ),
+    DialogUtils.showCustomDialog(
+      context,
+      title: '',
+      content: Row(
+        children: [
+          CupertinoActivityIndicator(),
+          SizedBox(width: 20),
+          Expanded(child: Text('screens.holdingASeat'.tr())),
+        ],
       ),
     );
 

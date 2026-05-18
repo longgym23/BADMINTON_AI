@@ -12,6 +12,8 @@ import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
 import 'package:badminton_ai/viewmodels/checkout_viewmodel.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:badminton_ai/utils/dialog_utils.dart';
 
 class CheckoutScreen extends StatelessWidget {
   final CourtLocationModel selectedCourt;
@@ -284,17 +286,15 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
 
     if (!vm.isBookingCreated) {
       // TH1: Chưa reserve slot — tạo pending bookings trước
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(color: AppColors.primary),
-              SizedBox(width: 20),
-              Expanded(child: Text('checkout_screen.creatingOrder'.tr())),
-            ],
-          ),
+      DialogUtils.showCustomDialog(
+        context,
+        title: '',
+        content: Row(
+          children: [
+            CupertinoActivityIndicator(),
+            SizedBox(width: 20),
+            Expanded(child: Text('checkout_screen.creatingOrder'.tr())),
+          ],
         ),
       );
 

@@ -293,13 +293,14 @@ class _AdminBookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine color based on status (if status exists) or just use primary
     final Color statusColor = booking.status == 'PAID'
         ? Colors.green
         : (booking.status == 'cancelled' ? Colors.red : AppColors.brandOrange);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      color: Colors.white,
+      surfaceTintColor: Colors.transparent,
       elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -361,7 +362,7 @@ class _AdminBookingCard extends StatelessWidget {
                         '${booking.timeSlot}:00 - ${booking.timeSlot + 1}:00',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
-                      const Spacer(),
+                      Spacer(),
                       Text(
                         fmt.format(booking.price),
                         style: const TextStyle(
@@ -378,7 +379,7 @@ class _AdminBookingCard extends StatelessWidget {
 
             const SizedBox(width: 8),
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              icon: const Icon(Icons.delete_forever, color: Colors.red),
               onPressed: onDelete,
             ),
           ],

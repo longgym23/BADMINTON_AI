@@ -25,7 +25,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001';
+const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2-preview';
 const embedModel = genAI.getGenerativeModel({ model: embeddingModelName });
 
 // ─── Argument Parser ─────────────────────────────────────────────────────────

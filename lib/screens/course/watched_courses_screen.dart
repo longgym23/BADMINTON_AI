@@ -41,7 +41,17 @@ class _WatchedCoursesScreenState extends State<WatchedCoursesScreen> {
 
           if (courses.isEmpty) {
             return Center(
-              child: Text('screens.youHavenTViewedAnyCourses'.tr()),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.list_alt, size: 60, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'screens.youHavenTViewedAnyCourses'.tr(),
+                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
             );
           }
 

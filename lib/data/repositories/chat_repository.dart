@@ -9,7 +9,7 @@ class ChatRepository {
   final SupabaseClient _client;
 
   // ─── Backend URL tập trung, dễ thay đổi ──────────────────────────────────
-  static const String _backendBase = 'https://badminton-ai-fgsz.onrender.com';
+  static const String _backendBase = 'https://badminton-ai-1.onrender.com';
   static const String _askUrl = '$_backendBase/ask';
 
   // ─── Keep-Alive: Ping mỗi 10 phút để ngăn Render free tier ngủ đông ──────
@@ -128,8 +128,9 @@ class ChatRepository {
             ? text
             : 'Phân tích ảnh này và cho biết đây là sân gì, tình trạng sân, hoặc đồ dùng thể thao gì, cách sử dụng';
         request.fields['user_id'] = userId;
-        var streamedResponse = await request.send()
-            .timeout(const Duration(seconds: 60));
+        var streamedResponse = await request.send().timeout(
+          const Duration(seconds: 60),
+        );
         response = await http.Response.fromStream(streamedResponse);
       } else if (audioPath != null) {
         var request = http.MultipartRequest(
@@ -141,8 +142,9 @@ class ChatRepository {
         );
         if (text.isNotEmpty) request.fields['prompt'] = text;
         request.fields['user_id'] = userId;
-        var streamedResponse = await request.send()
-            .timeout(const Duration(seconds: 30));
+        var streamedResponse = await request.send().timeout(
+          const Duration(seconds: 30),
+        );
         response = await http.Response.fromStream(streamedResponse);
       } else {
         // Text: timeout 45s (đủ để Gemini xử lý, tránh chờ quá lâu)
@@ -165,9 +167,12 @@ class ChatRepository {
         answer = responseBody['answer'] ?? "Xin lỗi, tôi chưa hiểu ý bạn.";
         if (responseBody is Map<String, dynamic>) {
           aiMetadata = {
-            if (responseBody['action'] != null) 'action': responseBody['action'],
-            if (responseBody['citations'] != null) 'citations': responseBody['citations'],
-            if (responseBody['used_sources'] != null) 'used_sources': responseBody['used_sources'],
+            if (responseBody['action'] != null)
+              'action': responseBody['action'],
+            if (responseBody['citations'] != null)
+              'citations': responseBody['citations'],
+            if (responseBody['used_sources'] != null)
+              'used_sources': responseBody['used_sources'],
           };
           aiType = (responseBody['type'] as String?) ?? 'text';
         }
@@ -176,7 +181,10 @@ class ChatRepository {
         try {
           String cleanAnswer = answer.trim();
           if (cleanAnswer.startsWith('```json')) {
-            cleanAnswer = cleanAnswer.replaceAll('```json', '').replaceAll('```', '').trim();
+            cleanAnswer = cleanAnswer
+                .replaceAll('```json', '')
+                .replaceAll('```', '')
+                .trim();
           }
           if (cleanAnswer.startsWith('{') && cleanAnswer.endsWith('}')) {
             final parsedAnswer = jsonDecode(cleanAnswer);
@@ -191,7 +199,6 @@ class ChatRepository {
         } catch (e) {
           // Xử lý lỗi parse JSON ngầm, không làm gián đoạn luồng
         }
-        
       } else {
         try {
           final responseBody = jsonDecode(response.body);

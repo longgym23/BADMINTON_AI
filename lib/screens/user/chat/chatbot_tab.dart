@@ -42,7 +42,8 @@ class _ChatbotTabState extends State<ChatbotTab> {
   bool _mounted = true; // Fix: tránh setState sau dispose
   String _recognizedText = '';
   String? _pendingImagePath; // Fix: image preview kiểu ChatGPT
-  bool _useGroqFallback = true; // Bắt buộc dùng Groq Whisper để STT tiếng Việt chuẩn xác hơn
+  bool _useGroqFallback =
+      true; // Bắt buộc dùng Groq Whisper để STT tiếng Việt chuẩn xác hơn
   bool _isTranscribing = false; // true = đang gửi audio lên Groq
   String? _recordingPath; // Đường dẫn file audio đang ghi
 
@@ -78,7 +79,8 @@ class _ChatbotTabState extends State<ChatbotTab> {
       final available = await _speechToText.initialize(
         onError: (_) {},
         onStatus: (status) {
-          if (!_useGroqFallback && (status == 'done' || status == 'notListening')) {
+          if (!_useGroqFallback &&
+              (status == 'done' || status == 'notListening')) {
             if (_mounted && _isListening && _recognizedText.isNotEmpty) {
               setState(() => _isListening = false);
               _sendMessage(_recognizedText);
@@ -115,17 +117,19 @@ class _ChatbotTabState extends State<ChatbotTab> {
 
   /// Kiểm tra text có chứa ký tự CJK (Trung/Nhật/Hàn) không.
   bool _containsCJK(String text) {
-    return text.runes.any((r) =>
-      (r >= 0x4E00 && r <= 0x9FFF) ||
-      (r >= 0x3400 && r <= 0x4DBF) ||
-      (r >= 0x3000 && r <= 0x303F)
+    return text.runes.any(
+      (r) =>
+          (r >= 0x4E00 && r <= 0x9FFF) ||
+          (r >= 0x3400 && r <= 0x4DBF) ||
+          (r >= 0x3000 && r <= 0x303F),
     );
   }
 
   @override
   void dispose() {
     _mounted = false;
-    _speechToText.cancel(); // Fix: cancel thay vì stop để tránh callback sau dispose
+    _speechToText
+        .cancel(); // Fix: cancel thay vì stop để tránh callback sau dispose
     _audioRecorder.dispose(); // Cleanup recorder
     _textController.dispose();
     _scrollController.dispose();
@@ -138,9 +142,9 @@ class _ChatbotTabState extends State<ChatbotTab> {
     if (!_mounted) return;
     final auth = context.read<AppAuthProvider>();
     if (auth.authState != AuthState.authenticated) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('screens.pleaseLogInToChat'.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('screens.pleaseLogInToChat'.tr())));
       return;
     }
     // Ưu tiên pending image nếu có
@@ -163,11 +167,15 @@ class _ChatbotTabState extends State<ChatbotTab> {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (serviceEnabled) {
         LocationPermission permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
-           Position? pos = await Geolocator.getLastKnownPosition();
-           pos ??= await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.low, timeLimit: const Duration(seconds: 3));
-           lat = pos.latitude;
-           lng = pos.longitude;
+        if (permission == LocationPermission.always ||
+            permission == LocationPermission.whileInUse) {
+          Position? pos = await Geolocator.getLastKnownPosition();
+          pos ??= await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.low,
+            timeLimit: const Duration(seconds: 3),
+          );
+          lat = pos.latitude;
+          lng = pos.longitude;
         }
       }
     } catch (_) {}
@@ -175,7 +183,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
     if (!_mounted) return;
     context.read<ChatBloc>().add(
       ChatMessageSent(
-        text: messageText, 
+        text: messageText,
         imagePath: finalImage,
         userLat: lat,
         userLng: lng,
@@ -192,7 +200,8 @@ class _ChatbotTabState extends State<ChatbotTab> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text('screens.aIAssistant'.tr(),
+            Text(
+              'screens.aIAssistant'.tr(),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -211,7 +220,8 @@ class _ChatbotTabState extends State<ChatbotTab> {
                   ),
                 ),
                 SizedBox(width: 6),
-                Text('screens.oNLINE'.tr(),
+                Text(
+                  'screens.oNLINE'.tr(),
                   style: TextStyle(
                     fontSize: 10,
                     color: Colors.grey,
@@ -384,11 +394,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
                           color: Colors.white,
                         ),
                       )
-                    : Icon(
-                        Icons.stop_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                    : Icon(Icons.stop_rounded, color: Colors.white, size: 20),
               ),
             ),
             SizedBox(width: 12),
@@ -460,10 +466,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
       child: Row(
         children: [
           IconButton(
-            icon: Icon(
-              Icons.add_circle,
-              color: AppColors.brandOrange,
-            ),
+            icon: Icon(Icons.add_circle, color: AppColors.brandOrange),
             onPressed: () => _showAttachmentSheet(),
           ),
           Expanded(
@@ -493,9 +496,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
             onTap: _toggleEntryVoice,
             child: Container(
               padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(shape: BoxShape.circle),
               child: Icon(
                 Icons.mic_none_rounded,
                 color: AppColors.brandOrange,
@@ -512,7 +513,11 @@ class _ChatbotTabState extends State<ChatbotTab> {
                 color: AppColors.brandOrange,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 20),
+              child: Icon(
+                Icons.arrow_upward_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ),
         ],
@@ -570,7 +575,8 @@ class _ChatbotTabState extends State<ChatbotTab> {
         if (!hasPermission || !_mounted) return;
 
         final dir = await getTemporaryDirectory();
-        final filePath = '${dir.path}/groq_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+        final filePath =
+            '${dir.path}/groq_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
 
         try {
           await _audioRecorder.start(
@@ -605,7 +611,8 @@ class _ChatbotTabState extends State<ChatbotTab> {
             if (!_mounted) return;
 
             // CJK auto-detect → chuyển Groq im lặng + auto-retry
-            if (res.recognizedWords.isNotEmpty && _containsCJK(res.recognizedWords)) {
+            if (res.recognizedWords.isNotEmpty &&
+                _containsCJK(res.recognizedWords)) {
               _speechToText.stop();
               setState(() {
                 _isListening = false;
@@ -642,25 +649,32 @@ class _ChatbotTabState extends State<ChatbotTab> {
   void _showAttachmentSheet() {
     showModalBottomSheet(
       context: context,
-      builder: (_) => Wrap(
-        children: [
-          ListTile(
-            leading: Icon(Icons.image),
-            title: Text('screens.library'.tr()),
-            onTap: () {
-              Navigator.pop(context);
-              _pickImage(ImageSource.gallery);
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.camera_alt),
-            title: Text('Camera'),
-            onTap: () {
-              Navigator.pop(context);
-              _pickImage(ImageSource.camera);
-            },
-          ),
-        ],
+      backgroundColor: AppColors.surface,
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: Icon(Icons.image),
+              title: Text('screens.library'.tr()),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.camera_alt),
+              title: Text('Camera'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -677,7 +691,9 @@ class _ChatbotTabState extends State<ChatbotTab> {
       }
     } catch (e) {
       if (_mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi ảnh: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi ảnh: $e')));
       }
     }
   }
@@ -719,7 +735,10 @@ class _ChatbotTabState extends State<ChatbotTab> {
             ],
           ),
           SizedBox(width: 12),
-          Text('screens.selectedPhoto'.tr(), style: TextStyle(color: AppColors.textGrey, fontSize: 13)),
+          Text(
+            'screens.selectedPhoto'.tr(),
+            style: TextStyle(color: AppColors.textGrey, fontSize: 13),
+          ),
         ],
       ),
     );
@@ -754,7 +773,8 @@ class _MessageBubble extends StatelessWidget {
       return Image.file(
         file,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildBrokenImagePlaceholder(),
+        errorBuilder: (context, error, stackTrace) =>
+            _buildBrokenImagePlaceholder(),
       );
     } catch (_) {
       return _buildBrokenImagePlaceholder();
@@ -772,7 +792,10 @@ class _MessageBubble extends StatelessWidget {
           children: [
             Icon(Icons.broken_image, color: Colors.grey, size: 24),
             SizedBox(height: 4),
-            Text('screens.photoHasExpired'.tr(), style: TextStyle(color: Colors.grey, fontSize: 10)),
+            Text(
+              'screens.photoHasExpired'.tr(),
+              style: TextStyle(color: Colors.grey, fontSize: 10),
+            ),
           ],
         ),
       ),
@@ -789,22 +812,27 @@ class _MessageBubble extends StatelessWidget {
     final actionSport = action?['sport']?.toString();
 
     // Backward compatibility: fallback to legacy tags inside text.
-    final actionMatch =
-        RegExp(r'\[ACTION_SEARCH:([^\]]+)\]').firstMatch(message.text);
-    final String? legacySearchSportType =
-        !isUser && actionMatch != null ? actionMatch.group(1) : null;
+    final actionMatch = RegExp(
+      r'\[ACTION_SEARCH:([^\]]+)\]',
+    ).firstMatch(message.text);
+    final String? legacySearchSportType = !isUser && actionMatch != null
+        ? actionMatch.group(1)
+        : null;
 
     final String? searchSportType = actionType == 'search_courts'
         ? (actionSport ?? legacySearchSportType)
         : legacySearchSportType;
 
-    final viewSchedule = !isUser &&
+    final viewSchedule =
+        !isUser &&
         (actionType == 'view_schedule' ||
             message.text.contains('[ACTION_VIEW_SCHEDULE]'));
-    final viewExpense = !isUser &&
+    final viewExpense =
+        !isUser &&
         (actionType == 'view_expense' ||
             message.text.contains('[ACTION_VIEW_EXPENSE]'));
-    final cancelBooking = !isUser &&
+    final cancelBooking =
+        !isUser &&
         (actionType == 'cancel_booking' ||
             message.text.contains('[ACTION_CANCEL_BOOKING]'));
 
@@ -817,13 +845,20 @@ class _MessageBubble extends StatelessWidget {
 
     final nearbyCourtsData = message.metadata?['nearby_courts'];
     List<CourtLocationModel>? backendCourts;
-    if (nearbyCourtsData != null && nearbyCourtsData is List && nearbyCourtsData.isNotEmpty) {
-      backendCourts = nearbyCourtsData.map((e) => CourtLocationModel.fromSupabase(Map<String, dynamic>.from(e as Map))).toList();
+    if (nearbyCourtsData != null &&
+        nearbyCourtsData is List &&
+        nearbyCourtsData.isNotEmpty) {
+      backendCourts = nearbyCourtsData
+          .map(
+            (e) => CourtLocationModel.fromSupabase(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList();
     }
 
     // Check for "Success Card" trigger
-    bool isSuccessCard =
-        !isUser && message.type == 'booking_success';
+    bool isSuccessCard = !isUser && message.type == 'booking_success';
 
     if (isSuccessCard) {
       return _buildSuccessCard(context);
@@ -832,7 +867,9 @@ class _MessageBubble extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Column(
-        crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: isUser
@@ -865,8 +902,12 @@ class _MessageBubble extends StatelessWidget {
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
-                      bottomLeft: isUser ? const Radius.circular(16) : Radius.zero,
-                      bottomRight: isUser ? Radius.zero : const Radius.circular(16),
+                      bottomLeft: isUser
+                          ? const Radius.circular(16)
+                          : Radius.zero,
+                      bottomRight: isUser
+                          ? Radius.zero
+                          : const Radius.circular(16),
                     ),
                     boxShadow: !isUser
                         ? [
@@ -901,7 +942,9 @@ class _MessageBubble extends StatelessWidget {
                               ? 'screens.belowAreTheCoursesYouCan'.tr()
                               : cleanText,
                           style: TextStyle(
-                            color: isUser ? AppColors.surface : AppColors.textBlack,
+                            color: isUser
+                                ? AppColors.surface
+                                : AppColors.textBlack,
                             fontSize: 15,
                           ),
                         ),
@@ -912,14 +955,17 @@ class _MessageBubble extends StatelessWidget {
               if (isUser) SizedBox(width: 40), // Spacer
             ],
           ),
-          
+
           // Thêm Carousel hiển thị sân nếu có action
           if (searchSportType != null)
             Padding(
               padding: EdgeInsets.only(top: 8, left: 40),
-              child: _CourtListCarousel(sportType: searchSportType, backendCourts: backendCourts),
+              child: _CourtListCarousel(
+                sportType: searchSportType,
+                backendCourts: backendCourts,
+              ),
             ),
-          
+
           // Thêm nút hành động cho các action
           if (!isUser && (viewSchedule || viewExpense || cancelBooking))
             Padding(
@@ -932,7 +978,9 @@ class _MessageBubble extends StatelessWidget {
                       label: 'screens.viewCalendar'.tr(),
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const BookingHistoryScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const BookingHistoryScreen(),
+                        ),
                       ),
                     ),
                   if (viewExpense)
@@ -941,7 +989,9 @@ class _MessageBubble extends StatelessWidget {
                       label: 'screens.seeSpending'.tr(),
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const StatisticsScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const StatisticsScreen(),
+                        ),
                       ),
                     ),
                   if (cancelBooking)
@@ -950,7 +1000,9 @@ class _MessageBubble extends StatelessWidget {
                       label: 'screens.cancelTheField1'.tr(),
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const BookingHistoryScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const BookingHistoryScreen(),
+                        ),
                       ),
                     ),
                 ],
@@ -981,14 +1033,11 @@ class _MessageBubble extends StatelessWidget {
                   color: AppColors.success,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.check,
-                  color: AppColors.surface,
-                  size: 16,
-                ),
+                child: Icon(Icons.check, color: AppColors.surface, size: 16),
               ),
               SizedBox(width: 8),
-              Text('screens.transactionRecorded'.tr(),
+              Text(
+                'screens.transactionRecorded'.tr(),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.success,
@@ -1008,10 +1057,7 @@ class _MessageBubble extends StatelessWidget {
                   color: AppColors.primaryBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  Icons.sports_soccer,
-                  color: AppColors.primary,
-                ),
+                child: Icon(Icons.sports_soccer, color: AppColors.primary),
               ),
               SizedBox(width: 12),
               Column(
@@ -1051,12 +1097,16 @@ class _MessageBubble extends StatelessWidget {
                 final c = citations[index];
                 final m = c is Map ? c : const {};
                 final id = m['id']?.toString() ?? 'S\${index + 1}';
-                final title = m['title']?.toString() ?? (m['source']?.toString() ?? 'KB');
+                final title =
+                    m['title']?.toString() ?? (m['source']?.toString() ?? 'KB');
                 final excerpt = m['excerpt']?.toString() ?? '';
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('\$id • \$title', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      '\$id • \$title',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     if (excerpt.isNotEmpty)
                       Padding(
                         padding: EdgeInsets.only(top: 6),
@@ -1069,7 +1119,13 @@ class _MessageBubble extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('screens.close'.tr(), style: TextStyle(color: Colors.blue))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'screens.close'.tr(),
+              style: TextStyle(color: Colors.blue),
+            ),
+          ),
         ],
       ),
     );
@@ -1102,25 +1158,35 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
 
   Future<void> _fetchCourts() async {
     try {
-      final allData = await Supabase.instance.client.from('courts').select().limit(20);
-      final allCourts = allData.map((e) => CourtLocationModel.fromSupabase(e)).toList();
-      
+      final allData = await Supabase.instance.client
+          .from('courts')
+          .select()
+          .limit(20);
+      final allCourts = allData
+          .map((e) => CourtLocationModel.fromSupabase(e))
+          .toList();
+
       // Lọc logic tại app để đảm bảo linh hoạt
       courts = allCourts.where((c) {
         final t = (c.sportType ?? c.name).toLowerCase();
         final q = widget.sportType.toLowerCase();
-        if (q == 'football' && (t.contains('screens.football1'.tr()) || t.contains('football'))) return true;
-        if (q == 'badminton' && (t.contains('screens.badminton1'.tr()) || t.contains('badminton'))) return true;
+        if (q == 'football' &&
+            (t.contains('screens.football1'.tr()) || t.contains('football')))
+          return true;
+        if (q == 'badminton' &&
+            (t.contains('screens.badminton1'.tr()) || t.contains('badminton')))
+          return true;
         if (q == 'tennis' && (t.contains('tennis'))) return true;
-        if (q == 'pickleball' && (t.contains('pickleball') || t.contains('pickle'))) return true;
+        if (q == 'pickleball' &&
+            (t.contains('pickleball') || t.contains('pickle')))
+          return true;
         return t.contains(q);
       }).toList();
-      
+
       // Nếu không tìm thấy, gợi ý đại các sân phổ biến
       if (courts.isEmpty) {
-         courts = allCourts.take(4).toList(); 
+        courts = allCourts.take(4).toList();
       }
-
     } catch (e) {
       debugPrint("Lỗi fetch sân cho carousel: $e");
     } finally {
@@ -1138,16 +1204,19 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
-    
+
     if (courts.isEmpty) {
       return Container(
-         padding: EdgeInsets.all(12),
-         decoration: BoxDecoration(
-           color: AppColors.surface,
-           borderRadius: BorderRadius.circular(8),
-           border: Border.all(color: AppColors.borderColor),
-         ),
-         child: Text('screens.thereAreCurrentlyNoSuitabl'.tr(), style: TextStyle(color: AppColors.textGrey, fontSize: 13)),
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.borderColor),
+        ),
+        child: Text(
+          'screens.thereAreCurrentlyNoSuitabl'.tr(),
+          style: TextStyle(color: AppColors.textGrey, fontSize: 13),
+        ),
       );
     }
 
@@ -1166,11 +1235,11 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.borderColor),
               boxShadow: [
-                 BoxShadow(
-                   color: Colors.black.withValues(alpha: 0.04),
-                   blurRadius: 4,
-                   offset: const Offset(0, 2),
-                 )
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
               ],
             ),
             child: Column(
@@ -1184,13 +1253,24 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
                     width: double.infinity,
                     color: AppColors.primaryBg,
                     child: court.imageUrl != null && court.imageUrl!.isNotEmpty
-                         ? CachedNetworkImage(
-                             imageUrl: court.imageUrl!,
-                             fit: BoxFit.cover,
-                             errorWidget: (_,__,___) => Icon(Icons.sports_tennis, color: AppColors.primary),
-                             placeholder: (_,__) => Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
-                           )
-                         : Icon(Icons.sports_score, color: AppColors.primary),
+                        ? CachedNetworkImage(
+                            imageUrl: court.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorWidget: (_, __, ___) => Icon(
+                              Icons.sports_tennis,
+                              color: AppColors.primary,
+                            ),
+                            placeholder: (_, __) => Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Icon(Icons.sports_score, color: AppColors.primary),
                   ),
                 ),
                 Padding(
@@ -1203,25 +1283,44 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
                         court.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textBlack),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: AppColors.textBlack,
+                        ),
                       ),
                       SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(Icons.monetization_on_outlined, size: 12, color: AppColors.brandOrangeDark),
+                          Icon(
+                            Icons.monetization_on_outlined,
+                            size: 12,
+                            color: AppColors.brandOrangeDark,
+                          ),
                           SizedBox(width: 4),
                           Text(
                             "${court.pricePerHour.toInt()}đ/h",
-                            style: TextStyle(color: AppColors.brandOrangeDark, fontSize: 12, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: AppColors.brandOrangeDark,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           if (court.distanceKm != null) ...[
-                             const Spacer(),
-                             Icon(Icons.location_on, size: 12, color: AppColors.primary),
-                             SizedBox(width: 2),
-                             Text(
-                               "${court.distanceKm!.toStringAsFixed(1)}km",
-                               style: TextStyle(color: AppColors.textGrey, fontSize: 11),
-                             ),
+                            const Spacer(),
+                            Icon(
+                              Icons.location_on,
+                              size: 12,
+                              color: AppColors.primary,
+                            ),
+                            SizedBox(width: 2),
+                            Text(
+                              "${court.distanceKm!.toStringAsFixed(1)}km",
+                              style: TextStyle(
+                                color: AppColors.textGrey,
+                                fontSize: 11,
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -1231,24 +1330,32 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
                         height: 26,
                         child: ElevatedButton(
                           onPressed: () {
-                             Navigator.push(
-                               context,
-                               MaterialPageRoute(
-                                 builder: (context) => CourtSelectionScreen(
-                                   selectedCourt: court,
-                                   selectedDate: DateTime.now(),
-                                 ),
-                               ),
-                             );
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CourtSelectionScreen(
+                                  selectedCourt: court,
+                                  selectedDate: DateTime.now(),
+                                ),
+                              ),
+                            );
                           },
                           style: ElevatedButton.styleFrom(
-                             padding: EdgeInsets.zero,
-                             elevation: 0,
-                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))
+                            padding: EdgeInsets.zero,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                           ),
-                          child: Text('screens.bookNow'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          child: Text(
+                            'screens.bookNow'.tr(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -1334,9 +1441,10 @@ class _WaveformBarState extends State<_WaveformBar>
     // Chiều cao random cho mỗi bar
     final minH = 4.0 + (widget.index % 3) * 2;
     final maxH = 10.0 + (widget.index * 7) % 16;
-    _animation = Tween<double>(begin: minH, end: maxH).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _animation = Tween<double>(
+      begin: minH,
+      end: maxH,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -1360,4 +1468,3 @@ class _WaveformBarState extends State<_WaveformBar>
     );
   }
 }
-

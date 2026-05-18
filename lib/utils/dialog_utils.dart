@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 class DialogUtils {
   static Future<void> showConfirmDialog(
@@ -10,28 +11,26 @@ class DialogUtils {
     bool isDestructive = false,
     required VoidCallback onConfirm,
   }) async {
-    return showDialog(
+    return showCupertinoDialog(
       context: context,
       builder: (BuildContext dialogContext) {
-        return AlertDialog(
+        return CupertinoAlertDialog(
           title: Text(title),
           content: Text(content),
           actions: [
-            TextButton(
+            CupertinoDialogAction(
               onPressed: () {
                 Navigator.pop(dialogContext);
               },
-              child: Text(cancelText, style: const TextStyle(color: Colors.blue)),
+              child: Text(cancelText),
             ),
-            TextButton(
+            CupertinoDialogAction(
+              isDestructiveAction: isDestructive,
               onPressed: () {
                 Navigator.pop(dialogContext);
                 onConfirm();
               },
-              child: Text(
-                confirmText,
-                style: TextStyle(color: isDestructive ? Colors.red : Colors.blue),
-              ),
+              child: Text(confirmText),
             ),
           ],
         );
@@ -43,12 +42,12 @@ class DialogUtils {
     BuildContext context, {
     required String title,
     required Widget content,
-    List<TextButton>? actions,
+    List<Widget>? actions,
   }) {
-    return showDialog<T>(
+    return showCupertinoDialog<T>(
       context: context,
       builder: (BuildContext dialogContext) {
-        return AlertDialog(
+        return CupertinoAlertDialog(
           title: Text(title),
           content: Padding(
             padding: const EdgeInsets.only(top: 8.0),
@@ -70,19 +69,19 @@ class DialogUtils {
     String confirmText = 'Đóng',
     VoidCallback? onConfirm,
   }) async {
-    return showDialog(
+    return showCupertinoDialog(
       context: context,
       builder: (BuildContext dialogContext) {
-        return AlertDialog(
+        return CupertinoAlertDialog(
           title: Text(title),
           content: Text(content),
           actions: [
-            TextButton(
+            CupertinoDialogAction(
               onPressed: () {
                 Navigator.pop(dialogContext);
                 if (onConfirm != null) onConfirm();
               },
-              child: Text(confirmText, style: const TextStyle(color: Colors.blue)),
+              child: Text(confirmText),
             ),
           ],
         );

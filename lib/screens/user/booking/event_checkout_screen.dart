@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:badminton_ai/utils/dialog_utils.dart';
 
 class EventCheckoutScreen extends StatelessWidget {
   final EventModel event;
@@ -73,49 +75,34 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
   bool _paymentPlaceholderCreated = false;
 
   void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        content: Material(
-          color: Colors.transparent,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.check_circle,
-                color: AppColors.success,
-                size: 60,
-              ),
-              SizedBox(height: 16),
-              Text('screens.confirmedSuccessfully'.tr(),
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Bạn đã đặt ${widget.quantity} vé tham gia sự kiện:\n"${widget.event.title}"',
-                textAlign: TextAlign.center,
-              ),
-            ],
+    DialogUtils.showCustomDialog(
+      context,
+      title: 'screens.confirmedSuccessfully'.tr(),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.check_circle,
+            color: AppColors.success,
+            size: 60,
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            child: Text('screens.completed'.tr(),
-              style: TextStyle(
-                color: Colors.deepOrange,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+          SizedBox(height: 16),
+          Text(
+            'Bạn đã đặt ${widget.quantity} vé tham gia sự kiện:\n"${widget.event.title}"',
+            textAlign: TextAlign.center,
           ),
         ],
       ),
+      actions: [
+        CupertinoDialogAction(
+          onPressed: () {
+            Navigator.pop(context);
+            Navigator.pop(context);
+            Navigator.pop(context);
+          },
+          child: Text('screens.completed'.tr()),
+        ),
+      ],
     );
   }
 

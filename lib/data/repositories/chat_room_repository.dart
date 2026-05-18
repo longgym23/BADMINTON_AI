@@ -231,13 +231,18 @@ class ChatRoomRepository {
   }
 
   /// Khởi tạo phòng chat nhóm
-  Future<String> createGroupRoom(String name, List<String> memberIds, {String? avatarUrl, String? sportType}) async {
+  Future<String> createGroupRoom(
+    String name,
+    List<String> memberIds, {
+    String? avatarUrl,
+    String? sportType,
+  }) async {
     // 1. Tạo phòng mới
     final roomData = {'is_group': true, 'name': name};
     if (avatarUrl != null) roomData['avatar_url'] = avatarUrl;
     if (sportType != null) roomData['sport_type'] = sportType;
     if (memberIds.isNotEmpty) roomData['admin_id'] = memberIds.first;
-    
+
     final roomInsert = await _client
         .from('chat_rooms')
         .insert(roomData)
@@ -335,29 +340,43 @@ class ChatRoomRepository {
 
           // Gọi API bắn Push Notification (FCM)
           try {
-            final senderProfileData = await _client.from('profiles').select('display_name').eq('id', senderId).single();
+            final senderProfileData = await _client
+                .from('profiles')
+                .select('display_name')
+                .eq('id', senderId)
+                .single();
             final senderName = senderProfileData['display_name'] ?? 'Ai đó';
-            
-            final roomData = await _client.from('chat_rooms').select('is_group').eq('id', roomId).single();
+
+            final roomData = await _client
+                .from('chat_rooms')
+                .select('is_group')
+                .eq('id', roomId)
+                .single();
             final bool isGroup = roomData['is_group'] == true;
 
             final notificationTitle = isGroup ? 'Tin nhắn nhóm' : senderName;
-            final notificationBody = content.isNotEmpty ? (isGroup ? '$senderName: $content' : content) : 'Đã gửi một hình ảnh';
+            final notificationBody = content.isNotEmpty
+                ? (isGroup ? '$senderName: $content' : content)
+                : 'Đã gửi một hình ảnh';
 
-            await http.post(
-              Uri.parse('https://badminton-ai-fgsz.onrender.com/api/send-notification'),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({
-                'receiver_id': memberId,
-                'title': notificationTitle,
-                'body': notificationBody,
-                'data': {
-                  'type': 'chat',
-                  'room_id': roomId,
-                  'sender_id': senderId
-                }
-              }),
-            ).timeout(const Duration(seconds: 10));
+            await http
+                .post(
+                  Uri.parse(
+                    'https://badminton-ai-1.onrender.com/api/send-notification',
+                  ),
+                  headers: {'Content-Type': 'application/json'},
+                  body: jsonEncode({
+                    'receiver_id': memberId,
+                    'title': notificationTitle,
+                    'body': notificationBody,
+                    'data': {
+                      'type': 'chat',
+                      'room_id': roomId,
+                      'sender_id': senderId,
+                    },
+                  }),
+                )
+                .timeout(const Duration(seconds: 10));
           } catch (e) {
             print('Lỗi gọi API gửi Push Notification: $e');
           }
@@ -402,7 +421,9 @@ class ChatRoomRepository {
 
   /// Rời khỏi nhóm
   Future<void> leaveGroup(String roomId, String userId) async {
-    await _client.from('chat_room_members').delete()
+    await _client
+        .from('chat_room_members')
+        .delete()
         .eq('room_id', roomId)
         .eq('user_id', userId);
   }

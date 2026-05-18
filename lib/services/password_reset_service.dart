@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class PasswordResetService {
-  static const String _baseUrl = 'https://badminton-ai-fgsz.onrender.com';
+  static const String _baseUrl = 'https://badminton-ai-1.onrender.com';
 
   /// Gửi OTP đến email
   /// Trả về: null nếu thành công, chuỗi lỗi nếu thất bại
@@ -49,12 +49,21 @@ class PasswordResetService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        return (resetToken: data['resetToken'] as String?, error: null as String?);
+        return (
+          resetToken: data['resetToken'] as String?,
+          error: null as String?,
+        );
       } else {
-        return (resetToken: null as String?, error: (data['error'] as String?) ?? 'OTP không hợp lệ.');
+        return (
+          resetToken: null as String?,
+          error: (data['error'] as String?) ?? 'OTP không hợp lệ.',
+        );
       }
     } on Exception catch (e) {
-      return (resetToken: null as String?, error: 'Không thể kết nối server: $e');
+      return (
+        resetToken: null as String?,
+        error: 'Không thể kết nối server: $e',
+      );
     }
   }
 

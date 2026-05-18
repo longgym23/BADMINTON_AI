@@ -15,6 +15,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/screens/user/booking/court_selection_screen.dart';
+import 'package:badminton_ai/utils/dialog_utils.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_state.dart';
@@ -157,35 +158,23 @@ class _HomeTabState extends State<HomeTab> {
     final isLink =
         uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
 
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          isLink ? 'home_tab.openLink'.tr() : 'home_tab.scanResult'.tr(),
-        ),
-        content: Text(scannedCode),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'common.cancel'.tr(),
-              style: TextStyle(color: Colors.blue),
-            ),
-          ),
-          if (isLink)
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                launchUrl(uri, mode: LaunchMode.externalApplication);
-              },
-              child: Text(
-                'home_tab.open'.tr(),
-                style: TextStyle(color: Colors.blue),
-              ),
-            ),
-        ],
-      ),
-    );
+    if (isLink) {
+      DialogUtils.showConfirmDialog(
+        context,
+        title: 'home_tab.openLink'.tr(),
+        content: scannedCode,
+        cancelText: 'common.cancel'.tr(),
+        confirmText: 'home_tab.open'.tr(),
+        onConfirm: () => launchUrl(uri, mode: LaunchMode.externalApplication),
+      );
+    } else {
+      DialogUtils.showAlertDialog(
+        context,
+        title: 'home_tab.scanResult'.tr(),
+        content: scannedCode,
+        confirmText: 'common.cancel'.tr(),
+      );
+    }
   }
 
   void _showFilterModal() {
