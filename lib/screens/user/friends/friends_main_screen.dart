@@ -44,7 +44,8 @@ class _FriendsMainScreenState extends State<FriendsMainScreen> {
           backgroundColor: AppColors.background,
           appBar: AppBar(
             centerTitle: false,
-            title: Text('screens.community'.tr(),
+            title: Text(
+              'screens.community'.tr(),
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w800,
@@ -221,14 +222,18 @@ class _FriendsListTabState extends State<_FriendsListTab> {
               }
 
               if (friends.isEmpty) {
-                return Center(child: Text('screens.noFriendsFound'.tr()));
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.group, size: 60, color: Colors.grey),
+                    SizedBox(height: 16),
+                    Text('screens.noFriendsFound'.tr()),
+                  ],
+                );
               }
 
               return ListView.builder(
-                padding: EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
+                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 itemCount: friends.length,
                 itemBuilder: (context, index) {
                   final friend = friends[index];
@@ -256,7 +261,6 @@ class _FriendsListTabState extends State<_FriendsListTab> {
         ),
         child: Builder(
           builder: (context) {
-            
             return TextField(
               controller: _searchController,
               onChanged: (val) => setState(() => _searchQuery = val),
@@ -310,10 +314,7 @@ class _FriendCard extends StatelessWidget {
           child: Material(
             color: Colors.transparent,
             child: ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               leading: Stack(
                 children: [
                   Container(
@@ -496,7 +497,16 @@ class _PendingRequestsTab extends StatelessWidget {
         final requests = provider.pendingRequests;
 
         if (requests.isEmpty) {
-          return Center(child: Text('screens.thereAreNoFriendRequests'.tr()));
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.person_add, size: 60, color: Colors.grey),
+                SizedBox(height: 16),
+                Text('screens.thereAreNoFriendRequests'.tr()),
+              ],
+            ),
+          );
         }
 
         return ListView.builder(
@@ -565,7 +575,8 @@ class _PendingRequestsTab extends StatelessWidget {
                             color: AppColors.textBlack,
                           ),
                         ),
-                        subtitle: Text('screens.wantToMakeFriendsWithYou'.tr(),
+                        subtitle: Text(
+                          'screens.wantToMakeFriendsWithYou'.tr(),
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textGrey,
@@ -599,11 +610,10 @@ class _PendingRequestsTab extends StatelessWidget {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
+                                padding: EdgeInsets.symmetric(horizontal: 16),
                               ),
-                              child: Text('screens.accept'.tr(),
+                              child: Text(
+                                'screens.accept'.tr(),
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,

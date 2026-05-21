@@ -48,8 +48,9 @@ const BookingCard({super.key, required this.group, required this.repo});
     }
   }
 
-  (String, Color, Color, IconData) _resolveStatus(bool isCancelled, bool isCompleted) {
-    if (isCancelled) return ('booking_history_screen.statusCancelled'.tr(), AppColors.textGrey, AppColors.borderColor, Icons.cancel);
+  (String, Color, Color, IconData) _resolveStatus(String status, bool isCompleted) {
+    if (status == 'cancelled') return ('booking_history_screen.statusCancelled'.tr(), AppColors.textGrey, AppColors.borderColor, Icons.cancel);
+    if (status == 'PENDING_PAYMENT') return ('booking_history_screen.statusPending'.tr(), Colors.orange, const Color(0xFFFFF3E0), Icons.hourglass_empty);
     if (isCompleted) return ('booking_history_screen.statusCompleted'.tr(), AppColors.success, AppColors.successBg, Icons.check_circle);
     return ('booking_history_screen.statusUpcoming'.tr(), AppColors.primary, AppColors.primaryBg, Icons.calendar_today);
   }
@@ -70,15 +71,22 @@ const BookingCard({super.key, required this.group, required this.repo});
     int expectedRefund = 0;
     String refundMsg = "";
 
-    if (diffHours >= 2) {
-      expectedRefund = group.price;
-      refundMsg = "Bạn hủy trước 2 giờ, hệ thống sẽ hoàn 100% (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(expectedRefund)}) vào Số Dư Ví.";
-    } else if (diffMinutes > 0) {
-      expectedRefund = (group.price * 0.5).toInt();
-      refundMsg = "Bạn hủy trong vòng 2 giờ (chưa tới giờ chơi), sẽ được hoàn 50% (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(expectedRefund)}) vào Số Dư Ví.";
-    } else {
+    final bool isPaid = group.base.status == 'PAID';
+
+    if (!isPaid) {
       expectedRefund = 0;
-      refundMsg = 'screens.ifThePlayingTimeHasReache'.tr();
+      refundMsg = "Lịch đặt này chưa thanh toán, hệ thống sẽ hủy chỗ và không hoàn lại tiền.";
+    } else {
+      if (diffHours >= 2) {
+        expectedRefund = group.price;
+        refundMsg = "Bạn hủy trước 2 giờ, hệ thống sẽ hoàn 100% (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(expectedRefund)}) vào Số Dư Ví.";
+      } else if (diffMinutes > 0) {
+        expectedRefund = (group.price * 0.5).toInt();
+        refundMsg = "Bạn hủy trong vòng 2 giờ (chưa tới giờ chơi), sẽ được hoàn 50% (${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(expectedRefund)}) vào Số Dư Ví.";
+      } else {
+        expectedRefund = 0;
+        refundMsg = 'screens.ifThePlayingTimeHasReache'.tr();
+      }
     }
 
     DialogUtils.showConfirmDialog(
@@ -123,8 +131,9 @@ const BookingCard({super.key, required this.group, required this.repo});
 
     final isCancelled = booking.status == 'cancelled';
     final isCompleted = !isCancelled && bookingTime.isBefore(now);
+    final isEvent = booking.transactionId?.startsWith('EVENT_') ?? false;
 
-    final (statusText, statusColor, statusBgColor, statusIcon) = _resolveStatus(isCancelled, isCompleted);
+    final (statusText, statusColor, statusBgColor, statusIcon) = _resolveStatus(booking.status, isCompleted);
     final currencyFmt = NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0);
 
     return Container(
@@ -170,7 +179,11 @@ const BookingCard({super.key, required this.group, required this.repo});
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _CourtIcon(courtNumber: booking.courtNumber, label: 'booking_history_screen.court'.tr()),
+                    _CourtIcon(
+                      courtNumber: booking.courtNumber, 
+                      label: isEvent ? 'Sự Kiện' : 'booking_history_screen.court'.tr(),
+                      isEvent: isEvent,
+                    ),
                     SizedBox(width: 14),
                     Expanded(
                       child: Column(
@@ -194,8 +207,9 @@ const BookingCard({super.key, required this.group, required this.repo});
                           SizedBox(height: 3),
                           _InfoRow(
                             icon: Icons.access_time,
-                            text:
-                                '${group.startSlot}:00 - ${group.endSlot}:00 (${group.endSlot - group.startSlot}${'booking_history_screen.hours'.tr()})',
+                            text: isEvent
+                                ? 'Bắt đầu: ${group.startSlot}:00 (Mở cửa từ giờ này)'
+                                : '${group.startSlot}:00 - ${group.endSlot}:00 (${group.endSlot - group.startSlot}${'booking_history_screen.hours'.tr()})',
                           ),
                         ],
                       ),
@@ -284,23 +298,24 @@ class _StatusBadge extends StatelessWidget {
 class _CourtIcon extends StatelessWidget {
   final int courtNumber;
   final String label;
+  final bool isEvent;
 
-  const _CourtIcon({required this.courtNumber, required this.label});
+  const _CourtIcon({required this.courtNumber, required this.label, this.isEvent = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 48,
       height: 48,
-      decoration: BoxDecoration(color: AppColors.primaryBg, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(color: isEvent ? AppColors.successBg : AppColors.primaryBg, borderRadius: BorderRadius.circular(14)),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.sports_tennis, color: AppColors.primary, size: 18),
+          Icon(isEvent ? Icons.event_available : Icons.sports_tennis, color: isEvent ? AppColors.success : AppColors.primary, size: 18),
           SizedBox(height: 2),
           Text(
-            '$label $courtNumber',
-            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 9),
+            isEvent ? label : '$label $courtNumber',
+            style: TextStyle(color: isEvent ? AppColors.success : AppColors.primary, fontWeight: FontWeight.bold, fontSize: 9),
             textAlign: TextAlign.center,
           ),
         ],

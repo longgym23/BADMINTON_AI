@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
+import 'package:badminton_ai/utils/picker_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -64,15 +65,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    // ScaffoldMessenger.of(context).showSnackBar(
-    //   SnackBar(
-    //     content: Text(
-    //       success
-    //           ? 'screens.updatedProfilePictureSucces'.tr()
-    //           : 'screens.failedToUpdateProfilePictu'.tr(),
-    //     ),
-    //   ),
-    // );
     AppToast.show(
       context,
       success
@@ -89,56 +81,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (!mounted) return;
     AppToast.show(
       context,
-      success ? 'screens.deletedPhotosSuccessfully'.tr() : 'screens.photoDeletionFailed'.tr(),
+      success
+          ? 'screens.deletedPhotosSuccessfully'.tr()
+          : 'screens.photoDeletionFailed'.tr(),
       type: success ? ToastType.success : ToastType.error,
     );
   }
 
+  /// Mở date picker theo chuẩn Cupertino của ứng dụng thông qua [PickerUtils].
   Future<void> _selectDate() async {
-    DateTime temp = _selectedDate ?? DateTime.now();
-    await showCupertinoModalPopup<void>(
-      context: context,
-      builder: (ctx) => Container(
-        height: 300,
-        padding: EdgeInsets.only(top: 6.0),
-        margin: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        color: CupertinoColors.systemBackground.resolveFrom(ctx),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CupertinoButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: Text('screens.cancel1'.tr(),
-                    style: TextStyle(color: AppColors.textGrey),
-                  ),
-                ),
-                CupertinoButton(
-                  onPressed: () {
-                    setState(() => _selectedDate = temp);
-                    Navigator.of(ctx).pop();
-                  },
-                  child: Text(
-                    'Xong',
-                    style: TextStyle(color: AppColors.brandOrange),
-                  ),
-                ),
-              ],
-            ),
-            Expanded(
-              child: CupertinoDatePicker(
-                initialDateTime: _selectedDate ?? DateTime.now(),
-                mode: CupertinoDatePickerMode.date,
-                minimumYear: 1900,
-                maximumDate: DateTime.now(),
-                onDateTimeChanged: (dt) => temp = dt,
-              ),
-            ),
-          ],
-        ),
-      ),
+    final picked = await PickerUtils.showDatePicker(
+      context,
+      initialDate: _selectedDate,
+      maximumDate: DateTime.now(),
+      minimumYear: 1900,
     );
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   Future<void> _saveChanges() async {
@@ -153,7 +111,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
 
     if (!mounted) return;
-    AppToast.show(context, 'screens.updatedSuccessfully'.tr(), type: ToastType.success);
+    AppToast.show(
+      context,
+      'screens.updatedSuccessfully'.tr(),
+      type: ToastType.success,
+    );
     if (success) Navigator.pop(context);
   }
 
@@ -166,69 +128,74 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     return Scaffold(
       appBar: CustomGradientAppBar(
-        title: Text('screens.editPersonalInformation'.tr(),
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        title: Text(
+          'screens.editPersonalInformation'.tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.chevron_left, size: 30, color: Colors.white),
+          icon: const Icon(Icons.chevron_left, size: 30, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       bottomNavigationBar: _buildBottomBar(authProvider),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('screens.accountInformation'.tr(),
+              Text(
+                'screens.accountInformation'.tr(),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-              Text('screens.avatar'.tr(),
-                style: TextStyle(
+              Text(
+                'screens.avatar'.tr(),
+                style: const TextStyle(
                   color: AppColors.textBlack,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               _buildAvatarCard(user, authProvider),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               _buildLabel('screens.fullName1'.tr(), isRequired: true),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               _buildTextField(
                 controller: _nameController,
                 hintText: 'screens.enterFullName'.tr(),
                 validator: (val) =>
-                    (val == null || val.isEmpty) ? 'screens.pleaseEnterAName'.tr() : null,
+                    (val == null || val.isEmpty)
+                        ? 'screens.pleaseEnterAName'.tr()
+                        : null,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               _buildLabel('screens.phoneNumber1'.tr(), isRequired: true),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               _buildPhoneField(),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               _buildLabel('Email', isRequired: false),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               _buildTextField(
                 controller: _emailController,
                 hintText: 'screens.enterEmail'.tr(),
                 enabled: false,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               _buildDateAndGenderRow(),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -241,21 +208,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget _buildBottomBar(AppAuthProvider authProvider) {
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
             Expanded(
               child: OutlinedButton(
                 onPressed: () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  side: BorderSide(color: AppColors.primary),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: const BorderSide(color: AppColors.primary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: Text('screens.cancel'.tr(),
-                  style: TextStyle(
+                child: Text(
+                  'screens.cancel'.tr(),
+                  style: const TextStyle(
                     color: AppColors.primary,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -263,15 +231,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Expanded(
               child: ElevatedButton(
-                onPressed: authProvider.isUpdatingProfile ? null : _saveChanges,
+                onPressed:
+                    authProvider.isUpdatingProfile ? null : _saveChanges,
                 style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: authProvider.isUpdatingProfile
-                    ? SizedBox(
+                    ? const SizedBox(
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(
@@ -279,8 +248,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : Text('screens.save'.tr(),
-                        style: TextStyle(
+                    : Text(
+                        'screens.save'.tr(),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -302,7 +272,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: BoxDecoration(
         border: Border.all(color: AppColors.borderColor),
         borderRadius: BorderRadius.circular(12),
@@ -328,7 +298,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ? Center(
                     child: Text(
                       initials,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -345,7 +315,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 color: Colors.black45,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Center(
+              child: const Center(
                 child: CircularProgressIndicator(
                   color: Colors.white,
                   strokeWidth: 2,
@@ -359,7 +329,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.camera_alt_sharp,
                     color: AppColors.primary,
                   ),
@@ -367,7 +337,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   onPressed: _pickAndUploadImage,
                 ),
                 IconButton(
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.delete_forever,
                     color: Colors.redAccent,
                   ),
@@ -385,7 +355,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void _confirmDeleteAvatar(user) {
     if (user?.photoUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('screens.youDonTHaveAProfilePictu'.tr())),
+        SnackBar(
+          content: Text('screens.youDonTHaveAProfilePictu'.tr()),
+        ),
       );
       return;
     }
@@ -422,11 +394,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: Row(
         children: [
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
             child: Row(
               children: [
                 Image.asset('assets/images/vietnam.png', width: 24, height: 24),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
                   '+ 84',
                   style: TextStyle(color: AppColors.textGrey, fontSize: 14),
@@ -441,11 +413,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: InputDecoration(
                 hintText: 'screens.enterPhoneNumber'.tr(),
-                hintStyle: TextStyle(color: AppColors.textLight, fontSize: 14),
+                hintStyle:
+                    TextStyle(color: AppColors.textLight, fontSize: 14),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               ),
             ),
           ),
@@ -462,11 +435,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildLabel('screens.dateOfBirth'.tr(), isRequired: true),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               InkWell(
                 onTap: _selectDate,
                 child: Container(
-                  padding: EdgeInsets.symmetric(
+                  padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 14,
                   ),
@@ -488,7 +461,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           fontSize: 14,
                         ),
                       ),
-                      Icon(
+                      const Icon(
                         Icons.calendar_month_rounded,
                         size: 18,
                         color: AppColors.textGrey,
@@ -500,15 +473,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ],
           ),
         ),
-        SizedBox(width: 16),
+        const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildLabel('screens.sex'.tr(), isRequired: true),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Container(
-                padding: EdgeInsets.symmetric(
+                padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 2,
                 ),
@@ -520,10 +493,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: DropdownButton<String>(
                     isExpanded: true,
                     value: _selectedGender,
-                    hint: Text('screens.chooseGender'.tr(),
-                      style: TextStyle(color: AppColors.textGrey, fontSize: 14),
+                    hint: Text(
+                      'screens.chooseGender'.tr(),
+                      style: TextStyle(
+                        color: AppColors.textGrey,
+                        fontSize: 14,
+                      ),
                     ),
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.keyboard_arrow_down,
                       color: AppColors.textGrey,
                     ),
@@ -550,14 +527,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       children: [
         Text(
           text,
-          style: TextStyle(
+          style: const TextStyle(
             color: AppColors.textBlack,
             fontWeight: FontWeight.w500,
           ),
         ),
         if (isRequired) ...[
-          SizedBox(width: 4),
-          Text('*', style: TextStyle(color: AppColors.primaryDark)),
+          const SizedBox(width: 4),
+          const Text('*', style: TextStyle(color: AppColors.primaryDark)),
         ],
       ],
     );
@@ -571,7 +548,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }) {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: AppColors.borderColor),
+      borderSide: const BorderSide(color: AppColors.borderColor),
     );
     return TextFormField(
       controller: controller,
@@ -584,7 +561,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         hintStyle: TextStyle(color: AppColors.textLight, fontSize: 14),
         fillColor: enabled ? Colors.white : AppColors.background,
         filled: true,
-        contentPadding: EdgeInsets.symmetric(
+        contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
         ),
@@ -592,7 +569,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         enabledBorder: border,
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primary),
+          borderSide: const BorderSide(color: AppColors.primary),
         ),
       ),
       validator: validator,

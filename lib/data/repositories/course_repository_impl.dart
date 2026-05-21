@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:badminton_ai/data/models/course_model.dart';
 import 'package:badminton_ai/domain/entities/course.dart';
@@ -8,9 +10,6 @@ class CourseRepositoryImpl implements ICourseRepository {
   final SupabaseClient supabase;
 
   CourseRepositoryImpl({required this.supabase});
-
-  // Lưu lịch sử xem trong bộ nhớ (có thể nâng cấp lên API sau)
-  final List<Course> _watchedCourses = [];
 
   @override
   Future<List<CourseCategory>> getCategories() async {
@@ -64,12 +63,54 @@ class CourseRepositoryImpl implements ICourseRepository {
 
   @override
   Future<List<Course>> getWatchedCourses() async {
-    return _watchedCourses.reversed.toList();
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('watched_courses_$userId');
+      if (raw != null) {
+        final List decoded = jsonDecode(raw);
+        return decoded
+            .map((e) => CourseModel.fromJson(Map<String, dynamic>.from(e)))
+            .toList()
+            .reversed
+            .toList();
+      }
+    } catch (e) {
+      print('Error loading watched courses: $e');
+    }
+    return [];
   }
 
   @override
   Future<void> markCourseAsWatched(Course course) async {
-    _watchedCourses.removeWhere((c) => c.id == course.id);
-    _watchedCourses.add(course);
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      List<Course> courses = [];
+      final raw = prefs.getString('watched_courses_$userId');
+      if (raw != null) {
+        final List decoded = jsonDecode(raw);
+        courses = decoded
+            .map((e) => CourseModel.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
+      }
+      
+      courses.removeWhere((c) => c.id == course.id);
+      courses.add(course);
+      
+      // Limit to last 50 watched courses to save space
+      if (courses.length > 50) {
+        courses = courses.sublist(courses.length - 50);
+      }
+      
+      final jsonList = courses.map((c) => (c as CourseModel).toJson()).toList();
+      await prefs.setString('watched_courses_$userId', jsonEncode(jsonList));
+    } catch (e) {
+      print('Error saving watched course: $e');
+    }
   }
 }

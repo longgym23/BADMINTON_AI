@@ -350,7 +350,7 @@ class SupabaseRepository {
         .eq('id', bookingId);
   }
 
-  // Hủy booking và hoàn tiền vào Balance
+  // Hủy booking và hoàn tiền vào Balance (Chỉ hoàn tiền đối với các booking đã thanh toán PAID)
   Future<void> cancelBookingWithRefund(BookingModel booking) async {
     try {
       final now = DateTime.now();
@@ -368,10 +368,12 @@ class SupabaseRepository {
       // 0 < x < 2h (chưa tới giờ) → hoàn 50%
       // Đã tới hoặc quá giờ (diffMinutes <= 0) → không hoàn
       int refundAmount = 0;
-      if (diffHours >= 2) {
-        refundAmount = booking.price; // 100%
-      } else if (diffMinutes > 0) {
-        refundAmount = (booking.price * 0.5).toInt(); // 50%
+      if (booking.status == 'PAID') {
+        if (diffHours >= 2) {
+          refundAmount = booking.price; // 100%
+        } else if (diffMinutes > 0) {
+          refundAmount = (booking.price * 0.5).toInt(); // 50%
+        }
       }
 
       // 1. Cập nhật trạng thái booking -> cancelled
@@ -390,6 +392,30 @@ class SupabaseRepository {
       if (refundAmount > 0) {
         await addBalance(booking.userId, refundAmount);
         debugPrint('[Refund] Hoàn $refundAmount₫ → userId=${booking.userId}');
+      }
+
+      // 3. Nếu là hóa đơn sự kiện, giải phóng slot tham gia
+      if (booking.transactionId != null && booking.transactionId!.startsWith('EVENT_')) {
+        final parts = booking.transactionId!.split('_');
+        if (parts.length >= 2) {
+          final eventId = parts[1];
+          try {
+            final evData = await _client.from('events').select('price, current_participants').eq('id', eventId).maybeSingle();
+            if (evData != null) {
+              final int eventPrice = (evData['price'] as num?)?.toInt() ?? 0;
+              int quantityToFree = 1;
+              if (eventPrice > 0) {
+                quantityToFree = booking.price ~/ eventPrice;
+              }
+              final int currentParticipants = (evData['current_participants'] as num?)?.toInt() ?? 0;
+              final int newParticipants = currentParticipants - quantityToFree;
+              await _client.from('events').update({'current_participants': newParticipants >= 0 ? newParticipants : 0}).eq('id', eventId);
+              debugPrint('[Refund] Giải phóng $quantityToFree slot cho sự kiện $eventId');
+            }
+          } catch (e) {
+            debugPrint('Lỗi giải phóng slot sự kiện: $e');
+          }
+        }
       }
     } catch (e) {
       debugPrint('Lỗi cancelBookingWithRefund: $e');
@@ -471,16 +497,34 @@ class SupabaseRepository {
   // --- Event Management Functions ---
 
   Stream<List<EventModel>> getEventsStream({String? ownerId, String? courtId}) {
-    dynamic query = _client.from('events').stream(primaryKey: ['id']);
-    if (ownerId != null) {
-      query = query.eq('owner_id', ownerId);
-    }
+    // Supabase stream() chỉ hỗ trợ 1 filter .eq() duy nhất.
+    // Ưu tiên filter theo courtId (dùng trong CourtSelectionScreen),
+    // nếu không có thì filter theo ownerId.
     if (courtId != null) {
-      query = query.eq('court_id', courtId);
+      return _client
+          .from('events')
+          .stream(primaryKey: ['id'])
+          .eq('court_id', courtId)
+          .map<List<EventModel>>(
+            (data) => data.map((e) => EventModel.fromSupabase(e)).toList(),
+          );
     }
-    return (query as Stream<List<Map<String, dynamic>>>).map<List<EventModel>>(
-      (data) => data.map((e) => EventModel.fromSupabase(e)).toList(),
-    );
+    if (ownerId != null) {
+      return _client
+          .from('events')
+          .stream(primaryKey: ['id'])
+          .eq('owner_id', ownerId)
+          .map<List<EventModel>>(
+            (data) => data.map((e) => EventModel.fromSupabase(e)).toList(),
+          );
+    }
+    // Không có filter → lấy toàn bộ
+    return _client
+        .from('events')
+        .stream(primaryKey: ['id'])
+        .map<List<EventModel>>(
+          (data) => data.map((e) => EventModel.fromSupabase(e)).toList(),
+        );
   }
 
   Future<void> createEvent(EventModel event, String ownerId) async {
@@ -547,7 +591,7 @@ class SupabaseRepository {
   }) async {
     final safeQuantity = quantity < 1 ? 1 : quantity;
 
-    // Tạm thời gọi tuần tự do Flutter chưa gọi RPC dễ dàng nếu không viết thủ tục.
+    // 1. Kiểm tra sự kiện và chỗ trống
     final ev = await _client
         .from('events')
         .select(
@@ -559,6 +603,16 @@ class SupabaseRepository {
     final cur = (ev['current_participants'] as num?)?.toInt() ?? 0;
     final maxP = (ev['max_participants'] as num?)?.toInt() ?? 0;
     final remaining = maxP - cur;
+
+    final courtIdStr = ev['court_id']?.toString() ?? '';
+    final courtData = await _client.from('courts').select('id, name').eq('id', courtIdStr).maybeSingle();
+    if (courtData == null) {
+      throw Exception("Sân liên kết với sự kiện không tồn tại. Hệ thống không thể tạo hóa đơn hợp lệ.");
+    }
+    final String eventTitle = ev['title']?.toString() ?? 'Sự Kiện';
+    final String physicalCourtName = courtData['name'] ?? 'Sân';
+    final String courtName = '[Sự Kiện] $eventTitle - $physicalCourtName';
+
     if (remaining <= 0) {
       throw Exception("Sự kiện đã đầy, không thể tham gia!");
     }
@@ -566,22 +620,21 @@ class SupabaseRepository {
       throw Exception("Sự kiện chỉ còn $remaining vé trống.");
     }
 
+    // 2. Kiểm tra số dư ví (chỉ đọc, chưa trừ)
+    int currentBalance = 0;
     if (priceDeduction > 0) {
       final profile = await _client
           .from('profiles')
           .select('balance')
           .eq('id', userId)
           .single();
-      final currentBalance = (profile['balance'] as num?)?.toInt() ?? 0;
+      currentBalance = (profile['balance'] as num?)?.toInt() ?? 0;
       if (currentBalance < priceDeduction.toInt()) {
         throw Exception("Số dư không đủ. Vui lòng nạp thêm!");
       }
-      await _client
-          .from('profiles')
-          .update({'balance': currentBalance - priceDeduction.toInt()})
-          .eq('id', userId);
     }
 
+    // 3. Đăng ký tham gia (insert event_participants)
     try {
       await _client.from('event_participants').insert({
         'event_id': eventId,
@@ -591,40 +644,40 @@ class SupabaseRepository {
       if (e.code != '23505') rethrow;
     }
 
+    // 4. Cập nhật số lượng người tham gia
     await _client
         .from('events')
         .update({'current_participants': cur + safeQuantity})
         .eq('id', eventId);
 
-    // Ghi nhận hóa đơn ảo (Virtual Booking) cho Event để đồng bộ thống kê và doanh thu
+    // 5. Ghi nhận hóa đơn ảo (Virtual Booking) cho Event để đồng bộ thống kê và doanh thu
+    String startTimeStr = ev['start_time'].toString();
+    final matchStart = RegExp(r'\d+').firstMatch(startTimeStr);
+    int startTimeNum = matchStart != null
+        ? int.parse(matchStart.group(0)!)
+        : 0;
+
+    String courtAreaStr = ev['court_area'].toString();
+    final matchArea = RegExp(r'\d+').firstMatch(courtAreaStr);
+    int courtAreaNum = matchArea != null ? int.parse(matchArea.group(0)!) : 0;
+    
+    // Đảm bảo định dạng chuẩn YYYY-MM-DD
+    final String dateTimeRaw = ev['date_time'].toString();
+    final String bookingDateOnly = dateTimeRaw.split('T')[0].split(' ')[0];
+
+    final bookingPayload = {
+      'user_id': userId,
+      'court_id': courtIdStr,
+      'court_name': courtName,
+      'court_number': courtAreaNum,
+      'booking_date': bookingDateOnly,
+      'time_slot': startTimeNum,
+      'price': (ev['price'] as num).toInt() * safeQuantity,
+      'status': 'PAID',
+      'expires_at': null,
+    };
+
     try {
-      final courtData = await _client
-          .from('courts')
-          .select('name')
-          .eq('id', ev['court_id'])
-          .single();
-      String startTimeStr = ev['start_time'].toString();
-      final matchStart = RegExp(r'\d+').firstMatch(startTimeStr);
-      int startTimeNum = matchStart != null
-          ? int.parse(matchStart.group(0)!)
-          : 0;
-
-      String courtAreaStr = ev['court_area'].toString();
-      final matchArea = RegExp(r'\d+').firstMatch(courtAreaStr);
-      int courtAreaNum = matchArea != null ? int.parse(matchArea.group(0)!) : 0;
-
-      final bookingPayload = {
-        'user_id': userId,
-        'court_id': ev['court_id'],
-        'court_name': courtData['name'] ?? 'Sự Kiện',
-        'court_number': courtAreaNum,
-        'booking_date': (ev['date_time'] as String).split('T')[0],
-        'time_slot': startTimeNum,
-        'price': (ev['price'] as num).toInt() * safeQuantity,
-        'status': 'PAID',
-        'expires_at': null,
-      };
-
       if (paymentTransactionId != null &&
           paymentTransactionId.trim().isNotEmpty) {
         await _client
@@ -640,6 +693,30 @@ class SupabaseRepository {
       }
     } catch (e) {
       debugPrint('Lỗi tạo hóa đơn sự kiện: $e');
+      throw Exception('Không thể lưu giao dịch vào lịch sử đặt sân: $e');
+    }
+
+    // 6. CUỐI CÙNG mới trừ tiền ví khi mọi bước trên đã thành công rực rỡ!
+    if (priceDeduction > 0) {
+      await _client
+          .from('profiles')
+          .update({'balance': currentBalance - priceDeduction.toInt()})
+          .eq('id', userId);
+    }
+  }
+
+  // Kiểm tra xem User đã đăng ký tham gia Sự kiện này chưa
+  Future<bool> isUserRegisteredForEvent(String eventId, String userId) async {
+    try {
+      final res = await _client
+          .from('event_participants')
+          .select('id')
+          .eq('event_id', eventId)
+          .eq('user_id', userId);
+      return res.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error checking event registration: $e');
+      return false;
     }
   }
 

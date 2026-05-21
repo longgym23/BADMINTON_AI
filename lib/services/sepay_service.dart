@@ -33,6 +33,16 @@ class SePayService {
 
     while (DateTime.now().isBefore(deadline)) {
       try {
+        final session = supabase.auth.currentSession;
+        if (session != null && session.isExpired) {
+          debugPrint('JWT Session expired during polling, refreshing...');
+          await supabase.auth.refreshSession();
+        }
+      } catch (e) {
+        debugPrint('Error refreshing session in polling: $e');
+      }
+
+      try {
         final rows = await supabase
             .from('bookings')
             .select('status')

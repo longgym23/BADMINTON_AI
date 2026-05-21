@@ -215,7 +215,7 @@
     "cannotOpenMap": "Không thể mở ứng dụng bản đồ",
     "processingQR": "Đang xử lý mã QR...",
     "openLink": "Mở liên kết?",
-    "scanResult": "Kết quả quét",
+    "scanResult": "Thông Báo",
     "open": "Mở",
     "specialOffers": "Ưu đãi đặc biệt",
     "seeAll": "XEM TẤT CẢ",
@@ -228,7 +228,9 @@
     "flatRate50k": "Đồng giá 50k/h",
     "courts": "sân",
     "bookNow": "Đặt ngay",
-    "directions": "Chỉ đường"
+    "directions": "Chỉ đường",
+    "bankingQrNotSupported": "Mã QR ngân hàng / thanh toán không được hỗ trợ trong ứng dụng này.",
+    "qrNotSupported": "Mã QR này không được hỗ trợ. Vui lòng quét mã liên kết đến địa chỉ sân hoặc mạng xã hội."
   },
   "qr_scanner_screen": {
     "title": "Quét mã QR",
@@ -288,6 +290,7 @@
     "gender": "Giới tính"
   },
   "screens": {
+    "moneyrequest": "Yêu cầu rút tiền đã được gửi thành công!",
     "errorFetchingDashboardE": "Lỗi fetch dashboard: $e",
     "stadiumOwnerManager": "Quản lý Chủ Sân",
     "administrationPage": "Trang Quản Trị",
@@ -373,6 +376,7 @@
     "selectedLocation": "Vị trí đã chọn:",
     "coordinatesselectedLocati": "Tọa độ: ${_selectedLocation.latitude.toStringAsFixed(6)}, ${_selectedLocation.longitude.toStringAsFixed(6)}",
     "cancel1": "Hủy",
+    "done": "Xong",
     "confirm": "Xác nhận",
     "cancelBooking": "Hủy lịch đặt",
     "adminOwnerAreYouSureYou": "Admin/Owner: Bạn có chắc chắn muốn hủy lịch đặt này không?",

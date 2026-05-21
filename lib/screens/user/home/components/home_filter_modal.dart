@@ -3,6 +3,7 @@ import 'package:badminton_ai/blocs/home_filter/home_filter_bloc.dart';
 import 'package:badminton_ai/blocs/home_filter/home_filter_event.dart';
 import 'package:badminton_ai/data/models/filter_criteria.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
+import 'package:badminton_ai/utils/picker_utils.dart';
 import 'package:badminton_ai/widgets/custom_date_range_picker_dialog.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 import 'package:flutter/cupertino.dart';
@@ -522,52 +523,20 @@ class _HomeFilterModalState extends State<HomeFilterModal> {
   }
 
   Future<void> _pickCupertinoTime({required bool isStart}) async {
-    TimeOfDay initialTime = (isStart ? _timeStart : _timeEnd) ?? const TimeOfDay(hour: 8, minute: 0);
-    DateTime initialDateTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, initialTime.hour, initialTime.minute);
-
-    await showCupertinoModalPopup(
-      context: context,
-      builder: (BuildContext builder) => Container(
-        height: 250,
-        color: Colors.white,
-        child: Column(
-          children: [
-            Container(
-              color: Colors.white,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  CupertinoButton(
-                    child: const Text('Hủy', style: TextStyle(color: Colors.red)),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  CupertinoButton(
-                    child: const Text('Xong', style: TextStyle(color: AppColors.primary)),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.time,
-                initialDateTime: initialDateTime,
-                use24hFormat: true,
-                onDateTimeChanged: (DateTime newDateTime) {
-                  setState(() {
-                    if (isStart) {
-                      _timeStart = TimeOfDay(hour: newDateTime.hour, minute: newDateTime.minute);
-                    } else {
-                      _timeEnd = TimeOfDay(hour: newDateTime.hour, minute: newDateTime.minute);
-                    }
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+    final current = isStart ? _timeStart : _timeEnd;
+    final picked = await PickerUtils.showTimeOfDayPicker(
+      context,
+      initialTime: current,
     );
+    if (picked != null) {
+      setState(() {
+        if (isStart) {
+          _timeStart = picked;
+        } else {
+          _timeEnd = picked;
+        }
+      });
+    }
   }
 
   @override

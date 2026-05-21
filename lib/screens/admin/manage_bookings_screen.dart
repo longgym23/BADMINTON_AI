@@ -32,6 +32,14 @@ class _ManageBookingsView extends StatefulWidget {
 }
 
 class _ManageBookingsViewState extends State<_ManageBookingsView> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
   void _confirmDelete(
     BuildContext context,
     String? bookingId,
@@ -113,6 +121,27 @@ class _ManageBookingsViewState extends State<_ManageBookingsView> {
             ),
             child: Column(
               children: [
+                // Quick Search Bar
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Tìm kiếm theo mã booking',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -148,7 +177,16 @@ class _ManageBookingsViewState extends State<_ManageBookingsView> {
                 }
 
                 final allBookings = snapshot.data ?? [];
-                final filtered = vm.applyFilter(allBookings);
+                
+                // Quick search filtering
+                final searched = allBookings.where((b) {
+                  if (_searchQuery.isEmpty) return true;
+                  final query = _searchQuery.toLowerCase();
+                  return b.id!.toLowerCase().contains(query) ||
+                         b.userName.toLowerCase().contains(query);
+                }).toList();
+
+                final filtered = vm.applyFilter(searched);
                 final sorted = vm.sortBookings(filtered);
 
                 if (sorted.isEmpty) {
@@ -328,11 +366,25 @@ class _AdminBookingCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        booking.userName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                       Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'ID: ${booking.id!.length > 8 ? booking.id!.substring(0, 8).toUpperCase() : booking.id!.toUpperCase()}',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[800], fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          booking.userName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
@@ -342,12 +394,20 @@ class _AdminBookingCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    '${booking.courtName} - Sân #${booking.courtNumber}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textBlack,
-                    ),
+                  Row(
+                    children: [
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${booking.courtName} - Sân #${booking.courtNumber}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textBlack,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Row(

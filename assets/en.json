@@ -215,7 +215,7 @@
     "cannotOpenMap": "Cannot open map application",
     "processingQR": "Processing QR code...",
     "openLink": "Open link?",
-    "scanResult": "Scan result",
+    "scanResult": "Notification",
     "open": "Open",
     "specialOffers": "Special Offers",
     "seeAll": "SEE ALL",
@@ -228,7 +228,9 @@
     "flatRate50k": "Flat rate 50k/h",
     "courts": "courts",
     "bookNow": "Book Now",
-    "directions": "Directions"
+    "directions": "Directions",
+    "bankingQrNotSupported": "Bank / payment QR codes are not supported in this app.",
+    "qrNotSupported": "This QR code is not supported. Please scan a link to a court address or social media page."
   },
   "qr_scanner_screen": {
     "title": "Scan QR Code",
@@ -288,6 +290,7 @@
     "gender": "Gender"
   },
   "screens": {
+    "moneyrequest": "Request withdrawal has been sent successfully!",
     "errorFetchingDashboardE": "Error fetching dashboard: $e",
     "stadiumOwnerManager": "Stadium Owner Manager",
     "administrationPage": "Administration Page",
@@ -373,6 +376,7 @@
     "selectedLocation": "Selected location:",
     "coordinatesselectedLocati": "Coordinates: ${_selectedLocation.latitude.toStringAsFixed(6)}, ${_selectedLocation.longitude.toStringAsFixed(6)}",
     "cancel1": "Cancel",
+    "done": "Done",
     "confirm": "Confirm",
     "cancelBooking": "Cancel booking",
     "adminOwnerAreYouSureYou": "Admin/Owner: Are you sure you want to cancel this booking?",

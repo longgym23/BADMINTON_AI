@@ -42,7 +42,11 @@ class EventCheckoutScreen extends StatelessWidget {
         vm.setCustomerName(customerName);
         vm.setCustomerPhone(customerPhone);
         // Ngưởi dùng dùng tiền trong ví, nếu thiểu thì QR sePay hiện khoản thiếu.
-        vm.initializePayment(amountToPayWithSepay, event.id);
+        vm.initializePayment(
+          amountToPayWithSepay, 
+          event.id,
+          transactionId: 'EVENT_${event.id}_${DateTime.now().millisecondsSinceEpoch}',
+        );
         return vm;
       },
       child: EventCheckoutScreenView(
@@ -276,14 +280,21 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
     final vm = context.watch<CheckoutViewModel>();
     final bgColor = AppColors.background;
 
-    return Scaffold(
-      appBar: CustomGradientAppBar(
-        title: Text('screens.eventPayments'.tr(),
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (vm.isBookingCreated && vm.transactionId.isNotEmpty) {
+          context.read<SupabaseRepository>().releaseBookingTransaction(vm.transactionId);
+        }
+      },
+      child: Scaffold(
+        appBar: CustomGradientAppBar(
+          title: Text('screens.eventPayments'.tr(),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true,
+          elevation: 0,
         ),
-        centerTitle: true,
-        elevation: 0,
-      ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -452,6 +463,7 @@ class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
                 ),
               ),
       ),
+      )
     );
   }
 

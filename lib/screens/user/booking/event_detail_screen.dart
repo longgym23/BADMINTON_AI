@@ -7,6 +7,9 @@ import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:badminton_ai/providers/auth_provider.dart';
+import 'package:badminton_ai/data/repositories/supabase_repository.dart';
+import 'package:provider/provider.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final EventModel event;
@@ -28,6 +31,42 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final Color bgColor = AppColors.background;
   final Color blockColor = Colors.white;
+
+  bool _isLoadingStatus = true;
+  bool _isRegistered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AppAuthProvider>().userModel;
+      if (user != null) {
+        _nameController.text = user.displayName ?? '';
+        _phoneController.text = user.phoneNumber ?? '';
+      }
+      _checkRegistrationStatus();
+    });
+  }
+
+  Future<void> _checkRegistrationStatus() async {
+    final userId = context.read<AppAuthProvider>().userId;
+    if (userId == null) {
+      if (mounted) setState(() => _isLoadingStatus = false);
+      return;
+    }
+    try {
+      final repo = context.read<SupabaseRepository>();
+      final isRegistered = await repo.isUserRegisteredForEvent(widget.event.id, userId);
+      if (mounted) {
+        setState(() {
+          _isRegistered = isRegistered;
+          _isLoadingStatus = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingStatus = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -73,6 +112,55 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         padding: EdgeInsets.all(16.0),
         child: Column(
           children: [
+            if (_isLoadingStatus) ...[
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ] else if (_isRegistered) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.success, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: AppColors.success, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Bạn đã đăng ký tham gia sự kiện này!",
+                            style: TextStyle(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Bạn có thể mua thêm vé nếu muốn. Chi tiết xem trong Lịch sử đặt sân.",
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             // Block 1: Thông tin sân
             _buildBlock(
               title: 'screens.yardInformation'.tr(),
@@ -430,8 +518,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
               disabledBackgroundColor: Colors.grey.shade300,
             ),
-            child: Text('screens.rEGISTERNOW'.tr(),
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            child: Text(
+              _isRegistered ? "MUA THÊM VÉ" : 'screens.rEGISTERNOW'.tr(),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
         ),

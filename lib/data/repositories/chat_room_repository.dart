@@ -35,7 +35,7 @@ class ChatRoom {
       isGroup: data['is_group'],
       name: data['name'],
       avatarUrl: data['avatar_url'],
-      createdAt: DateTime.parse(data['created_at']),
+      createdAt: DateTime.parse(data['created_at']).toLocal(),
       adminId: data['admin_id'],
     );
   }
@@ -67,7 +67,7 @@ class Message {
       roomId: data['room_id'],
       senderId: data['sender_id'],
       content: data['content'],
-      createdAt: DateTime.parse(data['created_at']),
+      createdAt: DateTime.parse(data['created_at']).toLocal(),
       imagePath: data['image_path'],
     );
   }

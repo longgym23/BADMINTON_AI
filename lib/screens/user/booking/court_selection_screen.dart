@@ -172,10 +172,11 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
       context,
       title: '',
       content: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CupertinoActivityIndicator(),
-          SizedBox(width: 20),
-          Expanded(child: Text('screens.holdingASeat'.tr())),
+          SizedBox(width: 12),
+          Text('screens.holdingASeat'.tr()),
         ],
       ),
     );
@@ -327,7 +328,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                       children: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: Text('screens.cancel1'.tr(),
+                          child: Text(
+                            'screens.cancel1'.tr(),
                             style: TextStyle(
                               color: AppColors.textGrey,
                               fontSize: 16,
@@ -349,7 +351,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                               vertical: 12,
                             ),
                           ),
-                          child: Text('screens.confirm'.tr(),
+                          child: Text(
+                            'screens.confirm'.tr(),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -389,7 +392,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
           icon: Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('screens.scheduleOnline'.tr(),
+        title: Text(
+          'screens.scheduleOnline'.tr(),
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -419,11 +423,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                     ),
                   ),
                   SizedBox(width: 8),
-                  Icon(
-                    Icons.calendar_month,
-                    color: Colors.white,
-                    size: 16,
-                  ),
+                  Icon(Icons.calendar_month, color: Colors.white, size: 16),
                 ],
               ),
             ),
@@ -500,21 +500,17 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
           Expanded(
             child: StreamBuilder<List<EventModel>>(
               stream: _eventsStream,
+              initialData: const [],
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
+                // Không chặn UI khi đang tải events — dùng dữ liệu rỗng làm fallback
                 final allEvents = snapshot.data ?? [];
                 final events = allEvents.where((e) {
                   return _eventOverlapsSelectedDate(e);
                 }).toList();
                 return StreamBuilder<List<BookingModel>>(
                   stream: bookingProvider.bookingsStream,
+                  initialData: const [],
                   builder: (context, bookingSnapshot) {
-                    if (bookingSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return Center(child: CircularProgressIndicator());
-                    }
                     final bookings = bookingSnapshot.data ?? [];
                     return SingleChildScrollView(
                       scrollDirection: Axis.vertical,
@@ -541,7 +537,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                                       left: 0,
                                       right: 20,
                                     ),
-                                    child: Text('screens.yardHour'.tr(),
+                                    child: Text(
+                                      'screens.yardHour'.tr(),
                                       style: TextStyle(
                                         color: AppColors.textBlack,
                                         fontWeight: FontWeight.bold,
@@ -743,9 +740,7 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                                             size: 16,
                                           );
                                         } else if (isBooked) {
-                                          bgColor = Color(
-                                            0xFFEF5350,
-                                          ); // Red
+                                          bgColor = Color(0xFFEF5350); // Red
                                           child = null;
                                         } else if (isEventSlot) {
                                           bgColor = Color(
@@ -831,7 +826,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('screens.totalHours'.tr(),
+                          Text(
+                            'screens.totalHours'.tr(),
                             style: TextStyle(
                               color: AppColors.textGrey,
                               fontSize: 13,
@@ -852,7 +848,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('screens.totalAmount'.tr(),
+                          Text(
+                            'screens.totalAmount'.tr(),
                             style: TextStyle(
                               color: AppColors.textGrey,
                               fontSize: 13,
@@ -889,7 +886,8 @@ class _CourtSelectionScreenState extends State<CourtSelectionScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: Text('screens.nEXT'.tr(),
+                      child: Text(
+                        'screens.nEXT'.tr(),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,

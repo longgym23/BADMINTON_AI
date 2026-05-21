@@ -12,6 +12,7 @@ import 'package:badminton_ai/viewmodels/manage_users_viewmodel.dart';
 import 'package:badminton_ai/utils/app_colors.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/utils/dialog_utils.dart';
+import 'package:badminton_ai/utils/wallet_dialog_utils.dart';
 
 class ManageUsersScreen extends StatelessWidget {
   const ManageUsersScreen({super.key});
@@ -346,6 +347,13 @@ class _ManageUsersViewState extends State<_ManageUsersView> {
                       user: user,
                       onEdit: () => _showUserEditDialog(context, user),
                       onDelete: () => _showDeleteConfirmDialog(context, user),
+                      onAdjustBalance: () {
+                        WalletDialogUtils.showAdjustBalanceDialog(
+                          context, 
+                          user,
+                          () => setState(() {}),
+                        );
+                      },
                     );
                   },
                 );
@@ -399,11 +407,13 @@ class _UserCard extends StatelessWidget {
   final UserModel user;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onAdjustBalance;
 
   const _UserCard({
     required this.user,
     required this.onEdit,
     required this.onDelete,
+    required this.onAdjustBalance,
   });
 
   @override
@@ -498,20 +508,40 @@ class _UserCard extends StatelessWidget {
                     ],
                   ),
                   SizedBox(height: 4),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: roleColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      roleName,
-                      style: TextStyle(
-                        color: roleColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: roleColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          roleName,
+                          style: TextStyle(
+                            color: roleColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
+                      SizedBox(width: 8),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Ví: ${NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(user.balance)}',
+                          style: TextStyle(
+                            color: Colors.green[700],
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -519,6 +549,14 @@ class _UserCard extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.account_balance_wallet,
+                    color: Colors.green[700],
+                    size: 20,
+                  ),
+                  onPressed: onAdjustBalance,
+                ),
                 IconButton(
                   icon: Icon(
                     Icons.edit_outlined,

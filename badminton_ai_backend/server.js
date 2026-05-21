@@ -33,13 +33,21 @@ const admin = require('firebase-admin');
 
 // ─── Firebase Admin Setup ─────────────────────────────────────────────────────
 try {
-  const serviceAccount = require('./firebase-service-account.json');
+  let serviceAccount;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    console.log('[FIREBASE] Loading service account from environment variable.');
+  } else {
+    serviceAccount = require('./firebase-service-account.json');
+    console.log('[FIREBASE] Loading service account from local JSON file.');
+  }
+
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
   });
   console.log('[FIREBASE] Admin SDK initialized successfully.');
 } catch (error) {
-  console.error('[ERROR] Failed to initialize Firebase Admin:', error);
+  console.error('[ERROR] Failed to initialize Firebase Admin:', error.message);
 }
 
 // ─── MailerSend ───────────────────────────────────────────────────────────────

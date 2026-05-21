@@ -5,7 +5,6 @@ import 'package:badminton_ai/screens/user/map/map_tab.dart' show SportType;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:easy_localization/easy_localization.dart';
 
 class MapViewModel extends ChangeNotifier {
   final SupabaseRepository _repository;
@@ -98,39 +97,76 @@ class MapViewModel extends ChangeNotifier {
     await _getCurrentLocation();
   }
 
+  // ─── Semantic keyword → sportType mapping (giống home_filter_bloc) ──────────
+  static const _sportKeywordMap = <String, String>{
+    'cầu lông': 'badminton',
+    'cau long': 'badminton',
+    'caulong': 'badminton',
+    'badminton': 'badminton',
+    'pickleball': 'pickleball',
+    'pickle ball': 'pickleball',
+    'bóng đá': 'football',
+    'bong da': 'football',
+    'bongda': 'football',
+    'football': 'football',
+    'soccer': 'football',
+    'bóng rổ': 'basketball',
+    'bong ro': 'basketball',
+    'basketball': 'basketball',
+    'bóng chuyền': 'volleyball',
+    'bong chuyen': 'volleyball',
+    'volleyball': 'volleyball',
+    'tennis': 'tennis',
+    'bơi': 'swimming',
+    'boi': 'swimming',
+    'swimming': 'swimming',
+  };
+
   // --- Computed Properties ---
   List<CourtLocationModel> get filteredCourts {
     final courts = List<CourtLocationModel>.from(_allCourts);
-    
-    if (searchQuery.isNotEmpty) {
-      final queryLower = searchQuery.toLowerCase();
-      return courts.where((court) {
-        final nameMatch = court.name.toLowerCase().contains(queryLower);
-        final addressMatch = court.address.toLowerCase().contains(queryLower);
-        final sportTypeMatch =
-            court.sportType?.toLowerCase().contains(queryLower) ?? false;
 
-        if (queryLower.contains('screens.badminton1'.tr()) || queryLower.contains('badminton')) {
-          return (court.sportType?.toLowerCase() == 'badminton' ||
-              court.name.toLowerCase().contains('screens.badminton1'.tr()) ||
-              court.name.toLowerCase().contains('badminton'));
+    if (searchQuery.isNotEmpty) {
+      final q = searchQuery.toLowerCase().trim();
+      final mappedSport = _sportKeywordMap[q];
+
+      return courts.where((court) {
+        final nameMatch = court.name.toLowerCase().contains(q);
+        final addressMatch = court.address.toLowerCase().contains(q);
+        final courtSport = court.sportType?.toLowerCase() ?? '';
+
+        // Nếu query khớp từ khóa môn thể thao → match theo sportType
+        if (mappedSport != null) {
+          return courtSport == mappedSport;
         }
-        return nameMatch || addressMatch || sportTypeMatch;
+
+        // Ngược lại → match theo tên, địa chỉ, hoặc sportType chứa query
+        return nameMatch || addressMatch || courtSport.contains(q);
       }).toList();
     } else {
+      // Không có query → lọc theo sport chip đang chọn
       return courts.where((court) {
         final st = court.sportType?.trim().toLowerCase() ?? '';
         final nameLower = court.name.toLowerCase();
-        
+
         switch (selectedSport) {
           case SportType.badminton:
-            return st.contains('badminton') || st.contains('screens.badminton1'.tr()) || nameLower.contains('screens.badminton1'.tr()) || nameLower.contains('badminton') || (st.isEmpty && !nameLower.contains('pickle') && !nameLower.contains('screens.football1'.tr()) && !nameLower.contains('tennis'));
+            return st == 'badminton' ||
+                nameLower.contains('badminton') ||
+                // Fallback: sân không có sportType và không phải môn khác
+                (st.isEmpty &&
+                    !nameLower.contains('pickle') &&
+                    !nameLower.contains('football') &&
+                    !nameLower.contains('tennis'));
           case SportType.pickleball:
-            return st.contains('pickle') || nameLower.contains('pickle');
+            return st == 'pickleball' || nameLower.contains('pickle');
           case SportType.football:
-            return st.contains('football') || st.contains('screens.football1'.tr()) || st.contains('soccer') || nameLower.contains('screens.football1'.tr()) || nameLower.contains('football');
+            return st == 'football' ||
+                st == 'soccer' ||
+                nameLower.contains('football') ||
+                nameLower.contains('soccer');
           case SportType.tennis:
-            return st.contains('tennis') || nameLower.contains('tennis');
+            return st == 'tennis' || nameLower.contains('tennis');
         }
       }).toList();
     }

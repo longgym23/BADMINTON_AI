@@ -48,7 +48,18 @@ app.*.map.json
 supabase/migrations/
 docs
 fix
-
+tools
 # API Keys (KHÔNG push lên Git)
 lib/config/api_keys.dart
 badminton_ai_backend/.env
+
+# GitNexus & AI Agent Temp files
+.claude
+.agents
+CLAUDE.md
+AGENTS.md
+.gitnexus
+analyze_output.txt
+# File test cục bộ
+badminton_ai_backend/test_fcm.js
+badminton_ai_backend/test-vision.js

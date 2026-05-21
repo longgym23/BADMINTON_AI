@@ -34,6 +34,12 @@ class BookingProvider with ChangeNotifier {
     // Hủy stream cũ (nếu có) trước khi lắng nghe stream mới
     _bookingSubscription?.cancel();
 
+    // Phát ngay danh sách rỗng để StreamBuilder thoát khỏi trạng thái 'waiting'
+    // tránh loading vô tận khi chuyển ngày hoặc mở màn hình lần đầu
+    if (!_bookingsStreamController.isClosed) {
+      _bookingsStreamController.add([]);
+    }
+
     _bookingSubscription = _firestoreRepository
         .getBookingsStreamForDay(courtId, date)
         .listen(
@@ -44,7 +50,8 @@ class BookingProvider with ChangeNotifier {
           },
           onError: (error) {
             if (!_bookingsStreamController.isClosed) {
-              _bookingsStreamController.addError(error);
+              // Khi lỗi, phát danh sách rỗng thay vì addError để UI không crash
+              _bookingsStreamController.add([]);
             }
           },
         );

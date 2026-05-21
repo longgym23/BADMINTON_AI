@@ -1,5 +1,7 @@
 import 'package:badminton_ai/utils/app_colors.dart';
+import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
@@ -51,12 +53,10 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     );
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Đã gửi yêu cầu rút tiền thành công. Vui lòng chờ admin xử lý.',
-          ),
-        ),
+      AppToast.show(
+        context,
+        'screens.moneyrequest'.tr(),
+        type: ToastType.success,
       );
       // Update local balance immediately for better UX
       if (user != null) {
@@ -66,9 +66,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
       }
       Navigator.pop(context);
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(viewModel.errorMessage ?? 'Có lỗi xảy ra')),
-      );
+      AppToast.show(context, 'Có lỗi xảy ra'.tr(), type: ToastType.error);
     }
   }
 

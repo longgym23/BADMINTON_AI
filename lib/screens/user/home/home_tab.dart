@@ -134,8 +134,73 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
+  /// Các pattern nhận dạng QR ngân hàng / thanh toán — bị chặn.
+  static const _bankingPatterns = <String>[
+    'vietqr.io',
+    'vietqr.vn',
+    'napas.com.vn',
+    'zalopay.vn',
+    'momo.vn',
+    'vnpay.vn',
+    'shopeepay',
+    'payos',
+    'banking',
+    'transfer',
+    'qr.vn',
+    'bidv',
+    'vcb.com.vn',
+    'vietcombank',
+    'techcombank',
+    'tpbank',
+    'mbbank',
+    'acb.com.vn',
+    'vpbank',
+    'agribank',
+    'vib.com.vn',
+    'ocb.com.vn',
+    'seabank',
+  ];
+
+  /// Trả về `true` nếu chuỗi QR trông như mã QR ngân hàng / thanh toán.
+  bool _isBankingQR(String raw) {
+    final lower = raw.toLowerCase();
+
+    // Scheme đặc biệt của ngân hàng (ví dụ: napas://, zalopay://)
+    if (RegExp(r'^(napas|zalopay|momo|vnpay|payos|shopeepay):').hasMatch(lower)) {
+      return true;
+    }
+
+    // Chuỗi EMV / VietQR dạng plain text (bắt đầu bằng "000201")
+    if (lower.startsWith('000201')) return true;
+
+    // Kiểm tra domain
+    final uri = Uri.tryParse(raw);
+    if (uri != null) {
+      final host = uri.host.toLowerCase();
+      return _bankingPatterns.any((p) => host.contains(p));
+    }
+
+    // Plain text chứa keyword ngân hàng
+    return _bankingPatterns.any((p) => lower.contains(p));
+  }
+
+
+
   Future<void> _handleQRCodeResult(String scannedCode) async {
     if (!mounted) return;
+
+    // ── 1. Kiểm tra QR ngân hàng trước — bỏ qua hoàn toàn ──────────────────
+    if (_isBankingQR(scannedCode)) {
+      DialogUtils.showAlertDialog(
+        context,
+        title: 'home_tab.scanResult'.tr(),
+        content: 'home_tab.bankingQrNotSupported'.tr(),
+        confirmText: 'common.ok'.tr(),
+      );
+      return;
+    }
+
+    // ── 2. Tìm sân theo court ID ─────────────────────────────────────────────
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('home_tab.processingQR'.tr()),
@@ -154,11 +219,12 @@ class _HomeTabState extends State<HomeTab> {
       return;
     }
 
+    // ── 3. Kiểm tra có phải là Web URL không ───────────────────────────────
     final uri = Uri.tryParse(scannedCode);
-    final isLink =
+    final isHttpLink =
         uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
 
-    if (isLink) {
+    if (isHttpLink) {
       DialogUtils.showConfirmDialog(
         context,
         title: 'home_tab.openLink'.tr(),
@@ -168,13 +234,13 @@ class _HomeTabState extends State<HomeTab> {
         onConfirm: () => launchUrl(uri, mode: LaunchMode.externalApplication),
       );
     } else {
-      DialogUtils.showAlertDialog(
-        context,
-        title: 'home_tab.scanResult'.tr(),
-        content: scannedCode,
-        confirmText: 'common.cancel'.tr(),
-      );
-    }
+    DialogUtils.showAlertDialog(
+      context,
+      title: 'home_tab.scanResult'.tr(),
+      content: scannedCode,
+      confirmText: 'common.ok'.tr(),
+    );
+  }
   }
 
   void _showFilterModal() {
@@ -806,7 +872,7 @@ class _CourtListItem extends StatelessWidget {
               Icon(Icons.star, size: 16, color: Colors.amber),
               SizedBox(width: 4),
               Text(
-                '$rating',
+                  rating.toStringAsFixed(1),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,

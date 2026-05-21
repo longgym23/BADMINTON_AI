@@ -165,6 +165,38 @@ class HomeFilterBloc extends Bloc<HomeFilterEvent, HomeFilterState> {
     );
   }
 
+  // ─── Semantic keyword → sportType mapping ──────────────────────────────────
+  static const _sportKeywordMap = <String, String>{
+    // Cầu lông
+    'cầu lông': 'badminton',
+    'cau long': 'badminton',
+    'caulong': 'badminton',
+    'badminton': 'badminton',
+    // Pickleball
+    'pickleball': 'pickleball',
+    'pickle ball': 'pickleball',
+    // Bóng đá
+    'bóng đá': 'football',
+    'bong da': 'football',
+    'bongda': 'football',
+    'football': 'football',
+    'soccer': 'football',
+    // Bóng rổ
+    'bóng rổ': 'basketball',
+    'bong ro': 'basketball',
+    'basketball': 'basketball',
+    // Bóng chuyền
+    'bóng chuyền': 'volleyball',
+    'bong chuyen': 'volleyball',
+    'volleyball': 'volleyball',
+    // Tennis
+    'tennis': 'tennis',
+    // Bơi lội
+    'bơi': 'swimming',
+    'boi': 'swimming',
+    'swimming': 'swimming',
+  };
+
   // Filter Sync logic
   List<CourtLocationModel> _applyFilterLogicSync(
     List<CourtLocationModel> allCourts,
@@ -172,11 +204,24 @@ class HomeFilterBloc extends Bloc<HomeFilterEvent, HomeFilterState> {
   ) {
     return allCourts.where((court) {
       if (criteria.searchQuery?.isNotEmpty == true) {
-        final q = criteria.searchQuery!.toLowerCase();
-        if (!court.name.toLowerCase().contains(q) &&
-            !court.address.toLowerCase().contains(q)) {
-          return false;
-        }
+        final q = criteria.searchQuery!.toLowerCase().trim();
+
+        // Kiểm tra xem query có phải từ khóa môn thể thao không
+        final mappedSport = _sportKeywordMap[q];
+
+        // Khớp theo tên hoặc địa chỉ
+        final matchText =
+            court.name.toLowerCase().contains(q) ||
+            court.address.toLowerCase().contains(q);
+
+        // Khớp theo sportType (cả giá trị DB lẫn tên hiển thị)
+        final courtSport = court.sportType?.toLowerCase() ?? '';
+        final matchSport =
+            mappedSport != null
+                ? courtSport == mappedSport
+                : courtSport.contains(q);
+
+        if (!matchText && !matchSport) return false;
       }
       if (criteria.sportType != null) {
         if (court.sportType != null && court.sportType!.isNotEmpty) {

@@ -22,6 +22,19 @@ class CourseProvider extends ChangeNotifier {
        _getWatchedCoursesUseCase = getWatchedCoursesUseCase,
        _markCourseAsWatchedUseCase = markCourseAsWatchedUseCase;
 
+  String? _userId;
+  void updateUserId(String? userId) {
+    if (_userId != userId) {
+      _userId = userId;
+      if (_userId != null) {
+        loadWatchedCourses();
+      } else {
+        _watchedCourses = [];
+        notifyListeners();
+      }
+    }
+  }
+
   List<CourseCategory> _categories = [];
   List<CourseCategory> get categories => _categories;
 

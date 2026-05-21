@@ -4,14 +4,24 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FavoriteCourtsProvider extends ChangeNotifier {
-  static const _prefKey = 'favorite_courts_json';
+  String? _userId;
   List<CourtLocationModel> _favorites = [];
 
   List<CourtLocationModel> get favorites => List.unmodifiable(_favorites);
 
-  FavoriteCourtsProvider() {
-    _loadFromPrefs();
+  void updateUserId(String? userId) {
+    if (_userId != userId) {
+      _userId = userId;
+      if (_userId != null) {
+        _loadFromPrefs();
+      } else {
+        _favorites = [];
+        notifyListeners();
+      }
+    }
   }
+
+  String get _prefKey => _userId != null ? 'favorite_courts_$_userId' : 'favorite_courts_json';
 
   bool isFavorite(String courtId) =>
       _favorites.any((c) => c.id == courtId);

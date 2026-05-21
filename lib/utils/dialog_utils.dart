@@ -48,13 +48,11 @@ class DialogUtils {
       context: context,
       builder: (BuildContext dialogContext) {
         return CupertinoAlertDialog(
-          title: Text(title),
+          // Bỏ qua title khi rỗng để tránh padding thừa phía trên
+          title: title.isNotEmpty ? Text(title) : null,
           content: Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Material(
-              color: Colors.transparent,
-              child: content,
-            ),
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Material(color: Colors.transparent, child: content),
           ),
           actions: actions ?? [],
         );

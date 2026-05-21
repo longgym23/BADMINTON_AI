@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:badminton_ai/providers/auth_provider.dart';
 import 'package:badminton_ai/widgets/custom_gradient_app_bar.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:badminton_ai/utils/picker_utils.dart';
 
 class AdminCreateEventScreen extends StatefulWidget {
   const AdminCreateEventScreen({super.key});
@@ -115,66 +115,24 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
     }
   }
 
-  void _showTimePickerIOS(TextEditingController controller) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext builder) {
-        return Container(
-          height: 250,
-          color: Colors.white,
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text(
-                      'Xong',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.time,
-                  use24hFormat: true,
-                  initialDateTime: DateTime.now(),
-                  onDateTimeChanged: (DateTime newDateTime) {
-                    setState(() {
-                      controller.text =
-                          '${newDateTime.hour.toString().padLeft(2, '0')}:${newDateTime.minute.toString().padLeft(2, '0')}';
-                    });
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+  Future<void> _showTimePickerIOS(TextEditingController controller) async {
+    final picked = await PickerUtils.showTimePicker(
+      context,
+      initialTime: controller.text,
     );
+    if (picked != null) setState(() => controller.text = picked);
   }
 
   Future<void> _pickEventDate() async {
     final now = DateTime.now();
     final firstDay = DateTime(now.year, now.month, now.day);
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedEventDate.isBefore(firstDay)
-          ? firstDay
-          : _selectedEventDate,
-      firstDate: firstDay,
-      lastDate: firstDay.add(const Duration(days: 365)),
+    final picked = await PickerUtils.showDatePicker(
+      context,
+      initialDate: _selectedEventDate,
+      minimumDate: firstDay,
+      maximumDate: firstDay.add(const Duration(days: 365)),
     );
-
-    if (picked == null) return;
-    setState(() {
-      _selectedEventDate = picked;
-    });
+    if (picked != null) setState(() => _selectedEventDate = picked);
   }
 
   @override

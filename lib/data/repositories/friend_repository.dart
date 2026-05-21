@@ -100,17 +100,74 @@ class FriendRepository {
         });
   }
 
-  /// Gửi lời mời kết bạn (pending)
+  /// Kiểm tra trạng thái quan hệ giữa 2 user.
+  /// Trả về: 'none' | 'pending_sent' | 'pending_received' | 'accepted'
+  Future<String> checkRelationship(String myId, String otherId) async {
+    try {
+      String id1 = myId.compareTo(otherId) < 0 ? myId : otherId;
+      String id2 = myId.compareTo(otherId) > 0 ? myId : otherId;
+
+      final rows = await _client
+          .from('friendships')
+          .select()
+          .eq('user_id1', id1)
+          .eq('user_id2', id2)
+          .maybeSingle();
+
+      if (rows == null) return 'none';
+
+      final status = rows['status'] as String?;
+      if (status == 'accepted') return 'accepted';
+
+      if (status == 'pending') {
+        // Xác định mình là người gửi hay người nhận
+        final requesterId = rows['id'] as String?;
+        return requesterId == myId ? 'pending_sent' : 'pending_received';
+      }
+
+      return 'none'; // rejected hoặc trạng thái lạ
+    } catch (e) {
+      print('Lỗi checkRelationship: $e');
+      return 'none';
+    }
+  }
+
+  /// Gửi lời mời kết bạn (pending).
+  /// Tự động kiểm tra nếu đã tồn tại quan hệ thì bỏ qua, tránh duplicate key.
   Future<void> sendFriendRequest(String senderId, String receiverId) async {
     // Luôn sắp xếp id1 < id2 như constraint trong SQL
     String id1 = senderId.compareTo(receiverId) < 0 ? senderId : receiverId;
     String id2 = senderId.compareTo(receiverId) > 0 ? senderId : receiverId;
 
+    // Kiểm tra đã tồn tại chưa trước khi INSERT
+    final existing = await _client
+        .from('friendships')
+        .select()
+        .eq('user_id1', id1)
+        .eq('user_id2', id2)
+        .maybeSingle();
+
+    if (existing != null) {
+      final status = existing['status'] as String?;
+      if (status == 'accepted') {
+        throw Exception('already_friends');
+      }
+      if (status == 'pending') {
+        throw Exception('already_pending');
+      }
+      // Nếu rejected → cập nhật lại thành pending
+      await _client
+          .from('friendships')
+          .update({'status': 'pending'})
+          .eq('user_id1', id1)
+          .eq('user_id2', id2);
+      return;
+    }
+
     await _client.from('friendships').insert({
       'user_id1': id1,
       'user_id2': id2,
       'status': 'pending',
-      // 'id': auth.uid() is handled automatically by DB default
     });
   }
 

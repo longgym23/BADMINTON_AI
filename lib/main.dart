@@ -163,8 +163,13 @@ class AppWithProviders extends StatelessWidget {
           create: (context) =>
               NotificationProvider(context.read<SupabaseRepository>()),
         ),
-        ChangeNotifierProvider<FavoriteCourtsProvider>(
+        ChangeNotifierProxyProvider<AppAuthProvider, FavoriteCourtsProvider>(
           create: (_) => FavoriteCourtsProvider(),
+          update: (context, auth, previous) {
+            final provider = previous ?? FavoriteCourtsProvider();
+            provider.updateUserId(auth.userId);
+            return provider;
+          },
         ),
         Provider<ICourseRepository>(
           create: (_) =>
@@ -199,7 +204,7 @@ class AppWithProviders extends StatelessWidget {
           create: (context) =>
               GetEventsStreamUseCase(context.read<HomeFilterRepository>()),
         ),
-        ChangeNotifierProvider<CourseProvider>(
+        ChangeNotifierProxyProvider<AppAuthProvider, CourseProvider>(
           create: (context) => CourseProvider(
             getCategoriesUseCase: context.read<GetCategoriesUseCase>(),
             getCoursesByCategoryUseCase: context
@@ -208,6 +213,16 @@ class AppWithProviders extends StatelessWidget {
             markCourseAsWatchedUseCase: context
                 .read<MarkCourseAsWatchedUseCase>(),
           ),
+          update: (context, auth, previous) {
+            final provider = previous ?? CourseProvider(
+              getCategoriesUseCase: context.read<GetCategoriesUseCase>(),
+              getCoursesByCategoryUseCase: context.read<GetCoursesByCategoryUseCase>(),
+              getWatchedCoursesUseCase: context.read<GetWatchedCoursesUseCase>(),
+              markCourseAsWatchedUseCase: context.read<MarkCourseAsWatchedUseCase>(),
+            );
+            provider.updateUserId(auth.userId);
+            return provider;
+          },
         ),
         ChangeNotifierProxyProvider<AppAuthProvider, UnreadCountProvider>(
           create: (_) => UnreadCountProvider(),

@@ -40,6 +40,11 @@ class FriendProvider extends ChangeNotifier {
     return _repository.searchUserByPhone(phone);
   }
 
+  /// Kiểm tra trạng thái quan hệ: 'none' | 'pending_sent' | 'pending_received' | 'accepted'
+  Future<String> checkRelationship(String myId, String otherId) {
+    return _repository.checkRelationship(myId, otherId);
+  }
+
   Future<void> sendFriendRequest(String senderId, String receiverId) {
     return _repository.sendFriendRequest(senderId, receiverId);
   }

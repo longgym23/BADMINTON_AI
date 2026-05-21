@@ -17,6 +17,19 @@ class ManageWithdrawalsScreen extends StatefulWidget {
 class _ManageWithdrawalsScreenState extends State<ManageWithdrawalsScreen> {
   final formatCurrency = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
 
+  Future<Map<String, dynamic>?> _getUserProfile(String userId) async {
+    try {
+      final res = await Supabase.instance.client
+          .from('profiles')
+          .select('display_name, email, phone_number')
+          .eq('id', userId)
+          .maybeSingle();
+      return res;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> _updateStatus(String txId, String newStatus) async {
     try {
       await Supabase.instance.client
@@ -163,6 +176,85 @@ class _ManageWithdrawalsScreenState extends State<ManageWithdrawalsScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
+                      FutureBuilder<Map<String, dynamic>?>(
+                        future: _getUserProfile(tx['user_id']),
+                        builder: (context, profileSnapshot) {
+                          if (profileSnapshot.connectionState == ConnectionState.waiting) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8.0),
+                              child: LinearProgressIndicator(minHeight: 2),
+                            );
+                          }
+                          final profile = profileSnapshot.data;
+                          final displayName = profile?['display_name'] ?? 'Không rõ tên';
+                          final email = profile?['email'] ?? 'Không có email';
+                          final phone = profile?['phone_number'] ?? 'Không có SĐT';
+
+                          return Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.person, size: 16, color: Colors.blue),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Người yêu cầu: $displayName',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: Color(0xFF1F2937),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.email, size: 14, color: Colors.grey),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Email: $email',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.phone, size: 14, color: Colors.grey),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'SĐT: $phone',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),

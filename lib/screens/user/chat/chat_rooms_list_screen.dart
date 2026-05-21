@@ -1,4 +1,4 @@
-import 'package:easy_localization/easy_localization.dart';
+﻿import 'package:easy_localization/easy_localization.dart';
 import 'package:badminton_ai/data/repositories/chat_room_repository.dart';
 import 'package:badminton_ai/domain/usecases/chat_rooms/watch_user_chat_rooms_usecase.dart';
 
@@ -224,8 +224,9 @@ class _RoomCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final timeRef = (room.lastMessageTime ?? room.createdAt) as DateTime;
     final timeAgoStr = timeago.format(
-      room.createdAt,
+      timeRef,
       locale: 'vi',
       allowFromNow: true,
     );

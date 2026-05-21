@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:badminton_ai/widgets/app_toast.dart';
 import 'package:easy_localization/easy_localization.dart';
+
 class AddFriendScreen extends StatefulWidget {
   const AddFriendScreen({super.key});
 
@@ -15,44 +16,73 @@ class AddFriendScreen extends StatefulWidget {
 
 class _AddFriendScreenState extends State<AddFriendScreen> {
   final TextEditingController _searchController = TextEditingController();
-  bool _isLoading = false;
+  bool _isSearching = false;
+  bool _isActing = false;
   UserModel? _searchedUser;
   String? _errorMessage;
+
+  /// Trạng thái quan hệ: 'none' | 'pending_sent' | 'pending_received' | 'accepted'
+  String _relationship = 'none';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _search() async {
     final phone = _searchController.text.trim();
     if (phone.isEmpty) return;
 
     setState(() {
-      _isLoading = true;
+      _isSearching = true;
       _errorMessage = null;
       _searchedUser = null;
+      _relationship = 'none';
     });
 
     final friendProvider = context.read<FriendProvider>();
+    final myId = context.read<AppAuthProvider>().userModel?.id;
     final user = await friendProvider.searchUserByPhone(phone);
 
-    setState(() {
-      _isLoading = false;
-      if (user != null) {
-        // Không cho phép tự kết bạn với chính mình
-        final myId = context.read<AppAuthProvider>().userModel?.id;
-        if (user.id == myId) {
-          _errorMessage = 'screens.thisIsYourPhoneNumber'.tr();
-        } else {
-          _searchedUser = user;
-        }
-      } else {
+    if (!mounted) return;
+
+    if (user == null) {
+      setState(() {
+        _isSearching = false;
         _errorMessage = 'screens.noUsersWereFoundWithThis'.tr();
-      }
+      });
+      return;
+    }
+
+    if (user.id == myId) {
+      setState(() {
+        _isSearching = false;
+        _errorMessage = 'screens.thisIsYourPhoneNumber'.tr();
+      });
+      return;
+    }
+
+    // Kiểm tra trạng thái quan hệ
+    final relationship = myId != null
+        ? await friendProvider.checkRelationship(myId, user.id)
+        : 'none';
+
+    if (!mounted) return;
+    setState(() {
+      _isSearching = false;
+      _searchedUser = user;
+      _relationship = relationship;
     });
   }
 
   Future<void> _sendRequest() async {
-    if (_searchedUser == null) return;
+    if (_searchedUser == null || _isActing) return;
 
     final myId = context.read<AppAuthProvider>().userModel?.id;
     if (myId == null) return;
+
+    setState(() => _isActing = true);
 
     try {
       await context.read<FriendProvider>().sendFriendRequest(
@@ -61,15 +91,130 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       );
 
       if (!mounted) return;
-      AppToast.show(context, 'screens.friendRequestSent'.tr(), type: ToastType.success);
-      Navigator.pop(context);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text("Chưa gửi được: $e")));
+        'screens.friendRequestSent'.tr(),
+        type: ToastType.success,
+      );
+      setState(() {
+        _relationship = 'pending_sent';
+        _isActing = false;
+      });
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() => _isActing = false);
+
+      final msg = e.toString();
+      if (msg.contains('already_friends')) {
+        setState(() => _relationship = 'accepted');
+      } else if (msg.contains('already_pending')) {
+        setState(() => _relationship = 'pending_sent');
+        AppToast.show(
+          context,
+          'Đã gửi lời mời kết bạn trước đó.',
+          type: ToastType.error,
+        );
+      } else {
+        AppToast.show(
+          context,
+          'Không thể gửi lời mời: $msg',
+          type: ToastType.error,
+        );
+      }
     }
   }
+
+  // ─── Trailing button theo trạng thái ────────────────────────────────────────
+
+  Widget _buildTrailingButton() {
+    switch (_relationship) {
+      case 'accepted':
+        return Chip(
+          label: Text(
+            'screens.friend'.tr(),
+            style: const TextStyle(color: AppColors.primary),
+          ),
+          backgroundColor: AppColors.primaryBg,
+          side: const BorderSide(color: AppColors.primary),
+          avatar: const Icon(
+            Icons.check_circle,
+            color: AppColors.primary,
+            size: 16,
+          ),
+        );
+
+      case 'pending_sent':
+        return Chip(
+          label: Text(
+            'Đã gửi lời mời',
+            style: const TextStyle(color: AppColors.textGrey),
+          ),
+          backgroundColor: Colors.grey.shade100,
+        );
+
+      case 'pending_received':
+        return ElevatedButton(
+          onPressed: _isActing ? null : _acceptRequest,
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+          child: _isActing
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text('screens.accept'.tr()),
+        );
+
+      default: // 'none'
+        return ElevatedButton(
+          onPressed: _isActing ? null : _sendRequest,
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+          child: _isActing
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text('screens.makeFriend'.tr()),
+        );
+    }
+  }
+
+  Future<void> _acceptRequest() async {
+    if (_searchedUser == null || _isActing) return;
+    final myId = context.read<AppAuthProvider>().userModel?.id;
+    if (myId == null) return;
+
+    setState(() => _isActing = true);
+    try {
+      await context.read<FriendProvider>().acceptFriendRequest(
+        myId,
+        _searchedUser!.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _relationship = 'accepted';
+        _isActing = false;
+      });
+      AppToast.show(
+        context,
+        'screens.acceptSuccess'.tr(),
+        type: ToastType.success,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isActing = false);
+      AppToast.show(context, 'Lỗi: $e', type: ToastType.error);
+    }
+  }
+
+  // ─── Build ───────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -78,11 +223,13 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       appBar: AppBar(
         title: Text('screens.addFriends'.tr()),
         backgroundColor: Colors.white,
+        elevation: 1,
       ),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // ── Search bar ──────────────────────────────────────────────────
             Row(
               children: [
                 Expanded(
@@ -91,45 +238,71 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
                       hintText: 'screens.enterPhoneNumber1'.tr(),
-                      prefixIcon: Icon(Icons.search),
+                      prefixIcon: const Icon(Icons.search),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      filled: true,
+                      fillColor: Colors.white,
                     ),
                     onSubmitted: (_) => _search(),
                   ),
                 ),
-                SizedBox(width: 8),
-                ElevatedButton(onPressed: _search, child: Text('screens.find'.tr())),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _isSearching ? null : _search,
+                  child: _isSearching
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text('screens.find'.tr()),
+                ),
               ],
             ),
-            SizedBox(height: 24),
-            if (_isLoading) CircularProgressIndicator(),
+
+            const SizedBox(height: 24),
+
+            // ── Error message ───────────────────────────────────────────────
             if (_errorMessage != null)
               Text(
                 _errorMessage!,
-                style: TextStyle(color: AppColors.error),
+                style: const TextStyle(color: AppColors.error),
               ),
+
+            // ── Result ─────────────────────────────────────────────────────
             if (_searchedUser != null)
-              ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: _searchedUser!.photoUrl != null
-                      ? NetworkImage(_searchedUser!.photoUrl!)
-                      : null,
-                  child: _searchedUser!.photoUrl == null
-                      ? Icon(Icons.person)
-                      : null,
+              Card(
+                elevation: 0,
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: AppColors.borderColor),
                 ),
-                title: Text(
-                  _searchedUser!.displayName ?? 'screens.anonymousUser'.tr(),
-                ),
-                subtitle: Text(_searchedUser!.phoneNumber ?? ''),
-                trailing: ElevatedButton(
-                  onPressed: _sendRequest,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
                   ),
-                  child: Text('screens.makeFriend'.tr()),
+                  leading: CircleAvatar(
+                    backgroundImage: _searchedUser!.photoUrl != null
+                        ? NetworkImage(_searchedUser!.photoUrl!)
+                        : null,
+                    backgroundColor: AppColors.primaryBg,
+                    child: _searchedUser!.photoUrl == null
+                        ? const Icon(Icons.person, color: AppColors.primary)
+                        : null,
+                  ),
+                  title: Text(
+                    _searchedUser!.displayName ?? 'screens.anonymousUser'.tr(),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(_searchedUser!.phoneNumber ?? ''),
+                  trailing: _buildTrailingButton(),
                 ),
               ),
           ],
