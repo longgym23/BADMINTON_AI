@@ -313,6 +313,33 @@ function extractRadiusKm(prompt) {
   return m ? parseFloat(m[1]) : null;
 }
 
+function extractSportType(prompt) {
+  const p = (prompt || '').toLowerCase();
+  if (/(cầu lông|badminton)/.test(p)) return 'badminton';
+  if (/(bóng đá|football|soccer|bong da)/.test(p)) return 'football';
+  if (/(tennis|quần vợt)/.test(p)) return 'tennis';
+  if (/(pickleball|pickle)/.test(p)) return 'pickleball';
+  return null;
+}
+
+function detectSportType(prompt, sessionHistory = []) {
+  // 1. Check current prompt first
+  let sport = extractSportType(prompt);
+  if (sport) return sport;
+
+  // 2. Scan session history backwards
+  if (Array.isArray(sessionHistory)) {
+    for (let i = sessionHistory.length - 1; i >= 0; i--) {
+      const msg = sessionHistory[i];
+      if (msg.role === 'user' && msg.parts && msg.parts[0] && msg.parts[0].text) {
+        sport = extractSportType(msg.parts[0].text);
+        if (sport) return sport;
+      }
+    }
+  }
+  return null;
+}
+
 
 
 // ─── Express App ──────────────────────────────────────────────────────────────
@@ -373,6 +400,9 @@ app.post('/ask', upload.single('image'), async (req, res) => {
     }
   }
 
+  const sessionHistory = getSession(sessionId);
+  const detectedSport = detectSportType(userPrompt, sessionHistory);
+
   // ────────────────────────────────────────────────────────────────────────────
   // RAG RETRIEVAL & DB CONTEXT (Gộp chung Query Text Đã Bóc Tách)
   // ────────────────────────────────────────────────────────────────────────────
@@ -381,12 +411,11 @@ app.post('/ask', upload.single('image'), async (req, res) => {
     getUserContext(userId),
     // Tìm sân theo vị trí nếu có GPS và câu hỏi liên quan đến tìm sân gần
     (userLat != null && userLng != null && (intent === 'search' || isNearbyQuery(userPrompt)))
-      ? getNearbyCourts(userLat, userLng, extractRadiusKm(userPrompt) || 5)
+      ? getNearbyCourts(userLat, userLng, extractRadiusKm(userPrompt) || 5, detectedSport)
       : Promise.resolve([]),
   ]);
 
   const sourcesBlock = buildSourcesBlock(kbRows);
-  const sessionHistory = getSession(sessionId);
 
   // Block vị trí (thêm vào prompt nếu có GPS)
   let locationBlock = '';

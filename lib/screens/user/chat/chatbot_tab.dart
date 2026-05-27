@@ -845,9 +845,7 @@ class _MessageBubble extends StatelessWidget {
 
     final nearbyCourtsData = message.metadata?['nearby_courts'];
     List<CourtLocationModel>? backendCourts;
-    if (nearbyCourtsData != null &&
-        nearbyCourtsData is List &&
-        nearbyCourtsData.isNotEmpty) {
+    if (nearbyCourtsData != null && nearbyCourtsData is List) {
       backendCourts = nearbyCourtsData
           .map(
             (e) => CourtLocationModel.fromSupabase(
@@ -1148,7 +1146,7 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
   @override
   void initState() {
     super.initState();
-    if (widget.backendCourts != null && widget.backendCourts!.isNotEmpty) {
+    if (widget.backendCourts != null) {
       courts = widget.backendCourts!;
       isLoading = false;
     } else {

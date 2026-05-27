@@ -126,11 +126,38 @@ class MapViewModel extends ChangeNotifier {
   List<CourtLocationModel> get filteredCourts {
     final courts = List<CourtLocationModel>.from(_allCourts);
 
+    // 1. Lọc theo bộ môn đang chọn (selectedSport) trước
+    final sportFilteredCourts = courts.where((court) {
+      final st = court.sportType?.trim().toLowerCase() ?? '';
+      final nameLower = court.name.toLowerCase();
+
+      switch (selectedSport) {
+        case SportType.badminton:
+          return st == 'badminton' ||
+              nameLower.contains('badminton') ||
+              // Fallback: sân không có sportType và không phải môn khác
+              (st.isEmpty &&
+                  !nameLower.contains('pickle') &&
+                  !nameLower.contains('football') &&
+                  !nameLower.contains('tennis'));
+        case SportType.pickleball:
+          return st == 'pickleball' || nameLower.contains('pickle');
+        case SportType.football:
+          return st == 'football' ||
+              st == 'soccer' ||
+              nameLower.contains('football') ||
+              nameLower.contains('soccer');
+        case SportType.tennis:
+          return st == 'tennis' || nameLower.contains('tennis');
+      }
+    }).toList();
+
+    // 2. Nếu có query tìm kiếm, lọc tiếp trên danh sách sân đã lọc theo bộ môn
     if (searchQuery.isNotEmpty) {
       final q = searchQuery.toLowerCase().trim();
       final mappedSport = _sportKeywordMap[q];
 
-      return courts.where((court) {
+      return sportFilteredCourts.where((court) {
         final nameMatch = court.name.toLowerCase().contains(q);
         final addressMatch = court.address.toLowerCase().contains(q);
         final courtSport = court.sportType?.toLowerCase() ?? '';
@@ -143,33 +170,9 @@ class MapViewModel extends ChangeNotifier {
         // Ngược lại → match theo tên, địa chỉ, hoặc sportType chứa query
         return nameMatch || addressMatch || courtSport.contains(q);
       }).toList();
-    } else {
-      // Không có query → lọc theo sport chip đang chọn
-      return courts.where((court) {
-        final st = court.sportType?.trim().toLowerCase() ?? '';
-        final nameLower = court.name.toLowerCase();
-
-        switch (selectedSport) {
-          case SportType.badminton:
-            return st == 'badminton' ||
-                nameLower.contains('badminton') ||
-                // Fallback: sân không có sportType và không phải môn khác
-                (st.isEmpty &&
-                    !nameLower.contains('pickle') &&
-                    !nameLower.contains('football') &&
-                    !nameLower.contains('tennis'));
-          case SportType.pickleball:
-            return st == 'pickleball' || nameLower.contains('pickle');
-          case SportType.football:
-            return st == 'football' ||
-                st == 'soccer' ||
-                nameLower.contains('football') ||
-                nameLower.contains('soccer');
-          case SportType.tennis:
-            return st == 'tennis' || nameLower.contains('tennis');
-        }
-      }).toList();
     }
+
+    return sportFilteredCourts;
   }
 
   List<CourtLocationModel> get searchResults {

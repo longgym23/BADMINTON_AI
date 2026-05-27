@@ -77,7 +77,9 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
   String _sportLabel(String? type) {
     final t = type?.toLowerCase() ?? '';
     if (t.contains('pickleball')) return 'Pickleball';
-    if (t.contains('screens.football1'.tr()) || t.contains('football') || t.contains('soccer'))
+    if (t.contains('screens.football1'.tr()) ||
+        t.contains('football') ||
+        t.contains('soccer'))
       return 'court_detail_sheet.football'.tr();
     if (t.contains('tennis')) return 'Tennis';
     if (t.contains('screens.basketball'.tr()) || t.contains('basketball'))
@@ -92,7 +94,9 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
   Color _sportColor(String? type) {
     final t = type?.toLowerCase() ?? '';
     if (t.contains('pickleball')) return Colors.blue;
-    if (t.contains('screens.football1'.tr()) || t.contains('football') || t.contains('soccer'))
+    if (t.contains('screens.football1'.tr()) ||
+        t.contains('football') ||
+        t.contains('soccer'))
       return Colors.orange;
     if (t.contains('tennis')) return Colors.purple;
     if (t.contains('screens.basketball'.tr()) || t.contains('basketball'))
@@ -215,7 +219,21 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
     );
   }
 
+  String _getDefaultSportImageUrl(String? sportType) {
+    final type = sportType?.toLowerCase() ?? '';
+    if (type.contains('pickleball')) {
+      return 'https://olqwfnlycbtrcpywnvvf.supabase.co/storage/v1/object/public/court_images/pickleball-wallpaper-3-1759779191.png';
+    } else if (type.contains('football') || type.contains('soccer') || type.contains('bóng đá') || type.contains('bong da')) {
+      return 'https://olqwfnlycbtrcpywnvvf.supabase.co/storage/v1/object/public/court_images/hinh-nen-san-bong-da-dep-1.jpeg';
+    } else if (type.contains('tennis')) {
+      return 'https://olqwfnlycbtrcpywnvvf.supabase.co/storage/v1/object/public/court_images/san-tennis.jpg';
+    } else {
+      return 'https://olqwfnlycbtrcpywnvvf.supabase.co/storage/v1/object/public/court_images/pngtree-badminton-court-green-leisure-badminton-photo-image_9614702.jpg';
+    }
+  }
+
   Widget _buildHeader(CourtLocationModel court) {
+    final fallbackUrl = _getDefaultSportImageUrl(court.sportType);
     return Stack(
       children: [
         // Cover image
@@ -227,9 +245,19 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   imageUrl: court.imageUrl!,
                   fit: BoxFit.cover,
                   placeholder: (_, __) => _PlaceholderCover(),
-                  errorWidget: (_, __, ___) => _PlaceholderCover(),
+                  errorWidget: (_, __, ___) => CachedNetworkImage(
+                    imageUrl: fallbackUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => _PlaceholderCover(),
+                    errorWidget: (_, __, ___) => _PlaceholderCover(),
+                  ),
                 )
-              : _PlaceholderCover(),
+              : CachedNetworkImage(
+                  imageUrl: fallbackUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => _PlaceholderCover(),
+                  errorWidget: (_, __, ___) => _PlaceholderCover(),
+                ),
         ),
 
         // Gradient overlay
@@ -363,10 +391,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               ),
               SizedBox(width: 5),
               Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: _sportColor(court.sportType).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
@@ -440,10 +465,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
               builder: (context) {
                 return Text(
                   'home_screen.bookingNow'.tr(),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 );
               },
             ),
@@ -877,11 +899,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                           color: AppColors.textGrey,
                         ),
                       ),
-                      Icon(
-                        Icons.star_rounded,
-                        color: Colors.amber,
-                        size: 12,
-                      ),
+                      Icon(Icons.star_rounded, color: Colors.amber, size: 12),
                       SizedBox(width: 6),
                       Expanded(
                         child: ClipRRect(
@@ -991,10 +1009,7 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                   ),
                   Text(
                     court.name,
-                    style: TextStyle(
-                      color: AppColors.textGrey,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: AppColors.textGrey, fontSize: 14),
                   ),
                   SizedBox(height: 20),
 
@@ -1051,15 +1066,11 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                       fillColor: AppColors.background,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: AppColors.borderColor,
-                        ),
+                        borderSide: BorderSide(color: AppColors.borderColor),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: AppColors.borderColor,
-                        ),
+                        borderSide: BorderSide(color: AppColors.borderColor),
                       ),
                     ),
                   ),
@@ -1341,10 +1352,7 @@ class _ReviewCard extends StatelessWidget {
                     ),
                     Text(
                       dateStr,
-                      style: TextStyle(
-                        color: AppColors.textGrey,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: AppColors.textGrey, fontSize: 12),
                     ),
                   ],
                 ),

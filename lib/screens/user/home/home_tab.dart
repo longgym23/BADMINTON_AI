@@ -749,13 +749,27 @@ class _CourtListItem extends StatelessWidget {
     );
   }
 
+  String _getDefaultSportImageUrl(String? sportType) {
+    final type = sportType?.toLowerCase() ?? '';
+    if (type.contains('pickleball')) {
+      return 'https://olqwfnlycbtrcpywnvvf.supabase.co/storage/v1/object/public/court_images/pickleball-wallpaper-3-1759779191.png';
+    } else if (type.contains('football') || type.contains('soccer') || type.contains('bóng đá') || type.contains('bong da')) {
+      return 'https://olqwfnlycbtrcpywnvvf.supabase.co/storage/v1/object/public/court_images/hinh-nen-san-bong-da-dep-1.jpeg';
+    } else if (type.contains('tennis')) {
+      return 'https://olqwfnlycbtrcpywnvvf.supabase.co/storage/v1/object/public/court_images/san-tennis.jpg';
+    } else {
+      return 'https://olqwfnlycbtrcpywnvvf.supabase.co/storage/v1/object/public/court_images/pngtree-badminton-court-green-leisure-badminton-photo-image_9614702.jpg';
+    }
+  }
+
   Widget _buildImageSection() {
+    final fallbackUrl = _getDefaultSportImageUrl(court.sportType);
     return Stack(
       children: [
         // Court image
         ClipRRect(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-          child: court.imageUrl != null
+          child: court.imageUrl != null && court.imageUrl!.isNotEmpty
               ? CachedNetworkImage(
                   imageUrl: court.imageUrl!,
                   height: 180,
@@ -764,22 +778,43 @@ class _CourtListItem extends StatelessWidget {
                   placeholder: (context, url) => Container(
                     height: 180,
                     color: Colors.grey[200],
-                    child: Center(child: CircularProgressIndicator()),
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => CachedNetworkImage(
+                    imageUrl: fallbackUrl,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      height: 180,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 180,
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: Icon(Icons.image, size: 50, color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                )
+              : CachedNetworkImage(
+                  imageUrl: fallbackUrl,
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    height: 180,
+                    color: Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator()),
                   ),
                   errorWidget: (context, url, error) => Container(
                     height: 180,
                     color: Colors.grey[200],
-                    child: Center(
+                    child: const Center(
                       child: Icon(Icons.image, size: 50, color: Colors.grey),
                     ),
-                  ),
-                )
-              : Container(
-                  height: 180,
-                  width: double.infinity,
-                  color: Colors.grey[200],
-                  child: Center(
-                    child: Icon(Icons.image, size: 50, color: Colors.grey),
                   ),
                 ),
         ),
