@@ -248,7 +248,41 @@ function safeJsonParse(text) {
   const start = cleanText.indexOf('{');
   const end = cleanText.lastIndexOf('}');
   if (start >= 0 && end > start) cleanText = cleanText.slice(start, end + 1);
-  try { return JSON.parse(cleanText); } catch (_) { return null; }
+  
+  try {
+    return JSON.parse(cleanText);
+  } catch (_) {
+    console.log('[WARN] JSON.parse failed. Attempting regex fallback extraction for answer and action.');
+    try {
+      // Regex for matching "answer": "..." (supporting escaped quotes)
+      const answerMatch = text.match(/"answer"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      // Regex for action type and sport
+      const actionTypeMatch = text.match(/"type"\s*:\s*"([^"]+)"/);
+      const actionSportMatch = text.match(/"sport"\s*:\s*"([^"]+)"/);
+
+      if (answerMatch) {
+        let extractedAnswer = answerMatch[1]
+          .replace(/\\"/g, '"')
+          .replace(/\\n/g, '\n')
+          .replace(/\\\\/g, '\\');
+        
+        const extractedAction = {
+          type: actionTypeMatch ? actionTypeMatch[1] : 'none',
+          sport: actionSportMatch ? actionSportMatch[1] : null
+        };
+        
+        console.log('[SUCCESS] Regex fallback extracted answer successfully.');
+        return {
+          answer: extractedAnswer,
+          action: extractedAction,
+          used_sources: []
+        };
+      }
+    } catch (regexErr) {
+      console.error('[ERROR] Regex fallback extraction error:', regexErr.message);
+    }
+    return null;
+  }
 }
 
 function normalizeAction(action) {
@@ -528,7 +562,7 @@ app.post('/ask', upload.single('image'), async (req, res) => {
     const chat = model.startChat({
       history: sessionHistory,
       generationConfig: {
-        maxOutputTokens: 600,
+        maxOutputTokens: 2048,
         responseMimeType: "application/json"
       },
     });
