@@ -167,6 +167,9 @@ class _ChatbotTabState extends State<ChatbotTab> {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (serviceEnabled) {
         LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
         if (permission == LocationPermission.always ||
             permission == LocationPermission.whileInUse) {
           Position? pos = await Geolocator.getLastKnownPosition();
@@ -176,6 +179,7 @@ class _ChatbotTabState extends State<ChatbotTab> {
           );
           lat = pos.latitude;
           lng = pos.longitude;
+          debugPrint("Chatbot GPS location: $lat, $lng");
         }
       }
     } catch (_) {}

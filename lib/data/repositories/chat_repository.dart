@@ -173,6 +173,8 @@ class ChatRepository {
               'citations': responseBody['citations'],
             if (responseBody['used_sources'] != null)
               'used_sources': responseBody['used_sources'],
+            if (responseBody['nearby_courts'] != null)
+              'nearby_courts': responseBody['nearby_courts'],
           };
           aiType = (responseBody['type'] as String?) ?? 'text';
         }

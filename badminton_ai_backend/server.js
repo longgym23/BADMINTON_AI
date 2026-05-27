@@ -278,25 +278,45 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 
 // ─── Nearby Courts from Supabase (theo bán kính km) ──────────────────────────
 async function getNearbyCourts(userLat, userLng, radiusKm = 5, sportType = null) {
-  if (!supabaseAdmin || userLat == null || userLng == null) return [];
+  if (!supabaseAdmin || userLat == null || userLng == null) {
+    console.log(`[NEARBY] Lat/Lng missing: userLat=${userLat}, userLng=${userLng}`);
+    return [];
+  }
   try {
+    console.log(`[NEARBY] Request - userLat: ${userLat}, userLng: ${userLng}, radiusKm: ${radiusKm}, sportType: ${sportType}`);
     let query = supabaseAdmin
       .from('courts')
       .select('id, name, address, latitude, longitude, price_per_hour, sport_type, image_url, rating, total_reviews');
     if (sportType) query = query.eq('sport_type', sportType);
     const { data, error } = await query.limit(200);
-    if (error || !data) return [];
+    if (error || !data) {
+      console.error('[NEARBY] Supabase query error:', error);
+      return [];
+    }
 
-    return data
-      .map(c => ({
-        ...c,
-        distance_km: (c.latitude && c.longitude)
-          ? haversineKm(userLat, userLng, c.latitude, c.longitude)
-          : 9999,
-      }))
-      .filter(c => c.distance_km <= radiusKm)
+    const mapped = data.map(c => {
+      const d = (c.latitude != null && c.longitude != null)
+        ? haversineKm(userLat, userLng, c.latitude, c.longitude)
+        : 9999;
+      return { ...c, distance_km: d };
+    });
+
+    console.log(`[NEARBY] Total candidates fetched: ${mapped.length}`);
+    const filtered = mapped.filter(c => c.distance_km <= radiusKm);
+    console.log(`[NEARBY] Candidates within ${radiusKm}km: ${filtered.length}`);
+    
+    // Log the top 5 nearest candidates for debugging
+    const sortedCandidates = [...mapped].sort((a, b) => a.distance_km - b.distance_km);
+    console.log('[NEARBY] Nearest 5 courts overall:');
+    sortedCandidates.slice(0, 5).forEach(c => {
+      console.log(`  - ${c.name} (${c.sport_type}): dist=${c.distance_km.toFixed(2)}km, lat=${c.latitude}, lng=${c.longitude}`);
+    });
+
+    const sortedFiltered = filtered
       .sort((a, b) => a.distance_km - b.distance_km)
-      .slice(0, 10); // trả về tối đa 10 sân gần nhất
+      .slice(0, 10);
+
+    return sortedFiltered;
   } catch (e) {
     console.error('[NEARBY] Error:', e.message); return [];
   }
