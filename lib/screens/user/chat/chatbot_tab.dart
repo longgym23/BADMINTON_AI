@@ -1198,6 +1198,19 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
     }
   }
 
+  String _getDefaultSportImageUrl(String? sportType) {
+    final type = sportType?.toLowerCase() ?? '';
+    if (type.contains('pickleball')) {
+      return 'https://olqwfnlycbtrcpywnvvf.supabase.co/storage/v1/object/public/court_images/pickleball-wallpaper-3-1759779191.png';
+    } else if (type.contains('football') || type.contains('soccer') || type.contains('bóng đá') || type.contains('bong da')) {
+      return 'https://olqwfnlycbtrcpywnvvf.supabase.co/storage/v1/object/public/court_images/hinh-nen-san-bong-da-dep-1.jpeg';
+    } else if (type.contains('tennis')) {
+      return 'https://olqwfnlycbtrcpywnvvf.supabase.co/storage/v1/object/public/court_images/san-tennis.jpg';
+    } else {
+      return 'https://olqwfnlycbtrcpywnvvf.supabase.co/storage/v1/object/public/court_images/pngtree-badminton-court-green-leisure-badminton-photo-image_9614702.jpg';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -1258,10 +1271,6 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
                         ? CachedNetworkImage(
                             imageUrl: court.imageUrl!,
                             fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) => Icon(
-                              Icons.sports_tennis,
-                              color: AppColors.primary,
-                            ),
                             placeholder: (_, __) => Center(
                               child: SizedBox(
                                 width: 20,
@@ -1271,8 +1280,41 @@ class _CourtListCarouselState extends State<_CourtListCarousel> {
                                 ),
                               ),
                             ),
+                            errorWidget: (_, __, ___) => CachedNetworkImage(
+                              imageUrl: _getDefaultSportImageUrl(court.sportType),
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                              errorWidget: (_, __, ___) => Icon(
+                                Icons.sports_tennis,
+                                color: AppColors.primary,
+                              ),
+                            ),
                           )
-                        : Icon(Icons.sports_score, color: AppColors.primary),
+                        : CachedNetworkImage(
+                            imageUrl: _getDefaultSportImageUrl(court.sportType),
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                            errorWidget: (_, __, ___) => Icon(
+                              Icons.sports_tennis,
+                              color: AppColors.primary,
+                            ),
+                          ),
                   ),
                 ),
                 Padding(
