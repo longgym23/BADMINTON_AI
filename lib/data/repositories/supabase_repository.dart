@@ -744,6 +744,19 @@ class SupabaseRepository {
         );
   }
 
+  // Lấy danh sách tất cả users (profiles) một lần
+  Future<List<UserModel>> getUsers() async {
+    try {
+      final data = await _client.from('profiles').select();
+      return List<UserModel>.from(
+        data.map((e) => UserModel.fromSupabase(e)),
+      );
+    } catch (e, st) {
+      AppLogger.e('Repository', 'getUsers error', e, st);
+      return [];
+    }
+  }
+
   // Cập nhật thông tin user (admin)
   Future<void> updateUser(UserModel user) async {
     // Chỉ gửi các cột thực sự tồn tại trong bảng profiles

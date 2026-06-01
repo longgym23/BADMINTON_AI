@@ -73,11 +73,10 @@ void main() async {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9scXdmbmx5Y2J0cmNweXdudnZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTYxMjIsImV4cCI6MjA4NjczMjEyMn0.owENmaiBwqlg03TRAXN1qhrI8cqo_mfy3ukfhIddaGY',
   );
 
-  try {
-    await PushNotificationService().initialize();
-  } catch (e) {
-    print('PushNotificationService initialization error: \$e');
-  }
+  // Khởi tạo notification bất đồng bộ, không chặn luồng vẽ UI của runApp()
+  PushNotificationService().initialize().catchError((e) {
+    print('PushNotificationService initialization error: $e');
+  });
 
   runApp(
     EasyLocalization(

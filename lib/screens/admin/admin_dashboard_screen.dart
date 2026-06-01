@@ -6,6 +6,7 @@ import 'package:badminton_ai/screens/admin/manage_bookings_screen.dart';
 import 'package:badminton_ai/screens/admin/manage_courts_screen.dart';
 import 'package:badminton_ai/screens/admin/manage_users_screen.dart';
 import 'package:badminton_ai/screens/admin/events/admin_event_list_screen.dart';
+import 'package:badminton_ai/screens/admin/admin_desktop_dashboard_screen.dart';
 import 'package:badminton_ai/screens/admin/manage_withdrawals_screen.dart';
 import 'package:badminton_ai/screens/user/wallet/wallet_screen.dart';
 import 'package:flutter/material.dart';
@@ -121,6 +122,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    if (size.width > 900) {
+      return const AdminDesktopDashboardScreen();
+    }
+
     final user = context.watch<AppAuthProvider>().userModel;
     final isOwner = user?.role == 'court_owner';
     final isAdmin = user?.role == 'admin';

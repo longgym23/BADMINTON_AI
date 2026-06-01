@@ -320,7 +320,7 @@ async function getNearbyCourts(userLat, userLng, radiusKm = 5, sportType = null)
     console.log(`[NEARBY] Request - userLat: ${userLat}, userLng: ${userLng}, radiusKm: ${radiusKm}, sportType: ${sportType}`);
     let query = supabaseAdmin
       .from('courts')
-      .select('id, name, address, latitude, longitude, price_per_hour, sport_type, image_url, rating, total_reviews');
+      .select('id, name, address, latitude, longitude, price_per_hour, total_courts, sport_type, image_url, rating, total_reviews');
     if (sportType) query = query.eq('sport_type', sportType);
     const { data, error } = await query.limit(200);
     if (error || !data) {

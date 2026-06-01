@@ -38,4 +38,7 @@ class AppColors {
   static const Color courtLocked = Color(0xFF9E9E9E); 
   static const Color courtEvent = Color(0xFFFFB347);
   static const Color darkHeader = Color(0xFF1A1A1A); 
+  
+  // Dai Nam University Brand colors
+  static const Color brandDarkBlue = Color(0xFF0A1931); // Brand Dark Blue
 }

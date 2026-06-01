@@ -100,6 +100,20 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _noteController;
+  bool _isRefundedOrPaid = false;
+  bool _isBalanceDeducted = false;
+
+  late SupabaseRepository _repo;
+  late AppAuthProvider _authProvider;
+  late CheckoutViewModel _vm;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _repo = context.read<SupabaseRepository>();
+    _authProvider = context.read<AppAuthProvider>();
+    _vm = context.read<CheckoutViewModel>();
+  }
 
   @override
   void initState() {
@@ -265,6 +279,11 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
   }
 
   Future<void> _finishRegularBookingSuccess() async {
+    if (mounted) {
+      setState(() {
+        _isRefundedOrPaid = true;
+      });
+    }
     if (!mounted) return;
     
     AppToast.show(context, 'checkout_screen.paymentSuccess'.tr(), type: ToastType.success);
@@ -323,6 +342,9 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
 
     if (vm.appliedBalance > 0 && userId != null) {
       await repo.deductBalance(userId, vm.appliedBalance);
+      setState(() {
+        _isBalanceDeducted = true;
+      });
       if (authProvider.userModel != null) {
         authProvider.updateUserModel(
           authProvider.userModel!.copyWith(
@@ -371,18 +393,21 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     int refundedBalance,
     String? userId,
   ) async {
+    if (mounted) {
+      setState(() {
+        _isRefundedOrPaid = true;
+      });
+    }
     try {
-      final repo = context.read<SupabaseRepository>();
-      await repo.releaseBookingTransaction(transactionId);
+      await _repo.releaseBookingTransaction(transactionId);
 
       // Hoàn lại tiền ví nếu đã trừ
-      if (refundedBalance > 0 && userId != null) {
-        await repo.addBalance(userId, refundedBalance);
-        final authProvider = context.read<AppAuthProvider>();
-        if (authProvider.userModel != null) {
-          authProvider.updateUserModel(
-            authProvider.userModel!.copyWith(
-              balance: authProvider.userModel!.balance + refundedBalance,
+      if (_isBalanceDeducted && refundedBalance > 0 && userId != null) {
+        await _repo.addBalance(userId, refundedBalance);
+        if (_authProvider.userModel != null) {
+          _authProvider.updateUserModel(
+            _authProvider.userModel!.copyWith(
+              balance: _authProvider.userModel!.balance + refundedBalance,
             ),
           );
         }
@@ -436,10 +461,33 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (bool didPop, _) {
-        if (didPop) {
-          context.read<SupabaseRepository>().releaseBookingTransaction(
-            vm.transactionId,
-          );
+        if (didPop && !_isRefundedOrPaid) {
+          _isRefundedOrPaid = true;
+          final userId = _authProvider.userModel?.id;
+          final txId = _vm.transactionId;
+          final refundAmt = _vm.appliedBalance;
+          final userModel = _authProvider.userModel;
+          final wasDeducted = _isBalanceDeducted;
+
+          // Chạy bất đồng bộ bên ngoài context lifecycle để đảm bảo không bị ảnh hưởng nếu context bị hủy
+          Future.microtask(() async {
+            try {
+              await _repo.releaseBookingTransaction(txId);
+              // Chỉ hoàn lại ví nếu người dùng đã nhấn "Tạo đơn thanh toán" (ví đã trừ thực tế)
+              if (wasDeducted && refundAmt > 0 && userId != null) {
+                await _repo.addBalance(userId, refundAmt);
+                if (userModel != null) {
+                  _authProvider.updateUserModel(
+                    userModel.copyWith(
+                      balance: userModel.balance + refundAmt,
+                    ),
+                  );
+                }
+              }
+            } catch (e) {
+              debugPrint('Lỗi giải phóng hoàn ví khi back: $e');
+            }
+          });
         }
       },
       child: Scaffold(

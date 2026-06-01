@@ -3,11 +3,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:badminton_ai/utils/app_logger.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 class PushNotificationService {
   static const _tag = 'PushNotification';
 
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging get _fcm => FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -19,6 +20,12 @@ class PushNotificationService {
   PushNotificationService._internal();
 
   Future<void> initialize() async {
+    // Check if platform supports FCM/Notifications to prevent hanging/crashing on Web & Desktop
+    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) {
+      AppLogger.i(_tag, 'Push notification initialization skipped on non-mobile platform');
+      return;
+    }
+
     // ─── Xin quyền thông báo ───────────────────────────────────────────────
     final settings = await _fcm.requestPermission(
       alert: true,
@@ -150,6 +157,10 @@ class PushNotificationService {
   }
 
   void _showLocalPush(int id, String title, String body) {
+    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) {
+      AppLogger.d(_tag, 'Skipping local notification show on non-mobile platform: $title - $body');
+      return;
+    }
     _localNotifications.show(
       id: id,
       title: title,

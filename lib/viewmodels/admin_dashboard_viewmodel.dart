@@ -26,6 +26,15 @@ class AdminDashboardViewModel extends ChangeNotifier with FilterableViewModelMix
   String? _selectedCourtId;
   String? get selectedCourtId => _selectedCourtId;
 
+  Map<String, String> _userNames = {};
+  Map<String, String> get userNames => _userNames;
+
+  int _totalUsersCount = 0;
+  int get totalUsersCount => _totalUsersCount;
+
+  int _activeCourtsCount = 0;
+  int get activeCourtsCount => _activeCourtsCount;
+
   AdminDashboardViewModel({required this.repo, required this.auth});
 
   void setSelectedCourtId(String? id) {
@@ -42,6 +51,7 @@ class AdminDashboardViewModel extends ChangeNotifier with FilterableViewModelMix
       ownerId: isOwner ? user.id : null,
     );
     _courtsList = courts;
+    _activeCourtsCount = courts.length;
     notifyListeners();
   }
 
@@ -95,8 +105,6 @@ class AdminDashboardViewModel extends ChangeNotifier with FilterableViewModelMix
         start = end.subtract(const Duration(days: 6));
         break;
       case FilterMode.all:
-        // For admin dashboard, "All" might be too much, but we'll follow the query if needed.
-        // Usually, dashboard is time-bounded.
         start = DateTime(2000); // effectively all
         end = now;
         break;
@@ -107,6 +115,25 @@ class AdminDashboardViewModel extends ChangeNotifier with FilterableViewModelMix
     }
 
     try {
+      // 1. Fetch Courts if empty
+      if (_courtsList.isEmpty) {
+        final courts = await repo.getSimpleCourtsList(
+          ownerId: filterOwnerId,
+        );
+        _courtsList = courts;
+      }
+      _activeCourtsCount = _courtsList.length;
+
+      // 2. Fetch Users cache if empty
+      if (_userNames.isEmpty) {
+        final users = await repo.getUsers();
+        _userNames = {
+          for (var u in users) u.id: u.displayName ?? (u.email != null ? u.email!.split('@')[0] : 'Khách')
+        };
+        _totalUsersCount = users.where((u) => u.role != 'admin').length;
+      }
+
+      // 3. Fetch Bookings
       final fetchedBookings = await repo.getBookingsForDateRange(
         start,
         end,

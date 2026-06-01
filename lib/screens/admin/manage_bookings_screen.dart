@@ -34,6 +34,29 @@ class _ManageBookingsView extends StatefulWidget {
 class _ManageBookingsViewState extends State<_ManageBookingsView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  Map<String, String> _userNames = {};
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => _loadUserNames());
+  }
+
+  Future<void> _loadUserNames() async {
+    try {
+      final repo = context.read<SupabaseRepository>();
+      final users = await repo.getUsers();
+      if (mounted) {
+        setState(() {
+          _userNames = {
+            for (var u in users) u.id: u.displayName ?? (u.email != null ? u.email!.split('@')[0] : 'Khách')
+          };
+        });
+      }
+    } catch (e) {
+      debugPrint("Lỗi tải danh sách người dùng: $e");
+    }
+  }
 
   @override
   void dispose() {
@@ -182,8 +205,9 @@ class _ManageBookingsViewState extends State<_ManageBookingsView> {
                 final searched = allBookings.where((b) {
                   if (_searchQuery.isEmpty) return true;
                   final query = _searchQuery.toLowerCase();
+                  final cachedName = _userNames[b.userId]?.toLowerCase() ?? '';
                   return b.id!.toLowerCase().contains(query) ||
-                         b.userName.toLowerCase().contains(query);
+                         cachedName.contains(query);
                 }).toList();
 
                 final filtered = vm.applyFilter(searched);
@@ -228,6 +252,7 @@ class _ManageBookingsViewState extends State<_ManageBookingsView> {
                     final booking = sorted[index - 1];
                     return _AdminBookingCard(
                       booking: booking,
+                      userName: _userNames[booking.userId] ?? 'Khách hàng',
                       fmt: currencyFormatter,
                       onDelete: () => _confirmDelete(context, booking.id, repo),
                     );
@@ -320,11 +345,13 @@ class _RevenueSummary extends StatelessWidget {
 
 class _AdminBookingCard extends StatelessWidget {
   final BookingModel booking;
+  final String userName;
   final NumberFormat fmt;
   final VoidCallback onDelete;
 
   const _AdminBookingCard({
     required this.booking,
+    required this.userName,
     required this.fmt,
     required this.onDelete,
   });
@@ -379,7 +406,7 @@ class _AdminBookingCard extends StatelessWidget {
                       ),
                       Expanded(
                         child: Text(
-                          booking.userName,
+                          userName.isNotEmpty ? userName : 'Khách hàng',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
