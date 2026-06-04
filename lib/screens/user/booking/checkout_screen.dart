@@ -297,8 +297,10 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
     final vm = context.read<CheckoutViewModel>();
 
     if (vm.customerName.isEmpty || vm.customerPhone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('checkout_screen.fillNameAndPhone'.tr())),
+      AppToast.show(
+        context,
+        'checkout_screen.fillNameAndPhone'.tr(),
+        type: ToastType.error,
       );
       return;
     }
@@ -322,12 +324,7 @@ class _CheckoutScreenViewState extends State<CheckoutScreenView> {
 
       if (!isCreated) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('checkout_screen.orderError'.tr()),
-              backgroundColor: AppColors.error,
-            ),
-          );
+          AppToast.show(context, 'checkout_screen.orderError'.tr(), type: ToastType.error);
         }
         return;
       }

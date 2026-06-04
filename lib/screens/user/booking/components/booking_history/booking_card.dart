@@ -17,18 +17,22 @@ import 'package:flutter/cupertino.dart';
 class BookingCard extends StatelessWidget {
   final BookingGroup group;
   final SupabaseRepository repo;
-const BookingCard({super.key, required this.group, required this.repo});
+  const BookingCard({super.key, required this.group, required this.repo});
 
   Future<void> _launchMaps(BuildContext context) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('booking_history_screen.gettingLocation'.tr()), duration: const Duration(seconds: 1)),
+    AppToast.show(
+      context,
+      'booking_history_screen.gettingLocation'.tr(),
+      type: ToastType.success,
     );
     try {
       final court = await repo.getCourtLocationById(group.base.courtId);
       if (court == null || (court.latitude == 0 && court.longitude == 0)) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('booking_history_screen.locationNotFound'.tr())),
+          AppToast.show(
+            context,
+            'booking_history_screen.locationNotFound'.tr(),
+            type: ToastType.error,
           );
         }
         return;

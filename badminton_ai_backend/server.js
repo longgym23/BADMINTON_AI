@@ -895,20 +895,25 @@ app.post('/api/sepay-webhook', express.json(), async (req, res) => {
 
     // 2. Xử lý thanh toán ĐẶT SÂN
     if (contentUpper.includes('DATSAN')) {
-      const match = contentUpper.match(/DATSAN\s*([A-Z0-9-]+)/);
+      const match = content.match(/DATSAN\s*([a-zA-Z0-9_-]+)/i);
       if (match && match[1]) {
-        let bookingRef = match[1].replace(/-/g, ''); // Xóa gạch ngang nếu có
+        let bookingRef = match[1].trim();
+
+        const refUpper = bookingRef.toUpperCase();
+        const refLower = bookingRef.toLowerCase();
 
         // Thử format có dấu gạch dưới (do hệ thống cũ có thể lưu kiểu này)
         const refWithUnderscore = bookingRef.length > 5
           ? `${bookingRef.substring(0, 5)}_${bookingRef.substring(5)}`
           : bookingRef;
+        const refWithUnderscoreUpper = refWithUnderscore.toUpperCase();
+        const refWithUnderscoreLower = refWithUnderscore.toLowerCase();
 
         // Cập nhật trạng thái booking thành PAID
         const { data, error } = await supabaseAdmin
           .from('bookings')
-          .update({ status: 'PAID', transaction_id: referenceCode })
-          .or(`transaction_id.eq.${bookingRef},transaction_id.eq.${refWithUnderscore}`)
+          .update({ status: 'PAID' })
+          .or(`transaction_id.eq.${bookingRef},transaction_id.eq.${refUpper},transaction_id.eq.${refLower},transaction_id.eq.${refWithUnderscore},transaction_id.eq.${refWithUnderscoreUpper},transaction_id.eq.${refWithUnderscoreLower}`)
           .select();
 
         if (error) throw error;

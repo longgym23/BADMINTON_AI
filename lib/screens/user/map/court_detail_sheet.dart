@@ -1106,6 +1106,9 @@ class _CourtDetailSheetState extends State<CourtDetailSheet>
                                 // Reload reviews
                                 _loadReviews();
                               } catch (e) {
+                                if (ctx.mounted) {
+                                  AppToast.show(ctx, 'Lỗi: $e', type: ToastType.error);
+                                }
                                 setModalState(() => submitting = false);
                               }
                             },

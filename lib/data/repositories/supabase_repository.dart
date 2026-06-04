@@ -184,7 +184,9 @@ class SupabaseRepository {
           .order('booking_date', ascending: false)
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);
-      return data.map<BookingModel>((e) => BookingModel.fromSupabase(e)).toList();
+      return data
+          .map<BookingModel>((e) => BookingModel.fromSupabase(e))
+          .toList();
     } catch (e, st) {
       AppLogger.e('Repository', 'getMoreBookingHistory error', e, st);
       return [];
@@ -199,7 +201,7 @@ class SupabaseRepository {
     String? courtId,
   }) async {
     final startStr = start.toIso8601String().split('T')[0];
-    final endStr   = end.toIso8601String().split('T')[0];
+    final endStr = end.toIso8601String().split('T')[0];
     try {
       var query = _client
           .from('bookings')
@@ -213,7 +215,9 @@ class SupabaseRepository {
             .from('courts')
             .select('id')
             .eq('owner_id', ownerId);
-        final courtIds = (userCourtsResp as List).map((c) => c['id'] as String).toList();
+        final courtIds = (userCourtsResp as List)
+            .map((c) => c['id'] as String)
+            .toList();
         if (courtIds.isEmpty) return [];
         query = query.inFilter('court_id', courtIds);
       }
@@ -353,30 +357,10 @@ class SupabaseRepository {
   // Hủy booking và hoàn tiền vào Balance (Chỉ hoàn tiền đối với các booking đã thanh toán PAID)
   Future<void> cancelBookingWithRefund(BookingModel booking) async {
     try {
-      final now = DateTime.now();
-      final bookingDateTime = DateTime(
-        booking.date.year,
-        booking.date.month,
-        booking.date.day,
-        booking.timeSlot, // Giờ đặt sân
-      );
-
-      final diffHours = bookingDateTime.difference(now).inHours;
-      final diffMinutes = bookingDateTime.difference(now).inMinutes;
-
-      // >= 2h trước giờ chơi → hoàn 100%
-      // 0 < x < 2h (chưa tới giờ) → hoàn 50%
-      // Đã tới hoặc quá giờ (diffMinutes <= 0) → không hoàn
-      int refundAmount = 0;
-      if (booking.status == 'PAID') {
-        if (diffHours >= 2) {
-          refundAmount = booking.price; // 100%
-        } else if (diffMinutes > 0) {
-          refundAmount = (booking.price * 0.5).toInt(); // 50%
-        }
-      }
-
       // 1. Cập nhật trạng thái booking -> cancelled
+      // Toàn bộ logic tính toán hoàn tiền (100% hoặc 50%), tạo bản ghi REFUND SUCCESS
+      // trong wallet_transactions và cộng số dư ví đã được chuyển hoàn toàn lên Database Trigger
+      // của bảng bookings để đảm bảo an toàn bảo mật và tránh lỗi RLS.
       final updateRes = await _client
           .from('bookings')
           .update({'status': 'cancelled'})
@@ -388,29 +372,38 @@ class SupabaseRepository {
         );
       }
 
-      // 2. Cập nhật số dư ví nếu có hoàn tiền
-      if (refundAmount > 0) {
-        await addBalance(booking.userId, refundAmount);
-        debugPrint('[Refund] Hoàn $refundAmount₫ → userId=${booking.userId}');
-      }
-
       // 3. Nếu là hóa đơn sự kiện, giải phóng slot tham gia
-      if (booking.transactionId != null && booking.transactionId!.startsWith('EVENT_')) {
+      if (booking.transactionId != null &&
+          booking.transactionId!.startsWith('EVENT_')) {
         final parts = booking.transactionId!.split('_');
         if (parts.length >= 2) {
           final eventId = parts[1];
           try {
-            final evData = await _client.from('events').select('price, current_participants').eq('id', eventId).maybeSingle();
+            final evData = await _client
+                .from('events')
+                .select('price, current_participants')
+                .eq('id', eventId)
+                .maybeSingle();
             if (evData != null) {
               final int eventPrice = (evData['price'] as num?)?.toInt() ?? 0;
               int quantityToFree = 1;
               if (eventPrice > 0) {
                 quantityToFree = booking.price ~/ eventPrice;
               }
-              final int currentParticipants = (evData['current_participants'] as num?)?.toInt() ?? 0;
+              final int currentParticipants =
+                  (evData['current_participants'] as num?)?.toInt() ?? 0;
               final int newParticipants = currentParticipants - quantityToFree;
-              await _client.from('events').update({'current_participants': newParticipants >= 0 ? newParticipants : 0}).eq('id', eventId);
-              debugPrint('[Refund] Giải phóng $quantityToFree slot cho sự kiện $eventId');
+              await _client
+                  .from('events')
+                  .update({
+                    'current_participants': newParticipants >= 0
+                        ? newParticipants
+                        : 0,
+                  })
+                  .eq('id', eventId);
+              debugPrint(
+                '[Refund] Giải phóng $quantityToFree slot cho sự kiện $eventId',
+              );
             }
           } catch (e) {
             debugPrint('Lỗi giải phóng slot sự kiện: $e');
@@ -605,9 +598,15 @@ class SupabaseRepository {
     final remaining = maxP - cur;
 
     final courtIdStr = ev['court_id']?.toString() ?? '';
-    final courtData = await _client.from('courts').select('id, name').eq('id', courtIdStr).maybeSingle();
+    final courtData = await _client
+        .from('courts')
+        .select('id, name')
+        .eq('id', courtIdStr)
+        .maybeSingle();
     if (courtData == null) {
-      throw Exception("Sân liên kết với sự kiện không tồn tại. Hệ thống không thể tạo hóa đơn hợp lệ.");
+      throw Exception(
+        "Sân liên kết với sự kiện không tồn tại. Hệ thống không thể tạo hóa đơn hợp lệ.",
+      );
     }
     final String eventTitle = ev['title']?.toString() ?? 'Sự Kiện';
     final String physicalCourtName = courtData['name'] ?? 'Sân';
@@ -653,14 +652,12 @@ class SupabaseRepository {
     // 5. Ghi nhận hóa đơn ảo (Virtual Booking) cho Event để đồng bộ thống kê và doanh thu
     String startTimeStr = ev['start_time'].toString();
     final matchStart = RegExp(r'\d+').firstMatch(startTimeStr);
-    int startTimeNum = matchStart != null
-        ? int.parse(matchStart.group(0)!)
-        : 0;
+    int startTimeNum = matchStart != null ? int.parse(matchStart.group(0)!) : 0;
 
     String courtAreaStr = ev['court_area'].toString();
     final matchArea = RegExp(r'\d+').firstMatch(courtAreaStr);
     int courtAreaNum = matchArea != null ? int.parse(matchArea.group(0)!) : 0;
-    
+
     // Đảm bảo định dạng chuẩn YYYY-MM-DD
     final String dateTimeRaw = ev['date_time'].toString();
     final String bookingDateOnly = dateTimeRaw.split('T')[0].split(' ')[0];
@@ -721,7 +718,7 @@ class SupabaseRepository {
   }
 
   // --- User Management Functions (Admin / Realtime Profile) ---
-  
+
   /// Stream số dư của user realtime
   Stream<int> getUserBalanceStream(String userId) {
     return _client
@@ -748,9 +745,7 @@ class SupabaseRepository {
   Future<List<UserModel>> getUsers() async {
     try {
       final data = await _client.from('profiles').select();
-      return List<UserModel>.from(
-        data.map((e) => UserModel.fromSupabase(e)),
-      );
+      return List<UserModel>.from(data.map((e) => UserModel.fromSupabase(e)));
     } catch (e, st) {
       AppLogger.e('Repository', 'getUsers error', e, st);
       return [];
@@ -800,7 +795,8 @@ class SupabaseRepository {
     try {
       final file = File(filePath);
       if (!file.existsSync()) throw Exception('File không tồn tại: $filePath');
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.uri.pathSegments.last}';
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${file.uri.pathSegments.last}';
       await _client.storage.from(bucket).upload(fileName, file);
       return _client.storage.from(bucket).getPublicUrl(fileName);
     } catch (e, st) {
@@ -953,13 +949,18 @@ class SupabaseRepository {
   // ===========================================================================
 
   /// Lấy stream lịch sử giao dịch ví của User (hoặc Chủ sân)
-  Stream<List<WalletTransactionModel>> getWalletTransactionsStream(String userId) {
+  Stream<List<WalletTransactionModel>> getWalletTransactionsStream(
+    String userId,
+  ) {
     return _client
         .from('wallet_transactions')
         .stream(primaryKey: ['id'])
         .eq('user_id', userId)
         .order('created_at', ascending: false)
-        .map((data) => data.map((e) => WalletTransactionModel.fromSupabase(e)).toList());
+        .map(
+          (data) =>
+              data.map((e) => WalletTransactionModel.fromSupabase(e)).toList(),
+        );
   }
 
   /// User tạo yêu cầu Rút Tiền (WITHDRAW)
@@ -984,14 +985,18 @@ class SupabaseRepository {
     required String userId,
     required int amount,
   }) async {
-    final response = await _client.from('wallet_transactions').insert({
-      'user_id': userId,
-      'amount': amount,
-      'type': 'TOPUP',
-      'status': 'PENDING',
-      'description': 'Nạp tiền vào ví',
-    }).select().single();
-    
+    final response = await _client
+        .from('wallet_transactions')
+        .insert({
+          'user_id': userId,
+          'amount': amount,
+          'type': 'TOPUP',
+          'status': 'PENDING',
+          'description': 'Nạp tiền vào ví',
+        })
+        .select()
+        .single();
+
     return WalletTransactionModel.fromSupabase(response);
   }
 
@@ -1002,18 +1007,26 @@ class SupabaseRepository {
         .stream(primaryKey: ['id'])
         .eq('type', 'WITHDRAW')
         .map((data) {
-          final sortedData = data.where((e) => e['status'] == 'PENDING').toList();
-          sortedData.sort((a, b) => (a['created_at'] as String).compareTo(b['created_at'] as String));
+          final sortedData = data
+              .where((e) => e['status'] == 'PENDING')
+              .toList();
+          sortedData.sort(
+            (a, b) => (a['created_at'] as String).compareTo(
+              b['created_at'] as String,
+            ),
+          );
           return List<Map<String, dynamic>>.from(sortedData);
         });
   }
 
   /// (Admin) Cập nhật trạng thái giao dịch (SUCCESS hoặc REJECTED)
-  Future<void> updateWalletTransactionStatus(String transactionId, String status) async {
+  Future<void> updateWalletTransactionStatus(
+    String transactionId,
+    String status,
+  ) async {
     await _client
         .from('wallet_transactions')
         .update({'status': status})
         .eq('id', transactionId);
   }
-
 }

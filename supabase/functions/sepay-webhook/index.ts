@@ -31,24 +31,27 @@ serve(async (req) => {
     console.log('transferContent received:', contentUpper)
     console.log('amount received:', amount)
 
-    // ==========================================
-    // KỊCH BẢN 1: ĐẶT SÂN (DATSAN)
-    // ==========================================
     if (contentUpper.includes('DATSAN')) {
-      const match = contentUpper.match(/DATSAN\s+([A-Z0-9]+)/)
+      const originalContent = transferContent ?? ''
+      const match = originalContent.match(/DATSAN\s+([a-zA-Z0-9_-]+)/i)
       const bookingRef = match ? match[1].trim() : null
 
       console.log('Extracted bookingRef:', bookingRef)
       
       if (bookingRef) {
+        const refUpper = bookingRef.toUpperCase()
+        const refLower = bookingRef.toLowerCase()
+
         const refWithUnderscore = bookingRef.length > 5
           ? `${bookingRef.substring(0, 5)}_${bookingRef.substring(5)}`
           : bookingRef
+        const refWithUnderscoreUpper = refWithUnderscore.toUpperCase()
+        const refWithUnderscoreLower = refWithUnderscore.toLowerCase()
 
         const { data, error } = await supabase
           .from('bookings')
           .update({ status: 'PAID' })
-          .or(`transaction_id.eq.${bookingRef},transaction_id.eq.${refWithUnderscore}`)
+          .or(`transaction_id.eq.${bookingRef},transaction_id.eq.${refUpper},transaction_id.eq.${refLower},transaction_id.eq.${refWithUnderscore},transaction_id.eq.${refWithUnderscoreUpper},transaction_id.eq.${refWithUnderscoreLower}`)
           .select()
 
         if (error) throw error
