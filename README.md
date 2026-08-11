@@ -63,51 +63,43 @@ Hệ thống loại bỏ hoàn toàn việc đối soát thủ công bằng ản
 Trợ lý ảo thông minh KLOO AI được xây dựng trên mô hình **Google Gemini** (`gemini-2.5-flash-lite` và `gemini-embedding-2-preview`) với các cải tiến RAG vượt trội:
 * **Intent Routing (`quickIntent()`):** Bộ phân loại ý định nhanh để bỏ qua RAG đối với các câu chào hỏi đơn giản, giúp tiết kiệm chi phí và tăng tốc độ phản hồi.
 * **Multi-turn Session Memory:** Duy trì ngữ cảnh hội thoại nhiều lượt dựa trên `sessionStore` (lưu trữ lịch sử tối đa 6 lượt chat, thời gian hết hạn TTL 30 phút).
-* **Hybrid Search ( pgvector + BM25):** Truy xuất tri thức ngữ cảnh bằng công thức lai kết hợp độ tương đồng vector ngữ nghĩa **Cosine Similarity (60% weight)** và tìm kiếm từ khóa chính xác **BM25 ts_rank (40% weight)**. Điều này giúp loại bỏ hoàn toàn hiện tượng ảo giác (hallucination), trả lời chuẩn xác tên riêng cụm sân và các mã số giao dịch.
-* **Two-pass Vision RAG:** Khi người dùng gửi hình ảnh (như hóa đơn chuyển khoản, bảng giá sân), hệ thống sử dụng Gemini Vision ở nhịp 1 để trích xuất từ khóa thô, sau đó mới tiến hành Hybrid Search và sinh câu trả lời ở nhịp 2.
-* **GPS Location-Aware:** Tự động lấy tọa độ GPS từ thiết bị di động của người dùng, tính toán cự ly địa lý theo công thức Haversine để gợi ý danh sách các cụm sân gần nhất trong bán kính tùy chọn.
-* **AI Action Routing:** Chatbot tự động trả về một đối tượng hành động JSON (`search_courts`, `view_schedule`, `view_expense`, `cancel_booking`) dựa trên ý định câu hỏi để định hướng Client App tự điều hướng trang thông minh.
-
-### 2.5. Các Chức Năng Khác
-* **Thông báo đẩy (FCM Push Notifications):** Thông báo biến động số dư, nhắc nhở lịch đặt sân, tự động dọn dẹp tokens FCM đã hết hạn khỏi DB.
-* **Bản Đồ Số:** Tích hợp Google Maps hiển thị vị trí các sân và chỉ đường.
-* **Cộng đồng:** Kết bạn, chat cá nhân (Realtime Chat) và chat nhóm để tìm đồng đội chơi thể thao.
-* **Sự kiện & Giải đấu:** Tạo sự kiện giao lưu, khóa khung giờ sân trùng lặp tự động và cho phép người chơi đăng ký tham gia.
-* **Bài giảng & Khóa học:** Cung cấp tài liệu, video hướng dẫn kỹ thuật chia theo từng trình độ của người chơi.
+* **Hybrid Search (pgvector + BM25):** Truy xuất tri thức ngữ cảnh bằng công thức lai kết hợp độ tương đồng vector ngữ nghĩa **Cosine Similarity (60% weight)** và tìm kiếm từ khóa chính xác **BM25 ts_rank (40% weight)**.
+* **Two-pass Vision RAG:** Trích xuất từ khóa hình ảnh hóa đơn/bảng giá trước khi RAG.
+* **GPS Location-Aware:** Tính toán cự ly địa lý theo công thức Haversine gợi ý cụm sân gần nhất.
+* **AI Action Routing:** Trả về đối tượng JSON định hướng Client App tự điều hướng trang.
 
 ---
 
-## 3. 🏗️ KIẾN TRÚC HỆ THỐNG (SYSTEM ARCHITECTURE)
+## 3. 🏗️ KIẾN TRÚC HỆ THỐNG (SYSTEM & CODEBASE ARCHITECTURE)
 
-Hệ thống được thiết kế theo mô hình **Kiến trúc 3 lớp (3-Tier Architecture)** kết hợp phương pháp Backend-as-a-Service (Supabase BaaS) và Serverless Middleware:
+### 3.1. Mô Hình Tổng Thể 3-Tier Architecture
+Hệ thống được thiết kế theo mô hình 3 lớp tích hợp Supabase BaaS và Serverless Middleware:
 
 ```mermaid
 graph TD
     subgraph Tang_Client [TẦNG CLIENT]
-        MobileApp[Mobile App - Flutter]
-        WebAdmin[Web Admin - Flutter Web]
+        MobileApp["Mobile App (Flutter Client-side Modular Monolith)"]
+        WebAdmin["Web Admin (Flutter Web)"]
     end
 
     subgraph Tang_Backend [TẦNG BACKEND - MIDDLEWARE]
-        NodeServer[Node.js Server Express]
-        APIs[API Tích Hợp: Gemini, Groq, Maps]
-        SePay[Cổng SePay Webhook]
+        NodeServer["Node.js Server Express"]
+        APIs["API Tích Hợp: Gemini, Groq, Maps"]
+        SePay["Cổng SePay Webhook"]
     end
 
     subgraph Tang_DB_Cloud [TẦNG DATABASE & CLOUD]
-        Postgres[Supabase PostgreSQL]
-        Storage[Supabase Storage]
-        FCM[Firebase FCM]
+        Postgres["Supabase PostgreSQL"]
+        Storage["Supabase Storage"]
+        FCM["Firebase FCM"]
     end
 
-    %% Client Connections
     MobileApp -->|1. REST & WebSockets| Postgres
     MobileApp -->|2. Upload Media| Storage
     MobileApp -->|3. AI Voice/Vision/RAG Request| NodeServer
 
     WebAdmin -->|4. Admin CRUD & Config| Postgres
 
-    %% Backend Connections
     SePay -->|5. HTTP POST Balance Event| NodeServer
     NodeServer <-->|6. Fetch LLM/STT/GPS Data| APIs
     NodeServer -->|7. Update Transaction Status| Postgres
@@ -115,10 +107,54 @@ graph TD
     FCM -.->|9. Remote Push Notification| MobileApp
 ```
 
-### 📋 Giải thích luồng hoạt động chính:
-1. **Luồng Realtime đặt sân:** Client đọc/ghi dữ liệu lịch đặt qua `Supabase PostgreSQL`. Các thay đổi ghi vào tệp nhật ký ghi trước (WAL) được Supabase đẩy ngược về các Client khác bằng giao thức WebSockets.
-2. **Luồng Chatbot AI:** Client gửi tệp ghi âm/hình ảnh/tin nhắn văn bản về `Node.js Server`. Server trung gian bảo mật API Key, gọi Groq Whisper để chuyển giọng nói thành text, gọi Gemini tạo Embedding, truy xuất pgvector + BM25 ở database, rồi gửi Prompt tổng hợp đến Gemini LLM để lấy kết quả định dạng JSON trả về cho Client.
-3. **Luồng Thanh toán:** Khách quét VietQR động $\rightarrow$ Chuyển tiền thành công $\rightarrow$ SePay gửi Webhook HTTPS (SHA-256) về Node.js Server $\rightarrow$ Server cập nhật trạng thái `PAID` trên Supabase $\rightarrow$ Server gửi payload về Firebase FCM để đẩy thông báo thành công về điện thoại khách hàng dưới 3 giây.
+### 3.2. Kiến Trúc Frontend Modular Monolith (MVVM Clean Architecture + V-Design-System)
+Mã nguồn Flutter được chuẩn hóa theo mô hình **MVVM Modular Monolith**:
+- **Cấu trúc Module độc lập (`lib/modules/<feature>/`)**: Mỗi module tự quản lý `models/`, `repositories/`, `viewmodels/` (Provider / BLoC), và `views/` (`pages/` + `widgets/`).
+- **Chuẩn hóa V-Design-System (`lib/core/design_system/`)**: Áp dụng đồng bộ token màu sắc (`VColors`), typography (`VTypography`), và layout primitive (`VBlockStack`, `VInlineStack`, `VGap`, `VPage`, `VCard`). Thay thế hoàn toàn các AppColors và hex colors tự phát.
+- **Tối ưu hóa file màn hình (<200-300 lines)**: Triệt để bóc tách các file giao diện cồng kềnh (`welcome_screen.dart`, `chatbot_tab.dart`, `home_tab.dart`, `court_detail_sheet.dart`) thành các sub-widgets nhỏ gọn.
+
+**Luồng thực thi (write path):**
+
+```text
+UI (Screen / Provider / BLoC)
+  → ViewModels / Controllers
+  → Module Repository Interface
+  → Data / Service Layer (Supabase RPCs / PostgREST)
+  → Supabase PostgreSQL / Cloud
+```
+
+```mermaid
+graph TD
+    subgraph CoreSystem["Core & Shared Systems (lib/core/)"]
+        VDS["V-Design-System: VColors, VTypography, VGap, VPage, VCard"]
+        SERVICES["Core Services: Supabase, Geolocator, Groq STT"]
+    end
+
+    subgraph ModuleBoundary["Module Boundary (lib/modules/module_name/)"]
+        direction TB
+        VIE["Views: Pages & Widgets (<200-300 lines)"]
+        VM["ViewModels: BLoC / Providers"]
+        MOD["Models & Repositories"]
+
+        VIE --> VM
+        VM --> MOD
+    end
+
+    VIE -.-> VDS
+    MOD --> DB[("Database: Supabase PostgreSQL")]
+```
+
+**Quy ước FE:**
+
+| Loại | Đặt ở đâu |
+| :--- | :--- |
+| Screen / page của feature | `modules/<feature>/views/pages/` |
+| Sub-widget chỉ dùng trong 1 module | `modules/<feature>/views/widgets/` |
+| Component UI dùng chung toàn app (Toast, AppBar, Card, Page…) | `core/design_system/components/` |
+| Token màu / typography / spacing | `core/design_system/tokens/` (`v_colors`, `v_typography`, …) |
+| State Management (BLoC / Provider) | `modules/<feature>/viewmodels/` |
+| Data Layer (Models, Repositories) | `modules/<feature>/models/` & `modules/<feature>/repositories/` |
+| Services hạ tầng dùng chung (Supabase, Location, STT) | `core/services/` & `core/data/` |
 
 ---
 
@@ -148,36 +184,49 @@ graph TD
   <img src="https://img.shields.io/badge/SePay-FF5A5F?style=for-the-badge&logo=sepay&logoColor=white" alt="SePay" />
 </p>
 
-#### Các Package & Thư viện chính:
-
-* **Database & Cloud:** `supabase_flutter`, `firebase_core`, `firebase_messaging`, `flutter_local_notifications`
-* **State Management:** `provider`, `flutter_bloc`, `rxdart`
-* **Maps & Location:** `google_maps_flutter`, `geolocator`, `geocoding`, `permission_handler`
-* **Media & Voice:** `image_picker`, `speech_to_text`, `record`
-* **UI & Charts:** `fl_chart`, `cached_network_image`, `table_calendar`, `youtube_player_flutter`
-* **Utilities:** `shared_preferences`, `http`, `intl`, `easy_localization`, `connectivity_plus`, `url_launcher`, `mobile_scanner`
-
 ---
 
-## 5. 📂 CẤU TRÚC THƯ MỤC DỰ ÁN
+## 5. 📂 CẤU TRÚC THƯ MỤC DỰ ÁN (MODULE BOUNDARIES)
 
-### 📱 Frontend (badminton_ai)
+### 📱 Frontend (`badminton_ai/lib/`)
 ```text
 lib/
-├── blocs/          # Quản lý trạng thái phức tạp dùng BLoC (HomeFilter, Chat)
-├── config/         # Cấu hình hằng số, đường dẫn API
-├── data/           # Lớp dữ liệu (Models, DTOs, Implement Repositories, Data Sources)
-├── domain/         # Lớp nghiệp vụ (Entities, Usecases, Interfaces Repositories)
-├── presentation/   # Giao diện người dùng (Màn hình chính, Widget dùng chung)
-├── providers/      # Quản lý trạng thái toàn cục dùng Provider (Auth, Booking, Wallet)
-├── screens/        # Phân chia các màn hình theo từng phân hệ chức năng
-├── services/       # Các dịch vụ nền tảng (FCM Push Notification, Location)
-├── utils/          # Các hàm tiện ích, cấu hình màu sắc, định dạng dữ liệu
-├── viewmodels/     # Lớp ViewModel kết nối giữa Data và View
-└── widgets/        # Các UI components tái sử dụng
+├── main.dart
+├── app/
+│   ├── app.dart                 # Composition root (*Startup + MultiProvider)
+│   └── providers/               # App-level only (LanguageProvider)
+├── config/                      # API keys
+├── core/
+│   ├── design_system/           # ★ UI đồng bộ toàn app
+│   │   ├── tokens/              # v_colors, v_typography, v_spacing, v_radius
+│   │   ├── patterns/            # VGap, VText
+│   │   ├── components/          # VCard, VPage, Toast, AppBar, Spinner…
+│   │   └── theme/
+│   ├── cqrs/                    # CommandBus / QueryBus / Mediator / Pipeline
+│   ├── data/                    # Shared DTOs + Supabase repos (được module adapter wrap)
+│   ├── domain/                  # Shared ports/usecases còn lại (đang thu hẹp)
+│   ├── services/                # Push, presence, SePay, STT…
+│   ├── presentation/mixins/
+│   └── errors/
+├── modules/                     # ★ Mỗi feature = 1 hộp kín
+│   ├── auth|booking|course|wallet|chat|friends|notifications|
+│   │   home|profile|admin|map|splash|scanner|highlights/
+│   └── <module>/
+│       ├── domain/ · application/ · infrastructure/
+│       ├── integration_events/
+│       └── presentation/
+│           ├── pages/
+│           ├── widgets/         # Widget chỉ của module này
+│           ├── controllers/
+│           ├── bloc/
+│           └── viewmodels/
+└── utils/                       # Helper mỏng (AppColors → facade VColors)
 ```
 
-### ⚙️ Backend (badminton_ai_backend)
+**design_system** dùng chung toàn app để mọi màn cùng token/components.  
+**modules/*/presentation/widgets** chỉ chứa UI gắn nghiệp vụ của module đó.
+
+### ⚙️ Backend (`badminton_ai_backend/`)
 ```text
 badminton_ai_backend/
 ├── firebase-service-account.json   # Key xác thực Firebase Admin SDK
