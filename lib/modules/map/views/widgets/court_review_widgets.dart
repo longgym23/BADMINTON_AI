@@ -4,7 +4,6 @@ import 'package:badminton_ai/core/data/models/court_location_model.dart';
 import 'package:badminton_ai/core/data/models/review_model.dart';
 import 'package:badminton_ai/core/data/repositories/supabase_repository.dart';
 import 'package:badminton_ai/core/design_system/design_system.dart';
-import 'package:badminton_ai/core/design_system/components/ui/app_toast.dart';
 
 class ReviewCard extends StatelessWidget {
   final ReviewModel review;
