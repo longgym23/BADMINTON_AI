@@ -1,14 +1,14 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:badminton_ai/data/models/booking_model.dart';
-import 'package:badminton_ai/data/models/court_location_model.dart';
-import 'package:badminton_ai/data/models/notification_model.dart';
-import 'package:badminton_ai/data/models/user_model.dart';
-import 'package:badminton_ai/data/models/event_model.dart';
-import 'package:badminton_ai/data/models/review_model.dart';
-import 'package:badminton_ai/data/models/wallet_transaction_model.dart';
-import 'package:badminton_ai/utils/app_logger.dart';
+import 'package:badminton_ai/core/data/models/booking_model.dart';
+import 'package:badminton_ai/core/data/models/court_location_model.dart';
+import 'package:badminton_ai/core/data/models/notification_model.dart';
+import 'package:badminton_ai/core/data/models/user_model.dart';
+import 'package:badminton_ai/core/data/models/event_model.dart';
+import 'package:badminton_ai/core/data/models/review_model.dart';
+import 'package:badminton_ai/core/data/models/wallet_transaction_model.dart';
+import 'package:badminton_ai/core/utils/app_logger.dart';
 
 class SupabaseRepository {
   final SupabaseClient _client;
@@ -241,7 +241,7 @@ class SupabaseRepository {
       final data = await query;
       return List<Map<String, dynamic>>.from(data);
     } catch (e) {
-      print("Lỗi lấy danh sách field courts: $e");
+      debugPrint("Lỗi lấy danh sách field courts: $e");
       return [];
     }
   }
@@ -901,7 +901,7 @@ class SupabaseRepository {
         return review;
       }).toList();
     } catch (e) {
-      if (kDebugMode) print('getReviewsForCourt error: $e');
+      if (kDebugMode) debugPrint('getReviewsForCourt error: $e');
       return [];
     }
   }

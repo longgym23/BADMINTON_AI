@@ -1,0 +1,495 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:badminton_ai/core/data/models/event_model.dart';
+import 'package:badminton_ai/core/design_system/design_system.dart';
+import 'package:badminton_ai/modules/booking/presentation/viewmodels/checkout_viewmodel.dart';
+import 'package:badminton_ai/modules/auth/viewmodels/auth_provider.dart';
+import 'package:badminton_ai/modules/booking/presentation/controllers/booking_provider.dart';
+import 'package:badminton_ai/modules/notifications/viewmodels/notification_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:badminton_ai/core/design_system/components/ui/app_toast.dart';
+import 'package:badminton_ai/core/design_system/components/ui/custom_gradient_app_bar.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:badminton_ai/core/utils/dialog_utils.dart';
+
+class EventCheckoutScreen extends StatelessWidget {
+  final EventModel event;
+  final int quantity;
+  final int totalPrice;
+  final String customerName;
+  final String customerPhone;
+
+  const EventCheckoutScreen({
+    super.key,
+    required this.event,
+    required this.quantity,
+    required this.totalPrice,
+    required this.customerName,
+    required this.customerPhone,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.read<AppAuthProvider>();
+    final balance = auth.userModel?.balance ?? 0;
+    final int amountToPayWithSepay = balance >= totalPrice
+        ? 0
+        : totalPrice - balance;
+
+    return ChangeNotifierProvider(
+      create: (_) {
+        final vm = CheckoutViewModel();
+        vm.setCustomerName(customerName);
+        vm.setCustomerPhone(customerPhone);
+        // Ngưởi dùng dùng tiền trong ví, nếu thiểu thì QR sePay hiện khoản thiếu.
+        vm.initializePayment(
+          amountToPayWithSepay, 
+          event.id,
+          transactionId: 'EVENT_${event.id}_${DateTime.now().millisecondsSinceEpoch}',
+        );
+        return vm;
+      },
+      child: EventCheckoutScreenView(
+        event: event,
+        quantity: quantity,
+        totalPrice: totalPrice,
+      ),
+    );
+  }
+}
+
+class EventCheckoutScreenView extends StatefulWidget {
+  final EventModel event;
+  final int quantity;
+  final int totalPrice;
+
+  const EventCheckoutScreenView({
+    super.key,
+    required this.event,
+    required this.quantity,
+    required this.totalPrice,
+  });
+
+  @override
+  State<EventCheckoutScreenView> createState() =>
+      _EventCheckoutScreenViewState();
+}
+
+class _EventCheckoutScreenViewState extends State<EventCheckoutScreenView> {
+  bool _paymentPlaceholderCreated = false;
+
+  void _showSuccessDialog() {
+    DialogUtils.showCustomDialog(
+      context,
+      title: 'screens.confirmedSuccessfully'.tr(),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.check_circle,
+            color: VColors.statusSuccess,
+            size: 60,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Bạn đã đặt ${widget.quantity} vé tham gia sự kiện:\n"${widget.event.title}"',
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+      actions: [
+        CupertinoDialogAction(
+          onPressed: () {
+            Navigator.pop(context);
+            Navigator.pop(context);
+            Navigator.pop(context);
+          },
+          child: Text('screens.completed'.tr()),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _sendSuccessNotifications() async {
+    final notificationProvider = context.read<NotificationProvider>();
+    final authProvider = context.read<AppAuthProvider>();
+    final userId = authProvider.userId;
+    if (userId == null) return;
+
+    try {
+      await notificationProvider.createEventSuccessNotification(
+        userId: userId,
+        courtId: widget.event.courtId,
+        eventTitle: widget.event.title,
+        startTime: widget.event.startTime,
+        endTime: widget.event.endTime,
+        date: widget.event.dateTime,
+        quantity: widget.quantity,
+      );
+    } catch (e) {
+      debugPrint("Lỗi tạo thông báo Event: $e");
+    }
+  }
+
+  void _syncWalletInMemory(int deductedAmount) {
+    if (deductedAmount <= 0) return;
+    final auth = context.read<AppAuthProvider>();
+    final currentUser = auth.userModel;
+    if (currentUser == null) return;
+
+    final nextBalance = (currentUser.balance - deductedAmount).clamp(
+      0,
+      1 << 31,
+    );
+    auth.updateUserModel(currentUser.copyWith(balance: nextBalance));
+  }
+
+  Future<void> _ensurePaymentPlaceholder(
+    String userId,
+    String transactionId,
+  ) async {
+    if (_paymentPlaceholderCreated) return;
+    await context.read<BookingProvider>().createEventPaymentPlaceholder(
+      event: widget.event,
+      userId: userId,
+      transactionId: transactionId,
+      totalPrice: widget.totalPrice,
+    );
+    _paymentPlaceholderCreated = true;
+  }
+
+  void _onConfirmPayment() async {
+    final vm = context.read<CheckoutViewModel>();
+    final auth = context.read<AppAuthProvider>();
+    final balance = auth.userModel?.balance ?? 0;
+    final int amountDeductedFromWallet = balance >= widget.totalPrice
+        ? widget.totalPrice
+        : balance;
+    final bookingProvider = context.read<BookingProvider>();
+
+    if (!widget.event.isBookable) {
+      AppToast.show(
+        context,
+        widget.event.isEnded
+            ? 'screens.eventHasEndedPaymentsCann'.tr()
+            : 'screens.theEventIsSoldOut'.tr(),
+        type: ToastType.error,
+      );
+      return;
+    }
+
+    if (vm.finalAmount == 0) {
+      // Thanh toán hoàn toàn bằng ví
+      await vm.processZeroPayment();
+      try {
+        await bookingProvider.joinEvent(
+          widget.event.id,
+          auth.userId!,
+          amountDeductedFromWallet.toDouble(),
+          quantity: widget.quantity,
+        );
+        _syncWalletInMemory(amountDeductedFromWallet);
+        await _sendSuccessNotifications();
+        if (mounted) _showSuccessDialog();
+      } catch (e) {
+        if (mounted) {
+          AppToast.show(context, 'Lỗi: $e', type: ToastType.error);
+        }
+      }
+      return;
+    }
+
+    // Nếu còn thiếu tiền, tiến hành tạo QR
+    // Bắt đầu tạo pending state
+    try {
+      await _ensurePaymentPlaceholder(auth.userId!, vm.transactionId);
+    } catch (e) {
+      if (mounted) {
+        AppToast.show(
+          context,
+          'Không thể tạo giao dịch thanh toán: $e',
+          type: ToastType.error,
+        );
+      }
+      return;
+    }
+
+    vm.setBookingCreated(true);
+    // Bắt đầu đếm ngược
+    vm.startCountdown(() => _onPaymentExpired(vm.transactionId));
+    // Sau khi tạo đơn, hiển thị QR và lắng nghe SePay
+    _listenForPayment();
+  }
+
+  void _onPaymentExpired(String transactionId) async {
+    await context.read<BookingProvider>().releaseBookingTransaction(
+      transactionId,
+    );
+    if (mounted) {
+      AppToast.show(
+        context,
+        'screens.PaymentTimeHasExpiredYo'.tr(),
+        type: ToastType.error,
+      );
+      Navigator.pop(context);
+    }
+  }
+
+  void _listenForPayment() async {
+    final vm = context.read<CheckoutViewModel>();
+
+    final success = await vm.startListeningForPayment();
+
+    if (!mounted) return;
+    if (success) {
+      final auth = context.read<AppAuthProvider>();
+      final balance = auth.userModel?.balance ?? 0;
+      final int amountDeductedFromWallet = balance >= widget.totalPrice
+          ? widget.totalPrice
+          : balance;
+      final bookingProvider = context.read<BookingProvider>();
+
+      try {
+        await bookingProvider.joinEvent(
+          widget.event.id,
+          auth.userId!,
+          amountDeductedFromWallet.toDouble(),
+          quantity: widget.quantity,
+          paymentTransactionId: vm.transactionId,
+        );
+        _syncWalletInMemory(amountDeductedFromWallet);
+        await _sendSuccessNotifications();
+        if (mounted) _showSuccessDialog();
+      } catch (e) {
+        if (mounted) {
+          AppToast.show(
+            context,
+            'Lỗi cập nhật CSDL: $e',
+            type: ToastType.error,
+          );
+        }
+      }
+    } else {
+      if (mounted && vm.errorMessage != null) {
+        AppToast.show(context, vm.errorMessage!, type: ToastType.error);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<CheckoutViewModel>();
+    final bgColor = VColors.background;
+
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (vm.isBookingCreated && vm.transactionId.isNotEmpty) {
+          context.read<BookingProvider>().releaseBookingTransaction(vm.transactionId);
+        }
+      },
+      child: Scaffold(
+        appBar: CustomGradientAppBar(
+          title: Text('screens.eventPayments'.tr(),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true,
+          elevation: 0,
+        ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Bill Info Card
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('screens.paymentInformation'.tr(),
+                    style: TextStyle(
+                      color: VColors.brandPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Divider(),
+                  SizedBox(height: 12),
+                  _buildRow('screens.eventName1'.tr(), widget.event.title),
+                  SizedBox(height: 8),
+                  _buildRow(
+                    'screens.time'.tr(),
+                    '${widget.event.startTime} - ${widget.event.endTime} | ${DateFormat('dd/MM/yyyy').format(widget.event.dateTime)}',
+                  ),
+                  SizedBox(height: 8),
+                  _buildRow('screens.numberOfTickets'.tr(), '${widget.quantity} vé'),
+                  SizedBox(height: 8),
+                  _buildRow(
+                    'screens.totalAmount1'.tr(),
+                    NumberFormat.currency(
+                      locale: 'vi_VN',
+                      symbol: 'screens.d'.tr(),
+                    ).format(widget.totalPrice),
+                    isTotal: true,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 24),
+
+            if (vm.isBookingCreated)
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFF3E0), Color(0xFFFFCC80)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: VColors.brandPrimary, width: 1.5),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.qr_code_2, color: VColors.brandPrimaryDark),
+                        SizedBox(width: 8),
+                        Text(
+                          'screens.sCANVIETQRCODE'.tr(),
+                          style: TextStyle(
+                            color: VColors.brandPrimaryDark,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    Container(
+                      width: 200,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: EdgeInsets.all(8),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          vm.qrUrl,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                color: VColors.brandPrimary,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text('screens.waitingForTheSystemToConf'.tr(),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: VColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Consumer<CheckoutViewModel>(
+                      builder: (_, vm, __) {
+                        final isLow = vm.remainingSeconds <= 60;
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.timer_outlined,
+                              size: 18,
+                              color: isLow ? Colors.red : VColors.brandPrimaryDark,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Giao dịch tự hủy sau ${vm.remainingLabel}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: isLow
+                                    ? Colors.red
+                                    : VColors.brandPrimaryDark,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    SizedBox(height: 8),
+                    CircularProgressIndicator(strokeWidth: 2),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+      bottomSheet: Container(
+        color: bgColor,
+        padding: EdgeInsets.all(16),
+        child: vm.isBookingCreated
+            ? SizedBox.shrink()
+            : SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: vm.isLoading ? null : _onConfirmPayment,
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text('screens.createQRPayment'.tr(),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+              ),
+      ),
+      )
+    );
+  }
+
+  Widget _buildRow(String label, String value, {bool isTotal = false}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            style: TextStyle(color: VColors.textSecondary, fontSize: 14),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              color: isTotal ? VColors.brandPrimary : VColors.textPrimary,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
+              fontSize: isTotal ? 16 : 14,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

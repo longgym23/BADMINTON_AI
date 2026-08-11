@@ -1,7 +1,7 @@
-import 'package:badminton_ai/data/models/booking_model.dart';
-import 'package:badminton_ai/data/models/court_location_model.dart';
-import 'package:badminton_ai/data/models/notification_model.dart';
-import 'package:badminton_ai/data/models/user_model.dart';
+import 'package:badminton_ai/core/data/models/booking_model.dart';
+import 'package:badminton_ai/core/data/models/court_location_model.dart';
+import 'package:badminton_ai/core/data/models/notification_model.dart';
+import 'package:badminton_ai/core/data/models/user_model.dart';
 
 abstract class SupabaseDataSource {
   Stream<List<CourtLocationModel>> getCourtLocationsStream();

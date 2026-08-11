@@ -1,4 +1,4 @@
-import 'package:badminton_ai/data/models/user_model.dart';
+import 'package:badminton_ai/core/data/models/user_model.dart';
 
 class ReviewModel {
   final String id;

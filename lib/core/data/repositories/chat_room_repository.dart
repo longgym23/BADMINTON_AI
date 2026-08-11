@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:badminton_ai/data/models/user_model.dart';
+import 'package:badminton_ai/core/data/models/user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 class ChatRoom {
   final String id;
@@ -146,7 +147,7 @@ class ChatRoomRepository {
 
               rooms.add(room);
             } catch (e) {
-              print("Lỗi load phòng chat $roomId: $e");
+              debugPrint("Lỗi load phòng chat $roomId: $e");
             }
           }
 
@@ -290,7 +291,7 @@ class ChatRoomRepository {
                 _senderCache[msg.senderId] = user;
                 msg.sender = user;
               } catch (e) {
-                print("Lỗi load người gửi $e");
+                debugPrint("Lỗi load người gửi $e");
               }
             }
             messages.add(msg);
@@ -378,12 +379,12 @@ class ChatRoomRepository {
                 )
                 .timeout(const Duration(seconds: 10));
           } catch (e) {
-            print('Lỗi gọi API gửi Push Notification: $e');
+            debugPrint('Lỗi gọi API gửi Push Notification: $e');
           }
         }
       }
     } catch (e) {
-      print('Lỗi tạo notification khi gửi tin nhắn: $e');
+      debugPrint('Lỗi tạo notification khi gửi tin nhắn: $e');
     }
   }
 
@@ -404,7 +405,7 @@ class ChatRoomRepository {
 
       return _client.storage.from('chat_images').getPublicUrl(path);
     } catch (e) {
-      print('Lỗi upload ảnh: $e');
+      debugPrint('Lỗi upload ảnh: $e');
       return null;
     }
   }
