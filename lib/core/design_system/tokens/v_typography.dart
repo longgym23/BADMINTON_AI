@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
-
 import 'v_colors.dart';
 
-/// Typography tokens (Polaris-style file: type scale only).
+/// Typography tokens (Polaris-style design system type scale).
 class VTypography {
   VTypography._();
 
+  static const TextStyle displayLg = TextStyle(
+    fontSize: 32,
+    fontWeight: FontWeight.bold,
+    color: VColors.textPrimary,
+  );
+  static const TextStyle headingXl = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.bold,
+    color: VColors.textPrimary,
+  );
   static const TextStyle headingLg = TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.bold,

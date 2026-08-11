@@ -8,7 +8,6 @@ import 'package:badminton_ai/modules/booking/presentation/pages/booking_method_m
 import 'package:badminton_ai/modules/booking/presentation/pages/event_list_screen.dart';
 import 'package:badminton_ai/modules/notifications/views/pages/notifications_screen.dart';
 import 'package:badminton_ai/modules/scanner/views/pages/qr_scanner_screen.dart';
-import 'package:badminton_ai/modules/booking/presentation/pages/court_reviews_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -24,7 +23,6 @@ import 'package:badminton_ai/modules/home/views/widgets/home_filter_bar.dart';
 import 'package:badminton_ai/modules/home/views/widgets/home_filter_modal.dart';
 import 'package:badminton_ai/modules/profile/views/pages/edit_profile_screen.dart';
 import 'package:badminton_ai/modules/home/views/widgets/court_list_item.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});

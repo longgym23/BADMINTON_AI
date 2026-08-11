@@ -57,7 +57,8 @@
         <!-- Thay thế "YOUR_API_KEY_HERE" bằng API Key của bạn -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_GOOGLE_MAPS_API_KEY_HERE" />
+            android:value="${mapsApiKey}" />
+
     </application>
     <queries>
         <intent>

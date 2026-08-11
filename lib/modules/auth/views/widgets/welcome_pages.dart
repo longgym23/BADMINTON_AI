@@ -6,7 +6,7 @@ Widget safeWelcomeImage(
   String path, {
   double? height,
   BoxFit fit = BoxFit.cover,
-  Color fallbackColor = const Color(0xFFE0E0E0),
+  Color fallbackColor = VColors.borderSubdued,
 }) {
   return Image.asset(
     path,
@@ -22,11 +22,11 @@ Widget safeWelcomeImage(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.image, color: Colors.white, size: 40),
-              SizedBox(height: 8),
+              Icon(Icons.image, color: VColors.surface, size: 40),
+              const VGap.sm(),
               Text(
                 'Image Placeholder',
-                style: TextStyle(color: Colors.white, fontSize: 12),
+                style: TextStyle(color: VColors.surface, fontSize: 12),
               ),
             ],
           ),
@@ -41,7 +41,7 @@ Widget buildWelcomeFloatingImage(String imagePath, {double size = 56}) {
     width: size,
     height: size,
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: VColors.surface,
       borderRadius: BorderRadius.circular(16),
       boxShadow: [
         BoxShadow(
@@ -66,21 +66,17 @@ Widget buildWelcomeFeatureChip(IconData icon, String label) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
     decoration: BoxDecoration(
-      color: const Color(0xFFFFF3ED),
+      color: VColors.welcomeAccentSubdued,
       borderRadius: BorderRadius.circular(24),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: const Color(0xFFE8722A), size: 18),
-        const SizedBox(width: 8),
+        Icon(icon, color: VColors.brandPrimary, size: 18),
+        const VGap(8),
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF2D2D2D),
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
+          style: VTypography.headingSm.copyWith(color: VColors.textPrimary, fontSize: 13),
         ),
       ],
     ),
@@ -105,19 +101,18 @@ class WelcomePage1 extends StatelessWidget {
                   child: safeWelcomeImage(
                     'assets/images/Modern indoor badminton court in warm tones.png',
                     height: MediaQuery.of(context).size.height * 0.45,
-                    fallbackColor: const Color(0xFF4CAF50).withValues(alpha: 0.5),
+                    fallbackColor: VColors.statusSuccess.withValues(alpha: 0.5),
                   ),
                 ),
                 SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    child: const Text(
+                    child: Text(
                       'KLOO',
-                      style: TextStyle(
+                      style: VTypography.headingLg.copyWith(
                         fontSize: 26,
-                        fontWeight: FontWeight.bold,
                         fontFamily: 'lexend',
-                        color: Color(0xFFE8722A),
+                        color: VColors.brandPrimary,
                       ),
                     ),
                   ),
@@ -137,15 +132,14 @@ class WelcomePage1 extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: VBlockStack(
+              gap: VSpacing.md,
               children: [
                 RichText(
                   text: TextSpan(
-                    style: const TextStyle(
+                    style: VTypography.displayLg.copyWith(
                       fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2D2D2D),
+                      color: VColors.textPrimary,
                       height: 1.2,
                     ),
                     children: [
@@ -153,20 +147,18 @@ class WelcomePage1 extends StatelessWidget {
                       TextSpan(
                         text: 'screens.aroundYou'.tr(),
                         style: const TextStyle(
-                          color: Color(0xFFE8722A),
+                          color: VColors.brandPrimary,
                           decoration: TextDecoration.underline,
-                          decorationColor: Color(0xFFE8722A),
+                          decorationColor: VColors.brandPrimary,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
                 Text(
                   'screens.easilyFindCompetitionStanda'.tr(),
-                  style: const TextStyle(fontSize: 15, color: Color(0xFF6B6B6B), height: 1.5),
+                  style: VTypography.bodyLg.copyWith(color: VColors.textSecondary, height: 1.5),
                 ),
-                const SizedBox(height: 24),
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
@@ -176,7 +168,7 @@ class WelcomePage1 extends StatelessWidget {
                     buildWelcomeFeatureChip(Icons.near_me_outlined, 'screens.nearest'.tr()),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const VGap.lg(),
               ],
             ),
           ),
@@ -197,11 +189,11 @@ class WelcomePage2 extends StatelessWidget {
         children: [
           SafeArea(
             bottom: false,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Text(
                 'KLOO',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFE8722A)),
+                style: VTypography.headingLg.copyWith(fontSize: 24, color: VColors.brandPrimary),
               ),
             ),
           ),
@@ -212,7 +204,7 @@ class WelcomePage2 extends StatelessWidget {
               children: [
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 24),
-                  decoration: const BoxDecoration(color: Color(0xFFFFF3ED), shape: BoxShape.circle),
+                  decoration: const BoxDecoration(color: VColors.welcomeAccentSubdued, shape: BoxShape.circle),
                   height: MediaQuery.of(context).size.height * 0.40,
                   width: MediaQuery.of(context).size.height * 0.40,
                 ),
@@ -223,7 +215,7 @@ class WelcomePage2 extends StatelessWidget {
                     child: safeWelcomeImage(
                       'assets/images/Hero Illustration Area_margin.png',
                       fit: BoxFit.contain,
-                      fallbackColor: Colors.black87,
+                      fallbackColor: VColors.textPrimary,
                     ),
                   ),
                 ),
@@ -232,30 +224,28 @@ class WelcomePage2 extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: VBlockStack(
+              gap: VSpacing.md,
               children: [
-                const SizedBox(height: 16),
                 RichText(
                   text: TextSpan(
-                    style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D), height: 1.2),
+                    style: VTypography.displayLg.copyWith(fontSize: 34, color: VColors.textPrimary, height: 1.2),
                     children: [
                       TextSpan(text: 'screens.setThePitch'.tr()),
-                      TextSpan(text: 'screens.extremelyNfast'.tr(), style: const TextStyle(color: Color(0xFFE8722A))),
+                      TextSpan(text: 'screens.extremelyNfast'.tr(), style: const TextStyle(color: VColors.brandPrimary)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
                 RichText(
                   text: TextSpan(
-                    style: const TextStyle(fontSize: 15, color: Color(0xFF6B6B6B), height: 1.5),
+                    style: VTypography.bodyLg.copyWith(color: VColors.textSecondary, height: 1.5),
                     children: [
                       TextSpan(text: 'screens.realTimeMatchScheduleUpdat'.tr()),
-                      TextSpan(text: 'screens.30Seconds'.tr(), style: const TextStyle(color: Color(0xFFE8722A), fontWeight: FontWeight.bold)),
+                      TextSpan(text: 'screens.30Seconds'.tr(), style: const TextStyle(color: VColors.brandPrimary, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const VGap.lg(),
               ],
             ),
           ),
@@ -280,11 +270,11 @@ class WelcomePage3 extends StatelessWidget {
               children: [
                 safeWelcomeImage('assets/images/Mask Group.png'),
                 SafeArea(
-                  child: const Padding(
-                    padding: EdgeInsets.only(left: 24, top: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 24, top: 8),
                     child: Text(
                       'KLOO',
-                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, fontFamily: 'lexend', color: Color(0xFFE8722A)),
+                      style: VTypography.headingLg.copyWith(fontSize: 26, fontFamily: 'lexend', color: VColors.brandPrimary),
                     ),
                   ),
                 ),
@@ -318,39 +308,36 @@ class WelcomePage3 extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: VBlockStack(
+              gap: VSpacing.md,
               children: [
-                const SizedBox(height: 8),
                 RichText(
                   text: TextSpan(
-                    style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: Color(0xFF2D2D2D), height: 1.2),
+                    style: VTypography.displayLg.copyWith(fontSize: 34, color: VColors.textPrimary, height: 1.2),
                     children: [
                       TextSpan(text: 'screens.communicateWithN'.tr()),
-                      TextSpan(text: 'screens.community'.tr(), style: const TextStyle(color: Color(0xFFE8722A))),
+                      TextSpan(text: 'screens.community'.tr(), style: const TextStyle(color: VColors.brandPrimary)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
                 Text(
                   'screens.connectWithStrongHealthyP'.tr(),
-                  style: const TextStyle(fontSize: 15, color: Color(0xFF6B6B6B), height: 1.6, fontWeight: FontWeight.w600),
+                  style: VTypography.bodyLg.copyWith(color: VColors.textSecondary, height: 1.6, fontWeight: FontWeight.w600),
                 ),
-                const SizedBox(height: 24),
                 Row(
                   children: [
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                        decoration: BoxDecoration(color: const Color(0xFFFFF2EC), borderRadius: BorderRadius.circular(24)),
+                        decoration: BoxDecoration(color: VColors.welcomeAccentSubdued, borderRadius: BorderRadius.circular(24)),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.emoji_events_outlined, color: Color(0xFFFF5722), size: 30),
-                            const SizedBox(height: 16),
+                            const Icon(Icons.emoji_events_outlined, color: VColors.statusWarning, size: 30),
+                            const VGap.md(),
                             Text(
                               'screens.weeklyNweeklyTournament'.tr(),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF2D2D2D), height: 1.4),
+                              style: VTypography.headingSm.copyWith(color: VColors.textPrimary, height: 1.4),
                             ),
                           ],
                         ),
@@ -360,15 +347,15 @@ class WelcomePage3 extends StatelessWidget {
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                        decoration: BoxDecoration(color: const Color(0xFFEFE8E3), borderRadius: BorderRadius.circular(24)),
+                        decoration: BoxDecoration(color: VColors.welcomeCardSecondary, borderRadius: BorderRadius.circular(24)),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Icon(Icons.hub_outlined, color: Color(0xFF7A655A), size: 30),
-                            const SizedBox(height: 16),
+                            const VGap.md(),
                             Text(
                               'screens.localNclub'.tr(),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF2D2D2D), height: 1.4),
+                              style: VTypography.headingSm.copyWith(color: VColors.textPrimary, height: 1.4),
                             ),
                           ],
                         ),
@@ -376,7 +363,7 @@ class WelcomePage3 extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const VGap.lg(),
               ],
             ),
           ),

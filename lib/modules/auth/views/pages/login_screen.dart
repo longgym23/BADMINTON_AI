@@ -21,11 +21,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
 
-  static final Color _orange = Color(0xFFE8722A);
-  static final Color _inputBg = Color(0xFFF5F5F5);
-  static final Color _hintColor = Color(0xFFAAAAAA);
-  static final Color _textDark = Color(0xFF1A1A1A);
-  static final Color _textGray = Color(0xFF888888);
+  static const Color _orange = VColors.brandPrimary;
+  static const Color _inputBg = VColors.borderSubdued;
+  static const Color _hintColor = VColors.textSubdued;
+  static const Color _textDark = VColors.textPrimary;
+  static const Color _textGray = VColors.textSecondary;
 
   @override
   void dispose() {

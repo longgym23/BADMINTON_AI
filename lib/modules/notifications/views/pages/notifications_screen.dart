@@ -5,7 +5,7 @@ import 'package:badminton_ai/modules/notifications/viewmodels/notification_provi
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:badminton_ai/core/design_system/components/ui/custom_gradient_app_bar.dart';
+import 'package:badminton_ai/core/design_system/design_system.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -198,7 +198,7 @@ class _NotificationCard extends StatelessWidget {
     if (isBooking) {
       iconData = Icons.check;
       iconColor = Colors.white;
-      iconBgColor = Color(0xFF4ADE80); // Green 400
+      iconBgColor = VColors.statusSuccess;
     } else if (isPayment) {
       iconData = Icons.history;
       iconColor = Colors.grey[600]!;

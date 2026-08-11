@@ -17,11 +17,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
-  static const _orange = Color(0xFFFF6B00);
-  static const _inputBg = Color(0xFFF5F5F5);
-  static const _hintColor = Color(0xFFAAAAAA);
-  static const _textDark = Color(0xFF1A1A1A);
-  static const _textGray = Color(0xFF888888);
+  static const _orange = VColors.brandPrimary;
+  static const _inputBg = VColors.borderSubdued;
+  static const _hintColor = VColors.textSubdued;
+  static const _textDark = VColors.textPrimary;
+  static const _textGray = VColors.textSecondary;
 
   @override
   void dispose() {
