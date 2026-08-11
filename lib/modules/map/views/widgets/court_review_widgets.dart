@@ -57,7 +57,7 @@ class ReviewCard extends StatelessWidget {
             ],
           ),
           if (review.comment != null && review.comment!.isNotEmpty) ...[
-            const VGap.xs(),
+            VGap.xs,
             Text(review.comment!, style: VTypography.bodyMd),
           ],
         ],

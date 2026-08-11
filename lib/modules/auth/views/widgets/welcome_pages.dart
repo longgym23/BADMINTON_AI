@@ -23,7 +23,7 @@ Widget safeWelcomeImage(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.image, color: VColors.surface, size: 40),
-              const VGap.sm(),
+              VGap.sm,
               Text(
                 'Image Placeholder',
                 style: TextStyle(color: VColors.surface, fontSize: 12),
@@ -168,7 +168,7 @@ class WelcomePage1 extends StatelessWidget {
                     buildWelcomeFeatureChip(Icons.near_me_outlined, 'screens.nearest'.tr()),
                   ],
                 ),
-                const VGap.lg(),
+                VGap.lg,
               ],
             ),
           ),
@@ -245,7 +245,7 @@ class WelcomePage2 extends StatelessWidget {
                     ],
                   ),
                 ),
-                const VGap.lg(),
+                VGap.lg,
               ],
             ),
           ),
@@ -334,7 +334,7 @@ class WelcomePage3 extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Icon(Icons.emoji_events_outlined, color: VColors.statusWarning, size: 30),
-                            const VGap.md(),
+                            VGap.md,
                             Text(
                               'screens.weeklyNweeklyTournament'.tr(),
                               style: VTypography.headingSm.copyWith(color: VColors.textPrimary, height: 1.4),
@@ -352,7 +352,7 @@ class WelcomePage3 extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Icon(Icons.hub_outlined, color: Color(0xFF7A655A), size: 30),
-                            const VGap.md(),
+                            VGap.md,
                             Text(
                               'screens.localNclub'.tr(),
                               style: VTypography.headingSm.copyWith(color: VColors.textPrimary, height: 1.4),
@@ -363,7 +363,7 @@ class WelcomePage3 extends StatelessWidget {
                     ),
                   ],
                 ),
-                const VGap.lg(),
+                VGap.lg,
               ],
             ),
           ),

@@ -58,9 +58,9 @@ class CourtListItem extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInfoRow(),
-                  const VGap.xs(),
+                  VGap.xs,
                   _buildRatingAndDistance(context),
-                  const VGap.md(),
+                  VGap.md,
                   _buildFullWidthButton(),
                 ],
               ),

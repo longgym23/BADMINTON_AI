@@ -77,7 +77,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildIndicatorRow(),
-            const VGap.lg(),
+            VGap.lg,
             if (_currentPage == 1)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -101,7 +101,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     child: Row(
                       children: [
                         Text('screens.continue'.tr(), style: VTypography.headingSm.copyWith(color: Colors.white)),
-                        const VGap.xs(),
+                        VGap.xs,
                         const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
                       ],
                     ),
@@ -127,7 +127,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         _currentPage == 0 ? 'screens.continue'.tr() : 'screens.getStartedNow'.tr(),
                         style: VTypography.headingSm.copyWith(color: Colors.white),
                       ),
-                      const VGap.xs(),
+                      VGap.xs,
                       const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
                     ],
                   ),

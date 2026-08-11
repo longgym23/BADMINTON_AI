@@ -61,7 +61,7 @@ class VCard extends StatelessWidget {
                 if (action != null) action!,
               ],
             ),
-          if (title != null || action != null) const VGap.md(),
+          if (title != null || action != null) VGap.md,
           child,
         ],
       ),
